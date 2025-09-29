@@ -2,8 +2,8 @@
 import argparse
 import importlib.metadata
 from pathlib import Path
-import re
-from totalsegmentator.python_api import totalsegmentator, validate_device_type_api
+# import re
+from aortaexplorer.python_api import aortaexplorer, validate_device_type_api
 
 
 def validate_device_type(value):
@@ -14,9 +14,10 @@ def validate_device_type(value):
             f"Invalid device type: '{value}'. Must be 'gpu', 'cpu', 'mps', or 'gpu:X' where X is an integer representing the GPU device ID.")
 
 
+# TODO: Update AortaExplorer article
 def main():
-    parser = argparse.ArgumentParser(description="Segment 104 anatomical structures in CT images.",
-                                     epilog="Written by Jakob Wasserthal. If you use this tool please cite https://pubs.rsna.org/doi/10.1148/ryai.230024")
+    parser = argparse.ArgumentParser(description="Segment and analyse the aorta in CT images.",
+                                     epilog="Written by Rasmus R. Paulsen If you use this tool please cite AortaExplorer article.")
 
     parser.add_argument("-i", metavar="filepath", dest="input",
                         help="CT nifti image or folder of dicom slices or zip file of dicom slices.",
