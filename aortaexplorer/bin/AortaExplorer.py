@@ -2,11 +2,26 @@
 import argparse
 import importlib.metadata
 from pathlib import Path
+import re
 from aortaexplorer.python_api import (
     aortaexplorer,
-    validate_device_type_api,
     get_default_parameters,
 )
+
+def validate_device_type_api(value):
+    valid_strings = ["gpu", "cpu", "mps"]
+    if value in valid_strings:
+        return value
+
+    # Check if the value matches the pattern "gpu:X" where X is an integer
+    pattern = r"^gpu:(\d+)$"
+    match = re.match(pattern, value)
+    if match:
+        device_id = int(match.group(1))
+        return value
+
+    raise ValueError(
+        f"Invalid device type: '{value}'. Must be 'gpu', 'cpu', 'mps', or 'gpu:X' where X is an integer representing the GPU device ID.")
 
 
 def validate_device_type(value):
@@ -167,8 +182,8 @@ def main():
 
     # Get default aorta parameters and update with any user provided parameters
     aorta_parms = get_default_parameters()
-    aorta_parms["num_proc_total_segmentator"] = args.nt
-    aorta_parms["num_proc_general"] = args.np
+    aorta_parms["num_proc_total_segmentator"] = args.nr_ts
+    aorta_parms["num_proc_general"] = args.nr_proc
     aorta_parms["forced_aorta_min_hu_value"] = args.forced_min_hu
     aorta_parms["forced_aorta_max_hu_value"] = args.forced_max_hu
     aorta_parms["aorta_min_hu_value"] = args.low_hu
@@ -179,8 +194,8 @@ def main():
     aorta_parms["rendering_window_size"] = [args.image_x_size, args.image_y_size]
 
     aortaexplorer(
-        args.input,
-        args.output,
+        str(args.input),
+        str(args.output) + "/",
         aorta_parms,
         device=args.device,
         verbose=args.verbose,
