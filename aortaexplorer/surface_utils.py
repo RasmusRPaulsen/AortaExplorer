@@ -325,7 +325,7 @@ def aorta_volume_properties(segm_folder, stats_folder, quiet, write_log_file, ou
         stats["surface_volume"] = mass.GetVolume()
         stats["surface_area"] = mass.GetSurfaceArea()
     else:
-        aorta_segm_file = f"{segm_folder}aorta_lumen_annulus.nii.nii.gz"
+        aorta_segm_file = f"{segm_folder}aorta_lumen_annulus.nii.gz"
         aorta_surface = convert_label_map_to_surface(
             aorta_segm_file,
             reset_direction_matrix=False,
@@ -347,7 +347,7 @@ def aorta_volume_properties(segm_folder, stats_folder, quiet, write_log_file, ou
         stats["annulus_surface_volume"] = mass.GetVolume()
         stats["annulus_surface_area"] = mass.GetSurfaceArea()
 
-        aorta_segm_file = f"{segm_folder}aorta_lumen_descending.nii.nii.gz"
+        aorta_segm_file = f"{segm_folder}aorta_lumen_descending.nii.gz"
         aorta_surface = convert_label_map_to_surface(
             aorta_segm_file,
             reset_direction_matrix=False,

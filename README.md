@@ -15,9 +15,10 @@ The requires a few steps. You can combine these into less steps, but easier to d
 
 1. Create and load an environment. e.g a conda environment
 ```
-conda create -n AortaExplorerEnv python=3.12
+conda create -n AortaExplorerEnv python=3.11
 conda activate AortaExplorerEnv
 ```
+Unfortunately, VMTK does not support Python >3.11 yet.
 
 2. Install [PyTorch](https://pytorch.org/get-started/locally/). Choose the cuda version that matches with what you have available for your GPU
 

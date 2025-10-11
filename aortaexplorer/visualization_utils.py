@@ -358,7 +358,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
             if aneurysm_sac_stats:
                 aneurysm_sac_ratio = aneurysm_sac_stats["aorta_ratio"]
                 q95_dists = aneurysm_sac_stats["q95_distances"]
-                if aneurysm_sac_ratio > 1.2 and q95_dists > 5:
+                if aneurysm_sac_ratio > 1.2 and q95_dists > 2.5:
                     self.segments.append(
                         {
                             "task": "total",

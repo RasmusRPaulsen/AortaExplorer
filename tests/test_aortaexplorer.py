@@ -8,7 +8,8 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/CFA-PILOT_0000_SERIES0010.nii.gz"
 
     # Type 2:
-    input_file = "C:/data/AortaExplorer/input/DTU_010.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/DTU_001.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/DTU_010.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/DTU_049.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/DTU_050.nii.gz"
     # params["compute_centerline_from_ts_segmentation"] = True
