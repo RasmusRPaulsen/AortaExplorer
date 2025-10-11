@@ -22,6 +22,7 @@ except ImportError as e:
     print(f"Failed to import vmtk name {e.name} and path {e.path}")
     pass
 
+
 def read_landmarks(filename):
     if not os.path.exists(filename):
         return None
@@ -33,6 +34,7 @@ def read_landmarks(filename):
                 temp = line.split()  # Remove whitespaces and line endings and so on
                 x, y, z = np.double(temp)
     return x, y, z
+
 
 def add_distances_from_landmark_to_centerline(in_center, lm_in):
     """
@@ -94,6 +96,7 @@ def add_distances_from_landmark_to_centerline(in_center, lm_in):
     # print(f"Number of points in refined centerline: {pd.GetNumberOfPoints()}")
     return pd
 
+
 def add_start_and_end_point_to_centerline(in_center, start_point, end_point):
     """
     Add start and end point centerline
@@ -128,7 +131,8 @@ def add_start_and_end_point_to_centerline(in_center, start_point, end_point):
     # print(f"Number of points in refined centerline: {pd.GetNumberOfPoints()}")
     return pd
 
-def compute_spline_from_path(cl_in, cl_out_file, spline_smoothing_factor = 20, sample_spacing=0.25):
+
+def compute_spline_from_path(cl_in, cl_out_file, spline_smoothing_factor=20, sample_spacing=0.25):
     sum_dist = 0
     n_points = cl_in.GetNumberOfPoints()
 
@@ -143,7 +147,7 @@ def compute_spline_from_path(cl_in, cl_out_file, spline_smoothing_factor = 20, s
 
     for idx in range(n_points):
         # We go backwards to fix a reverse distance problem
-        p = cl_in.GetPoint(n_points-idx-1)
+        p = cl_in.GetPoint(n_points - idx - 1)
         d = np.linalg.norm(np.array(p) - np.array(p_old))
         sum_dist += d
         p_old = p
@@ -170,8 +174,7 @@ def compute_spline_from_path(cl_in, cl_out_file, spline_smoothing_factor = 20, s
     #     "spl_3": self.spl_3
     # }
 
-
-# def compute_sampled_spline_curve(self):
+    # def compute_sampled_spline_curve(self):
     samp_space = sample_spacing
     spline_n_points = int(max_x / samp_space)
     # print(f"Computing sampled spline path with length {max_x:.1f} and sample spacing {samp_space} "
@@ -261,8 +264,11 @@ def compute_single_center_line(surface_name, cl_name, start_p_name, end_p_name):
     if debug:
         assignAttribute_v = vtk.vtkAssignAttribute()
         assignAttribute_v.SetInputData(centerlinePolyData.VoronoiDiagram)
-        assignAttribute_v.Assign('MaximumInscribedSphereRadius', vtk.vtkDataSetAttributes.SCALARS,
-                               vtk.vtkAssignAttribute.POINT_DATA)
+        assignAttribute_v.Assign(
+            "MaximumInscribedSphereRadius",
+            vtk.vtkDataSetAttributes.SCALARS,
+            vtk.vtkAssignAttribute.POINT_DATA,
+        )
         assignAttribute_v.Update()
 
         writer = vtk.vtkPolyDataWriter()
@@ -270,7 +276,6 @@ def compute_single_center_line(surface_name, cl_name, start_p_name, end_p_name):
         writer.SetFileName(voronoi_name)
         writer.SetFileTypeToBinary()
         writer.Write()
-
 
     if centerlinePolyData.Centerlines.GetNumberOfPoints() < 10:
         print("Something wrong with centerline")
@@ -291,6 +296,7 @@ def compute_single_center_line(surface_name, cl_name, start_p_name, end_p_name):
     compute_spline_from_path(cl_added, cl_spline_name)
 
     return True
+
 
 def estimate_normal_from_centerline(cl, idx, n_samples=4):
     """
@@ -327,6 +333,7 @@ def estimate_normal_from_centerline(cl, idx, n_samples=4):
         normal = np.divide(normal, norm_length)
     return normal
 
+
 def find_position_on_centerline_based_on_scalar(cl, value):
     """
     Find the position on the centerline that is closest to the given scalar value
@@ -336,8 +343,8 @@ def find_position_on_centerline_based_on_scalar(cl, value):
         cl_val_1 = cl.GetPointData().GetScalars().GetValue(idx)
         cl_val_2 = cl.GetPointData().GetScalars().GetValue(idx + 1)
         if cl_val_1 < value <= cl_val_2:
-            if abs(cl_val_1 - value) < abs (cl_val_2 - value):
-                return  idx, cl_val_1
+            if abs(cl_val_1 - value) < abs(cl_val_2 - value):
+                return idx, cl_val_1
             else:
                 return idx, cl_val_2
 
@@ -351,10 +358,8 @@ def find_position_on_centerline_based_on_scalar(cl, value):
         return cl.GetNumberOfPoints() - 1, cl_val_2
 
 
-def compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name, label_straight_name,
-                                                 verbose=False):
-    """
-    """
+def compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name, label_straight_name, verbose=False):
+    """ """
     # slice_resolution = [1.0, 1.0, 1.0]
     slice_resolution = [0.5, 0.5, 0.5]
     # slice_resolution = [0.25, 0.25, 0.25]
@@ -365,23 +370,39 @@ def compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_stra
     convert_system = False
 
     if verbose:
-        print(f"Computing straightened volume with spacing {slice_resolution} and size {slice_size_mm} mm "
-              f"and output spacing {outputSpacingMm} mm")
+        print(f"Computing straightened volume with spacing {slice_resolution} and size {slice_size_mm} mm and output spacing {outputSpacingMm} mm")
     cpr = CurvedPlanarReformat(slice_resolution, slice_size_mm, convert_system)
     transform = cpr.compute_straightening_transform(cl, slice_size_mm, outputSpacingMm, convert_system)
 
     if verbose:
         print("Performing straightening")
 
-    cpr.straighten_volume(ct_img, transform, slice_resolution, isLabelmap=False, file_name=img_straight_name)
-    cpr.straighten_volume(label_img, transform, slice_resolution, isLabelmap=True, file_name=label_straight_name)
+    cpr.straighten_volume(
+        ct_img,
+        transform,
+        slice_resolution,
+        isLabelmap=False,
+        file_name=img_straight_name,
+    )
+    cpr.straighten_volume(
+        label_img,
+        transform,
+        slice_resolution,
+        isLabelmap=True,
+        file_name=label_straight_name,
+    )
 
     return True
 
 
-def sample_along_single_straight_labelmap(straight_label_in, straight_volume_in,
-                                                                    cl_sampling_out,
-                                                                    min_cl_dist=None, max_cl_dist=None, verbose=False):
+def sample_along_single_straight_labelmap(
+    straight_label_in,
+    straight_volume_in,
+    cl_sampling_out,
+    min_cl_dist=None,
+    max_cl_dist=None,
+    verbose=False,
+):
     """
     Finds cross-sectional cuts on the surface of the aorta sampled along the centerline.
     Here the straightened version of the label map is used.
@@ -504,11 +525,15 @@ def compute_diameters_from_contour(contour, org, pix_spacing):
     max_diameter = max_diameter * pix_spacing
     min_diameter = min_diameter * pix_spacing
 
-    diam_stats = {"min_diameter": min_diameter, "max_diameter": max_diameter,
-                  "max_d_p1": list(contour[max_d_idx_1]), "max_d_p2": list(contour[max_d_idx_2]),
-                  "min_d_p1": list(contour[min_d_idx_1]), "min_d_p2": list(contour[min_d_idx_2])}
+    diam_stats = {
+        "min_diameter": min_diameter,
+        "max_diameter": max_diameter,
+        "max_d_p1": list(contour[max_d_idx_1]),
+        "max_d_p2": list(contour[max_d_idx_2]),
+        "min_d_p1": list(contour[min_d_idx_1]),
+        "min_d_p2": list(contour[min_d_idx_2]),
+    }
     return diam_stats
-
 
 
 def set_window_and_level_on_single_slice(img_in, img_window, img_level):
@@ -523,9 +548,22 @@ def set_window_and_level_on_single_slice(img_in, img_window, img_level):
 
     return out_img
 
-def extract_max_cut_in_defined_section(cl_dir, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level,
-                                       spacing, dims, find_minimum = False):
+
+def extract_max_cut_in_defined_section(
+    cl_dir,
+    segment_name,
+    start_cl_dist,
+    end_cl_dist,
+    cl_sampling,
+    cl,
+    straight_img_np,
+    label_img_np,
+    img_window,
+    img_level,
+    spacing,
+    dims,
+    find_minimum=False,
+):
     max_slice_out_rgb = f"{cl_dir}{segment_name}_max_slice_rgb.png"
     max_slice_out_rgb_crop = f"{cl_dir}{segment_name}_max_slice_rgb_crop.png"
     max_slice_out_info = f"{cl_dir}{segment_name}_max_slice_info.json"
@@ -608,9 +646,14 @@ def extract_max_cut_in_defined_section(cl_dir, segment_name, start_cl_dist, end_
     max_slice_info["min_diameter"] = diam_stats["min_diameter"]
     max_slice_info["max_diameter"] = diam_stats["max_diameter"]
 
-    no_check = ["lvot_segment", "sinus_of_valsalva_segment", "sinotubular_junction_segment",
-                "lvot_segment_ts_original", "sinus_of_valsalva_segment_ts_original",
-                "sinotubular_junction_segment_ts_original"]
+    no_check = [
+        "lvot_segment",
+        "sinus_of_valsalva_segment",
+        "sinotubular_junction_segment",
+        "lvot_segment_ts_original",
+        "sinus_of_valsalva_segment_ts_original",
+        "sinotubular_junction_segment_ts_original",
+    ]
 
     if segment_name not in no_check:
         if diam_stats["min_diameter"] == 0:
@@ -621,11 +664,10 @@ def extract_max_cut_in_defined_section(cl_dir, segment_name, start_cl_dist, end_
             diam_ratio = diam_stats["max_diameter"] / diam_stats["min_diameter"]
             max_slice_info["diameter_ratio"] = diam_ratio
             if diam_ratio > 1.5:
-                msg = f"Diameter ratio for cut for {segment_name} " \
-                                                       f"is {diam_ratio:.2f} - we do not use it"
+                msg = f"Diameter ratio for cut for {segment_name} is {diam_ratio:.2f} - we do not use it"
                 return False, msg
 
-    boundary = find_boundaries(largest_cc, mode='outer')
+    boundary = find_boundaries(largest_cc, mode="outer")
     # skimage.io.imsave(max_slice_boundary_out, boundary)
     single_slice_np_img = straight_img_np[:, :, max_idx]
 
@@ -637,12 +679,20 @@ def extract_max_cut_in_defined_section(cl_dir, segment_name, start_cl_dist, end_
     rgb_boundary = [255, 0, 0]
     rgb_line = [255, 255, 0]
 
-    rr, cc = line(int(diam_stats["max_d_p1"][0]), int(diam_stats["max_d_p1"][1]),
-                  int(diam_stats["max_d_p2"][0]), int(diam_stats["max_d_p2"][1]))
+    rr, cc = line(
+        int(diam_stats["max_d_p1"][0]),
+        int(diam_stats["max_d_p1"][1]),
+        int(diam_stats["max_d_p2"][0]),
+        int(diam_stats["max_d_p2"][1]),
+    )
     scaled_2_rgb[rr, cc] = rgb_line
 
-    rr, cc = line(int(diam_stats["min_d_p1"][0]), int(diam_stats["min_d_p1"][1]),
-                  int(diam_stats["min_d_p2"][0]), int(diam_stats["min_d_p2"][1]))
+    rr, cc = line(
+        int(diam_stats["min_d_p1"][0]),
+        int(diam_stats["min_d_p1"][1]),
+        int(diam_stats["min_d_p2"][0]),
+        int(diam_stats["min_d_p2"][1]),
+    )
     scaled_2_rgb[rr, cc] = rgb_line
 
     # Draw boundary last for visual style
@@ -664,7 +714,7 @@ def extract_max_cut_in_defined_section(cl_dir, segment_name, start_cl_dist, end_
     bbox[2] = min(shp[0], bbox[2] + extend)
     bbox[3] = min(shp[1], bbox[3] + extend)
 
-    scaled_2_rgb_crop = scaled_2_rgb[bbox[0]:bbox[2], bbox[1]:bbox[3]]
+    scaled_2_rgb_crop = scaled_2_rgb[bbox[0] : bbox[2], bbox[1] : bbox[3]]
     skimage.io.imsave(max_slice_out_rgb_crop, scaled_2_rgb_crop)
 
     cl_idx, cl_val = find_position_on_centerline_based_on_scalar(cl, max_dist)
@@ -680,8 +730,7 @@ def extract_max_cut_in_defined_section(cl_dir, segment_name, start_cl_dist, end_
     return True, ""
 
 
-def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
     """
     Compute tortuosity index based on scan type, where the type is defined here:
     https://github.com/RasmusRPaulsen/AortaExplorer
@@ -690,7 +739,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
     infrarenal_in = f"{cl_folder}infrarenal_section.json"
     diaphragm_in = f"{cl_folder}diaphragm.json"
     aortic_arch_in = f"{cl_folder}aortic_arch.json"
-    stats_file = f'{stats_folder}aorta_scan_type.json'
+    stats_file = f"{stats_folder}aorta_scan_type.json"
     start_p_name = f"{lm_folder}aorta_start_point.txt"
     end_p_name = f"{lm_folder}aorta_end_point.txt"
     # debug = False
@@ -918,8 +967,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
                 ati_stats["abdominal_aortic_length"] = aortic_length
                 ati_stats["abdominal_geometric_length"] = geometric_length
         else:
-            aortic_length = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + \
-                            add_distance_start + add_distance_end
+            aortic_length = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + add_distance_start + add_distance_end
             geometric_length = np.linalg.norm(np.array(start_p) - np.array(end_p))
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
@@ -1007,8 +1055,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             diaphragm_cl_dist = diaphragm["diaphragm_cl_dist"]
             diaphragm_pos = diaphragm["diaphragm_cl_pos"]
             geometric_length = np.linalg.norm(np.array(end_p) - np.array(diaphragm_pos))
-            aortic_length = (cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) +
-                             add_distance_end - diaphragm_cl_dist)
+            aortic_length = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + add_distance_end - diaphragm_cl_dist
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
@@ -1017,10 +1064,8 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
                 ati_stats["descending_aortic_length"] = aortic_length
                 ati_stats["descending_geometric_length"] = geometric_length
         else:
-
             geometric_length = np.linalg.norm(np.array(start_p) - np.array(end_p))
-            aortic_length = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + \
-                            add_distance_start + add_distance_end
+            aortic_length = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + add_distance_start + add_distance_end
 
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
@@ -1070,7 +1115,6 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             ati_stats["ascending_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["ascending_aortic_length"] = aortic_length
             ati_stats["ascending_geometric_length"] = geometric_length
-
 
         # Second part - the descending part
         start_p_name = f"{lm_folder}aorta_start_point_descending.txt"
@@ -1154,8 +1198,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             #     ati_stats["descending_geometric_length"] = geometric_length
 
             # Descending from diaphragm to top of scan
-            top_cl_dist = (cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) +
-                           add_distance_start + add_distance_end)
+            top_cl_dist = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + add_distance_start + add_distance_end
             top_pos = end_p
             # arch_min_cl_dist = arch["min_cl_dist"]
             # arch_min_pos = arch["min_cl_pos"]

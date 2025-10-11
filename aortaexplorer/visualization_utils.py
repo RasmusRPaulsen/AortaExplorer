@@ -6,6 +6,7 @@ from aortaexplorer.general_utils import read_json_file
 import aortaexplorer.surface_utils as surfutils
 from aortaexplorer.surface_utils import read_nifti_itk_to_vtk
 
+
 class RenderTotalSegmentatorData:
     """
     Can render data from TotalsSegmentator.
@@ -13,12 +14,13 @@ class RenderTotalSegmentatorData:
 
     This is a super class that should be inherited.
     """
+
     def __init__(self, win_size=(1600, 800), render_to_file=True):
         self.ren_win = vtk.vtkRenderWindow()
         self.ren_win.SetOffScreenRendering(render_to_file)
         self.win_size = win_size
         self.ren_win.SetSize(win_size)
-        self.ren_win.SetWindowName('Segmentation view')
+        self.ren_win.SetWindowName("Segmentation view")
 
         self.vtk_image = None
         self.ren_volume = None
@@ -48,12 +50,27 @@ class RenderTotalSegmentatorData:
         """
         pos = (5, 5)
         font_size = 12
-        self.add_text_to_render(self.ren_text, self.message_text, color=(1.0, 1.0, 1.0), position=pos,
-                                font_size=font_size)
-        self.add_text_to_render(self.ren_patient_text, self.patient_text, color=(0.0, 1.0, 0.0), position=pos,
-                                font_size=font_size)
-        self.add_text_to_render(self.ren_warning_text, self.warning_text, color=(1.0, 1.0, 0.0), position=pos,
-                                font_size=font_size)
+        self.add_text_to_render(
+            self.ren_text,
+            self.message_text,
+            color=(1.0, 1.0, 1.0),
+            position=pos,
+            font_size=font_size,
+        )
+        self.add_text_to_render(
+            self.ren_patient_text,
+            self.patient_text,
+            color=(0.0, 1.0, 0.0),
+            position=pos,
+            font_size=font_size,
+        )
+        self.add_text_to_render(
+            self.ren_warning_text,
+            self.warning_text,
+            color=(1.0, 1.0, 0.0),
+            position=pos,
+            font_size=font_size,
+        )
         self.iren.Start()
 
     def render_to_file(self, file_name):
@@ -66,8 +83,18 @@ class RenderTotalSegmentatorData:
         # pos = (5, viewport_size[1] - 50)
         pos = (5, 5)
         self.add_text_to_render(self.ren_text, self.message_text, color=(1.0, 1.0, 1.0), position=pos)
-        self.add_text_to_render(self.ren_patient_text, self.patient_text, color=(0.0, 1.0, 0.0), position=pos)
-        self.add_text_to_render(self.ren_warning_text, self.warning_text, color=(1.0, 1.0, 0.0), position=pos)
+        self.add_text_to_render(
+            self.ren_patient_text,
+            self.patient_text,
+            color=(0.0, 1.0, 0.0),
+            position=pos,
+        )
+        self.add_text_to_render(
+            self.ren_warning_text,
+            self.warning_text,
+            color=(1.0, 1.0, 0.0),
+            position=pos,
+        )
 
         self.ren_win.SetOffScreenRendering(1)
         # print(f"Writing visualization to {file_name}")
@@ -79,7 +106,6 @@ class RenderTotalSegmentatorData:
         writer_png.SetInputConnection(w2if.GetOutputPort())
         writer_png.SetFileName(file_name)
         writer_png.Write()
-
 
     def set_sitk_image_file(self, input_file, img_mask=None):
         """
@@ -93,11 +119,7 @@ class RenderTotalSegmentatorData:
         vtk_dim = self.vtk_image.GetDimensions()
         vtk_spc = self.vtk_image.GetSpacing()
 
-        img_txt = f'Spacing: ({vtk_spc[0]:.2f}, {vtk_spc[1]:.2f}, {vtk_spc[2]:.2f}) mm\n' \
-                  f'Dimensions: ({vtk_dim[0]}, {vtk_dim[1]}, {vtk_dim[2]}) vox\n' \
-                  f'Size: ({vtk_spc[0] * vtk_dim[0] / 10.0:.1f}, {vtk_spc[1] * vtk_dim[1] / 10.0:.1f}, ' \
-                  f'{vtk_spc[2] * vtk_dim[2] / 10.0:.1f}) cm\n' \
-
+        img_txt = f"Spacing: ({vtk_spc[0]:.2f}, {vtk_spc[1]:.2f}, {vtk_spc[2]:.2f}) mm\nDimensions: ({vtk_dim[0]}, {vtk_dim[1]}, {vtk_dim[2]}) vox\nSize: ({vtk_spc[0] * vtk_dim[0] / 10.0:.1f}, {vtk_spc[1] * vtk_dim[1] / 10.0:.1f}, {vtk_spc[2] * vtk_dim[2] / 10.0:.1f}) cm\n"
         self.message_text += img_txt
 
         # Get direction to set camera (not needed when we do the brutal flip of image data in the load routine)
@@ -157,7 +179,7 @@ class RenderTotalSegmentatorData:
         self.ren_win.AddRenderer(self.ren_volume)
 
         c = volume.GetCenter()
-        view_offsets =  [500, -1000, 0]
+        view_offsets = [500, -1000, 0]
         # Hack to handle direction matrices
         view_offsets[0] *= dir_val
         view_offsets[1] *= dir_val
@@ -195,7 +217,6 @@ class RenderTotalSegmentatorData:
         # txt.GetPositionCoordinate2().SetValue(1.0, 1.0)
         # txt.SetTextScaleModeToViewport()
         ren.AddActor(txt)
-
 
     @staticmethod
     def generate_actor_from_surface(surface, color=np.array([1, 0, 0]), opacity=1.0, smooth="heavy"):
@@ -246,7 +267,6 @@ class RenderTotalSegmentatorData:
 
         return actor
 
-
     def generate_actors_from_segment_file_name(self, segm_name, surface_name, color_name, opacity, smooth="heavy"):
         surface = surfutils.convert_label_map_to_surface(segm_name)
         if surface is not None:
@@ -258,7 +278,7 @@ class RenderTotalSegmentatorData:
 
     def generate_actors_from_centerlines(self, cl_folder):
         for cl in self.centerlines:
-            cl_file = f'{cl_folder}{cl["file"]}'
+            cl_file = f"{cl_folder}{cl['file']}"
             if not os.path.exists(cl_file):
                 print(f"No {cl_file}")
                 cl_vtk = None
@@ -303,7 +323,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
         # print(f"Initialising aorta renderer")
 
         n_aorta_parts = 1
-        parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
+        parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
         if parts_stats:
             n_aorta_parts = parts_stats["aorta_parts"]
 
@@ -321,41 +341,68 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
         segm_name_calc = f"{segm_folder}aorta_calcification_raw.nii.gz"
         # surf_name_calc = f"{surf_output_dir}aorta_calcification.vtk"
-        self.generate_actors_from_segment_file_name(segm_name_calc, None, "Ivory", 1.0,
-                                                    smooth="light")
+        self.generate_actors_from_segment_file_name(segm_name_calc, None, "Ivory", 1.0, smooth="light")
 
         segm_name = f"{segm_folder}iliac_artery_left_top.nii.gz"
         # surf_name = f"{surf_output_dir}computed_iliac_artery_left_top.vtk"
-        self.generate_actors_from_segment_file_name(segm_name, None, "DarkSalmon", 1.0,
-                                                    smooth="heavy")
+        self.generate_actors_from_segment_file_name(segm_name, None, "DarkSalmon", 1.0, smooth="heavy")
 
         segm_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
         # surf_name = f"{surf_output_dir}computed_iliac_artery_right_top.vtk"
-        self.generate_actors_from_segment_file_name(segm_name, None, "PaleVioletRed", 1.0,
-                                                    smooth="heavy")
+        self.generate_actors_from_segment_file_name(segm_name, None, "PaleVioletRed", 1.0, smooth="heavy")
 
         # TODO: THis is hacky and should be updated
         if n_aorta_parts == 1:
-            aneurysm_sac_stats_file = f'{stats_folder}aorta_aneurysm_sac_stats.json'
+            aneurysm_sac_stats_file = f"{stats_folder}aorta_aneurysm_sac_stats.json"
             aneurysm_sac_stats = read_json_file(aneurysm_sac_stats_file)
             if aneurysm_sac_stats:
                 aneurysm_sac_ratio = aneurysm_sac_stats["aorta_ratio"]
                 q95_dists = aneurysm_sac_stats["q95_distances"]
                 if aneurysm_sac_ratio > 1.2 and q95_dists > 5:
-                    self.segments.append({"task": "total", "id": 52, "segment": "aorta",
-                     "max_components": 2, "min_component_size": 5000, "color": "OldLace", "opacity": 0.6,
-                     "visible": True})
+                    self.segments.append(
+                        {
+                            "task": "total",
+                            "id": 52,
+                            "segment": "aorta",
+                            "max_components": 2,
+                            "min_component_size": 5000,
+                            "color": "OldLace",
+                            "opacity": 0.6,
+                            "visible": True,
+                        }
+                    )
 
         # self.generate_actors_from_combined_segments_with_tasks()
 
         if n_aorta_parts == 1:
-            self.centerlines.append({"name": "aorta_center_line", "file": "aorta_centerline.vtp", "size": 1,
-                                     "color": "white", "opacity": 1.0})
+            self.centerlines.append(
+                {
+                    "name": "aorta_center_line",
+                    "file": "aorta_centerline.vtp",
+                    "size": 1,
+                    "color": "white",
+                    "opacity": 1.0,
+                }
+            )
         elif n_aorta_parts == 2:
-            self.centerlines.append({"name": "aorta_center_line_annulus", "file": "aorta_centerline_annulus.vtp",
-                                     "size": 1, "color": "white", "opacity": 1.0})
-            self.centerlines.append({"name": "aorta_center_line_descending", "file": "aorta_centerline_descending.vtp",
-                                     "size": 1, "color": "white", "opacity": 1.0})
+            self.centerlines.append(
+                {
+                    "name": "aorta_center_line_annulus",
+                    "file": "aorta_centerline_annulus.vtp",
+                    "size": 1,
+                    "color": "white",
+                    "opacity": 1.0,
+                }
+            )
+            self.centerlines.append(
+                {
+                    "name": "aorta_center_line_descending",
+                    "file": "aorta_centerline_descending.vtp",
+                    "size": 1,
+                    "color": "white",
+                    "opacity": 1.0,
+                }
+            )
 
         self.generate_actors_from_centerlines(cl_folder)
 
@@ -395,8 +442,11 @@ class RenderAortaData(RenderTotalSegmentatorData):
             self.ren_3d_2.AddActor(actor)
 
         actor_bounds = self.ren_3d_1.ComputeVisiblePropBounds()
-        c = [(actor_bounds[0] + actor_bounds[1]) / 2, (actor_bounds[2] + actor_bounds[3]) / 2,
-                   (actor_bounds[4] + actor_bounds[5]) / 2]
+        c = [
+            (actor_bounds[0] + actor_bounds[1]) / 2,
+            (actor_bounds[2] + actor_bounds[3]) / 2,
+            (actor_bounds[4] + actor_bounds[5]) / 2,
+        ]
 
         self.ren_3d_1.GetActiveCamera().SetParallelProjection(1)
         self.ren_3d_1.GetActiveCamera().SetViewUp(0, 0, 1)
@@ -435,8 +485,8 @@ class RenderAortaData(RenderTotalSegmentatorData):
         self.ren_straight_2.SetViewport(self.viewport_straight_2)
 
     def set_aorta_statistics(self, stats_folder):
-        stats_file = f'{stats_folder}aorta_statistics.json'
-        scan_type_file = f'{stats_folder}aorta_scan_type.json'
+        stats_file = f"{stats_folder}aorta_statistics.json"
+        scan_type_file = f"{stats_folder}aorta_scan_type.json"
 
         aorta_stats = read_json_file(stats_file)
         if aorta_stats is None:
@@ -459,47 +509,58 @@ class RenderAortaData(RenderTotalSegmentatorData):
         # else:
         #     cl_length = 0
 
-        aorta_txt = f'\nAorta HU avg: {aorta_stats["avg_hu"]:.0f} ({aorta_stats["cl_mean"]:.0f})\n' \
-                    f'std.dev: {aorta_stats["std_hu"]:.0f} ({aorta_stats["cl_std"]:.0f})\n' \
-                    f'median: {aorta_stats["med_hu"]:.0f} ({aorta_stats["cl_med"]:.0f})\n' \
-                    f'99%: {aorta_stats["q99_hu"]:.0f} ({aorta_stats["cl_q99"]:.0f})\n' \
-                    f'1%: {aorta_stats["q01_hu"]:.0f} ({aorta_stats["cl_q01"]:.0f})\n' \
-                    f'Aorta vol: {aorta_stats["tot_vol"]/1000.0:.0f} cm3\n' \
-                    f'scan type: {scan_type}\n' \
-                    f'Aorta Surface area: {aorta_stats["surface_area"] / 100.0:.1f} cm2\n'
-                    # f'Centerline length: {cl_length / 10.0:.1f} cm\n' \
+        aorta_txt = f"\nAorta HU avg: {aorta_stats['avg_hu']:.0f} ({aorta_stats['cl_mean']:.0f})\nstd.dev: {aorta_stats['std_hu']:.0f} ({aorta_stats['cl_std']:.0f})\nmedian: {aorta_stats['med_hu']:.0f} ({aorta_stats['cl_med']:.0f})\n99%: {aorta_stats['q99_hu']:.0f} ({aorta_stats['cl_q99']:.0f})\n1%: {aorta_stats['q01_hu']:.0f} ({aorta_stats['cl_q01']:.0f})\nAorta vol: {aorta_stats['tot_vol'] / 1000.0:.0f} cm3\nscan type: {scan_type}\nAorta Surface area: {aorta_stats['surface_area'] / 100.0:.1f} cm2\n"
+        # f'Centerline length: {cl_length / 10.0:.1f} cm\n' \
 
         self.message_text += aorta_txt
 
     def set_plot_data(self, stats_folder, cl_folder):
         n_aorta_parts = 1
-        parts_stats = read_json_file(f'{stats_folder}/aorta_parts.json')
+        parts_stats = read_json_file(f"{stats_folder}/aorta_parts.json")
         if parts_stats:
             n_aorta_parts = parts_stats["aorta_parts"]
 
         if n_aorta_parts == 2:
-            data_file = f'{cl_folder}straight_labelmap_sampling_annulus.csv'
-            max_in_files = ["aortic_arch_segment_max_slice_info",
-                            "ascending_segment_max_slice_info",
-                            "distensability_segment_avg_slice_info",
-                            "sinotubular_junction_segment_max_slice_info",
-                            "sinus_of_valsalva_segment_max_slice_info",
-                            "lvot_segment_max_slice_info"]
-            max_rgb = [[255, 0, 0], [0, 255, 255], [255, 128, 128], [128, 0, 128], [0, 128, 255],
-                       [200, 255, 100]]
+            data_file = f"{cl_folder}straight_labelmap_sampling_annulus.csv"
+            max_in_files = [
+                "aortic_arch_segment_max_slice_info",
+                "ascending_segment_max_slice_info",
+                "distensability_segment_avg_slice_info",
+                "sinotubular_junction_segment_max_slice_info",
+                "sinus_of_valsalva_segment_max_slice_info",
+                "lvot_segment_max_slice_info",
+            ]
+            max_rgb = [
+                [255, 0, 0],
+                [0, 255, 255],
+                [255, 128, 128],
+                [128, 0, 128],
+                [0, 128, 255],
+                [200, 255, 100],
+            ]
             max_rgb = np.divide(max_rgb, 255.0)
         elif n_aorta_parts == 1:
-            data_file = f'{cl_folder}straight_labelmap_sampling.csv'
-            max_in_files = ["infrarenal_segment_max_slice_info",
-                            "abdominal_segment_max_slice_info",
-                            "aortic_arch_segment_max_slice_info",
-                            "ascending_segment_max_slice_info",
-                            "sinotubular_junction_segment_max_slice_info",
-                            "sinus_of_valsalva_segment_max_slice_info",
-                            "descending_segment_max_slice_info",
-                            "lvot_segment_max_slice_info"]
-            max_rgb = [[255, 255, 0], [255, 128, 0], [255, 0, 0], [0, 255, 255], [128, 0, 128], [0, 128, 255], [0, 255, 0],
-                       [200, 255, 100]]
+            data_file = f"{cl_folder}straight_labelmap_sampling.csv"
+            max_in_files = [
+                "infrarenal_segment_max_slice_info",
+                "abdominal_segment_max_slice_info",
+                "aortic_arch_segment_max_slice_info",
+                "ascending_segment_max_slice_info",
+                "sinotubular_junction_segment_max_slice_info",
+                "sinus_of_valsalva_segment_max_slice_info",
+                "descending_segment_max_slice_info",
+                "lvot_segment_max_slice_info",
+            ]
+            max_rgb = [
+                [255, 255, 0],
+                [255, 128, 0],
+                [255, 0, 0],
+                [0, 255, 255],
+                [128, 0, 128],
+                [0, 128, 255],
+                [0, 255, 0],
+                [200, 255, 100],
+            ]
             max_rgb = np.divide(max_rgb, 255.0)
         else:
             return
@@ -572,8 +633,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
     @staticmethod
     def create_cylinder_actor(pos, normal, radius=30, height=1, rgba=None, opacity=1.0):
-        """
-        """
+        """ """
         if rgba is None:
             rgba = [0.0, 1.0, 0.0, 0.0]
 
@@ -583,7 +643,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
         cylinder.SetRadius(radius)
         cylinder.SetHeight(height)
 
-        y_axis = [0., 1., 0.]
+        y_axis = [0.0, 1.0, 0.0]
         axis = np.cross(y_axis, normal)
         angle = np.arccos(np.dot(y_axis, normal))
         transform = vtk.vtkTransform()
@@ -609,17 +669,28 @@ class RenderAortaData(RenderTotalSegmentatorData):
         Generate a disk where max cut is found
         """
         cl_dir = cl_folder
-        max_in_files = ["infrarenal_segment_max_slice_info",
-                        "abdominal_segment_max_slice_info",
-                        "aortic_arch_segment_max_slice_info",
-                        "ascending_segment_max_slice_info",
-                        "distensability_segment_avg_slice_info",
-                        "sinotubular_junction_segment_max_slice_info",
-                        "sinus_of_valsalva_segment_max_slice_info",
-                        "descending_segment_max_slice_info",
-                        "lvot_segment_max_slice_info"]
-        max_rgb = [[255, 255, 0], [255, 128, 0], [255, 0, 0], [0, 255, 255], [255, 128, 128], [128, 0, 128], [0, 128, 255], [0, 255, 0],
-                   [200, 255, 100]]
+        max_in_files = [
+            "infrarenal_segment_max_slice_info",
+            "abdominal_segment_max_slice_info",
+            "aortic_arch_segment_max_slice_info",
+            "ascending_segment_max_slice_info",
+            "distensability_segment_avg_slice_info",
+            "sinotubular_junction_segment_max_slice_info",
+            "sinus_of_valsalva_segment_max_slice_info",
+            "descending_segment_max_slice_info",
+            "lvot_segment_max_slice_info",
+        ]
+        max_rgb = [
+            [255, 255, 0],
+            [255, 128, 0],
+            [255, 0, 0],
+            [0, 255, 255],
+            [255, 128, 128],
+            [128, 0, 128],
+            [0, 128, 255],
+            [0, 255, 0],
+            [200, 255, 100],
+        ]
         max_rgb = np.divide(max_rgb, 255.0)
 
         for idx, pfile in enumerate(max_in_files):
@@ -632,18 +703,16 @@ class RenderAortaData(RenderTotalSegmentatorData):
                 radius = max_diam / 2 * 1.10
                 rgb = max_rgb[idx]
 
-                actor_cut = self.create_cylinder_actor(pos, normal, radius=radius, height=1.5, rgba=rgb,
-                                                       opacity=1.0)
+                actor_cut = self.create_cylinder_actor(pos, normal, radius=radius, height=1.5, rgba=rgb, opacity=1.0)
 
                 self.ren_3d_1.AddActor(actor_cut)
                 self.ren_3d_2.AddActor(actor_cut)
-
 
     def set_precomputed_slice(self, cl_folder):
         """
         Here the slices are precomputed as png files
         """
-        plane_file = f'{cl_folder}combined_cuts.png'
+        plane_file = f"{cl_folder}combined_cuts.png"
 
         png_reader = vtk.vtkPNGReader()
         if not png_reader.CanReadFile(plane_file):
@@ -678,14 +747,22 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
     def set_cut_statistics(self, cl_folder):
         cl_dir = cl_folder
-        cut_stats = [{"name": "LVOT", "file": "lvot_segment_max_slice_info.json"},
-                     {"name": "Sinus of Valsalve", "file": "sinus_of_valsalva_segment_max_slice_info.json"},
-                     {"name": "Sinutubular junction", "file": "sinotubular_junction_segment_max_slice_info.json"},
-                     {"name": "Ascending", "file": "ascending_segment_max_slice_info.json"},
-                     {"name": "Aortic arch", "file": "aortic_arch_segment_max_slice_info.json"},
-                     {"name": "Descending", "file": "descending_segment_max_slice_info.json"},
-                     {"name": "Abdominal", "file": "abdominal_segment_max_slice_info.json"},
-                     {"name": "Infrarenal", "file": "infrarenal_segment_max_slice_info.json"}]
+        cut_stats = [
+            {"name": "LVOT", "file": "lvot_segment_max_slice_info.json"},
+            {
+                "name": "Sinus of Valsalve",
+                "file": "sinus_of_valsalva_segment_max_slice_info.json",
+            },
+            {
+                "name": "Sinutubular junction",
+                "file": "sinotubular_junction_segment_max_slice_info.json",
+            },
+            {"name": "Ascending", "file": "ascending_segment_max_slice_info.json"},
+            {"name": "Aortic arch", "file": "aortic_arch_segment_max_slice_info.json"},
+            {"name": "Descending", "file": "descending_segment_max_slice_info.json"},
+            {"name": "Abdominal", "file": "abdominal_segment_max_slice_info.json"},
+            {"name": "Infrarenal", "file": "infrarenal_segment_max_slice_info.json"},
+        ]
         # self.message_text += f"Max cross sectional area: {cut_area:.0f} mm2\n" \
         #                      f"Diameters: {min_diam:.0f} and {max_diam:.0f} mm\n"
 
@@ -702,7 +779,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
                 self.message_text += f"{name}: {cut_area} mm2\n"
 
     def set_aortic_tortuosity_index_statistics(self, stats_folder):
-        stats_file = f'{stats_folder}/aorta_statistics.json'
+        stats_file = f"{stats_folder}/aorta_statistics.json"
         ati_stats = read_json_file(stats_file)
         if not ati_stats:
             print(f"Could not read {stats_file}")
@@ -710,7 +787,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
         if "annulus_aortic_length" in ati_stats:
             cl_length = ati_stats["annulus_aortic_length"]
-            self.message_text += f"\nTotal aortic length: {cl_length/10.0:.1f} cm\n"
+            self.message_text += f"\nTotal aortic length: {cl_length / 10.0:.1f} cm\n"
         self.message_text += "\nAortic tortuosity index:\n"
         if "annulus_aortic_tortuosity_index" in ati_stats:
             ati = ati_stats["annulus_aortic_tortuosity_index"]
@@ -729,8 +806,8 @@ class RenderAortaData(RenderTotalSegmentatorData):
             self.message_text += f"Infrarenal: {ati:.2f}\n"
 
     def set_aortic_aneurysm_sac_statistics(self, stats_folder):
-        type_file = f'{stats_folder}/aorta_scan_type.json'
-        stats_file = f'{stats_folder}/aorta_aneurysm_sac_stats.json'
+        type_file = f"{stats_folder}/aorta_scan_type.json"
+        stats_file = f"{stats_folder}/aorta_aneurysm_sac_stats.json"
         if not os.path.exists(type_file):
             print(f"Missing file {type_file}")
             return
@@ -754,7 +831,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
                 print(f"Something wrong with {stats_file} aorta_lumen={aorta_lumen}")
                 return
 
-            tot_vol = (aorta_lumen + calcification_volume)
+            tot_vol = aorta_lumen + calcification_volume
             ratio = original_aorta_volume / tot_vol
             dif_percent = abs(original_aorta_volume - tot_vol) / tot_vol * 100.0
             q95_dists = stats["q95_distances"]
@@ -766,8 +843,8 @@ class RenderAortaData(RenderTotalSegmentatorData):
             print(f"Can not set aortic aneurysm sac statistics for scan type: {scan_type}")
 
     def set_aortic_calcification_statistics(self, stats_folder):
-        type_file = f'{stats_folder}aorta_scan_type.json'
-        stats_file = f'{stats_folder}aorta_calcification_stats.json'
+        type_file = f"{stats_folder}aorta_scan_type.json"
+        stats_file = f"{stats_folder}aorta_calcification_stats.json"
 
         if not os.path.exists(type_file):
             print(f"Missing file {type_file}")
@@ -795,21 +872,20 @@ class RenderAortaData(RenderTotalSegmentatorData):
             # total_volume = aorta_stats["tot_vol"]
 
             self.message_text += "\nCalcification info:\n"
-            self.message_text += f"Calcified volume: {calcification_volume/1000.0:.1f} cm3\n"
-            self.message_text += f"Lumen volume: {aorta_lumen_volume/1000.0:.1f} cm3\n"
+            self.message_text += f"Calcified volume: {calcification_volume / 1000.0:.1f} cm3\n"
+            self.message_text += f"Lumen volume: {aorta_lumen_volume / 1000.0:.1f} cm3\n"
             if aorta_lumen_volume > 0:
                 ratio = calcification_volume / aorta_lumen_volume * 100
                 self.message_text += f"Percent of total: {ratio:.2f}%\n"
         else:
             print(f"Can not set calcification statistics for scan type: {scan_type}")
 
-
     def set_precomputed_straight_longitudinal_slices(self, cl_folder):
         """
         Here the longitudinal are precomputed as png files in the vmtk processing script
         """
-        plane_file_1 = f'{cl_folder}straight_volume_mid_cut.png'
-        plane_file_2 = f'{cl_folder}straight_volume_mid_cut_2.png'
+        plane_file_1 = f"{cl_folder}straight_volume_mid_cut.png"
+        plane_file_2 = f"{cl_folder}straight_volume_mid_cut_2.png"
 
         png_reader = vtk.vtkPNGReader()
         if not png_reader.CanReadFile(plane_file_1):
@@ -842,5 +918,3 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
         self.ren_straight_2.GetActiveCamera().ParallelProjectionOn()
         self.ren_straight_2.ResetCameraScreenSpace()
-
-

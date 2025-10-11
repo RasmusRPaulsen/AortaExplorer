@@ -5,20 +5,20 @@ from pathlib import Path
 from datetime import datetime
 import json
 
+
 def write_message_to_log_file(base_dir, message, level="warning"):
     if os.path.isdir(base_dir):
         pdir = base_dir
     else:
         pdir = os.path.dirname(base_dir)
 
-    log_file =   f"{pdir}/AortaExporer_log.txt"
+    log_file = f"{pdir}/AortaExporer_log.txt"
     if not os.path.isdir(os.path.dirname(log_file)):
         Path(os.path.dirname(log_file)).mkdir(parents=True, exist_ok=True)
 
     now_date = datetime.strftime(datetime.now(), "%d-%m-%Y-%H-%M-%S")
     with open(log_file, "a") as file:
         file.write(f"{now_date}: {message}\n")
-
 
 
 def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str], str]:
@@ -61,10 +61,11 @@ def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str],
 
     return in_files, ""
 
+
 def read_json_file(json_name):
     if os.path.exists(json_name):
         try:
-            with open(json_name, 'r') as openfile:
+            with open(json_name, "r") as openfile:
                 json_stuff = json.load(openfile)
                 return json_stuff
         except IOError as e:

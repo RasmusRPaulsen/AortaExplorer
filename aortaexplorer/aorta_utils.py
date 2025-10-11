@@ -5,12 +5,25 @@ import time
 import multiprocessing as mp
 import aortaexplorer.surface_utils as surfutils
 from aortaexplorer.general_utils import write_message_to_log_file, read_json_file
-from aortaexplorer.surface_utils import (convert_label_map_to_surface, compute_min_and_max_z_landmark,
-                                         find_closests_points_on_two_surfaces_with_start_point, preprocess_surface_for_centerline_extraction)
-from aortaexplorer.segmentation_utils import (get_components_over_certain_size, get_components_over_certain_size_as_individual_volumes,
-                                              edt_based_opening, edt_based_closing, close_cavities_in_segmentations, edt_based_dilation,
-                                              compute_segmentation_volume, edt_based_overlap, edt_based_compute_landmark_from_segmentation_overlap,
-                                              read_nifti_itk_to_numpy, check_if_segmentation_hit_sides_of_scan)
+from aortaexplorer.surface_utils import (
+    convert_label_map_to_surface,
+    compute_min_and_max_z_landmark,
+    find_closests_points_on_two_surfaces_with_start_point,
+    preprocess_surface_for_centerline_extraction,
+)
+from aortaexplorer.segmentation_utils import (
+    get_components_over_certain_size,
+    get_components_over_certain_size_as_individual_volumes,
+    edt_based_opening,
+    edt_based_closing,
+    close_cavities_in_segmentations,
+    edt_based_dilation,
+    compute_segmentation_volume,
+    edt_based_overlap,
+    edt_based_compute_landmark_from_segmentation_overlap,
+    read_nifti_itk_to_numpy,
+    check_if_segmentation_hit_sides_of_scan,
+)
 import aortaexplorer.centerline_utils as clutils
 from aortaexplorer.visualization_utils import RenderAortaData
 import SimpleITK as sitk
@@ -85,6 +98,7 @@ def compute_body_segmentation(input_file, segm_folder, verbose, quiet, write_log
 
     return True
 
+
 def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
     """
     Use simple HU thresholding to compute the area of the scan that is marked as
@@ -136,10 +150,11 @@ def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose
     if verbose:
         print("Computing SDF for out-of-scan-field")
     spacing = ct_img.GetSpacing()
-    sdf_mask = -edt.sdf(combined_mask,
-                   anisotropy=[spacing[2], spacing[1], spacing[0]],
-                   parallel=8  # number of threads, <= 0 sets to num CPU
-                   )
+    sdf_mask = -edt.sdf(
+        combined_mask,
+        anisotropy=[spacing[2], spacing[1], spacing[0]],
+        parallel=8,  # number of threads, <= 0 sets to num CPU
+    )
 
     # For certain scan with very isotropic voxels (CFA with spacing up to 3 mm)
     # we need a larger SDF for later out-of-scan-queries
@@ -156,24 +171,35 @@ def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose
 
     return True
 
-def refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
-                            verbose, quiet, write_log_file, output_folder, ct_np, part="_annulus"):
+
+def refine_single_aorta_part(
+    input_file,
+    params,
+    segm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    ct_np,
+    part="_annulus",
+):
     """
     This is one of the core functions of AortaExplorer - it takes the
     aorta segmentation from TotalSegmentator and refines it to only contain
     the lumen. It does this by computing HU statistics from a skeleton
     of the aorta and then thresholds the aorta based on these statistics.
     """
-    segm_in_name = f'{segm_folder}aorta_lumen{part}_raw.nii.gz'
-    segm_out_name = f'{segm_folder}aorta_lumen{part}.nii.gz'
-    segm_skeleton_out_name = f'{segm_folder}aorta_lumen{part}_skeleton.nii.gz'
-    segm_out_thres_name = f'{segm_folder}aorta_lumen{part}_thresholded.nii.gz'
-    segm_open_out_name = f'{segm_folder}aorta_lumen{part}_open.nii.gz'
-    segm_closed_out_name = f'{segm_folder}aorta_lumen{part}_closed.nii.gz'
-    segm_no_holes_name = f'{segm_folder}aorta_lumen{part}_no_holes.nii.gz'
+    segm_in_name = f"{segm_folder}aorta_lumen{part}_raw.nii.gz"
+    segm_out_name = f"{segm_folder}aorta_lumen{part}.nii.gz"
+    segm_skeleton_out_name = f"{segm_folder}aorta_lumen{part}_skeleton.nii.gz"
+    segm_out_thres_name = f"{segm_folder}aorta_lumen{part}_thresholded.nii.gz"
+    segm_open_out_name = f"{segm_folder}aorta_lumen{part}_open.nii.gz"
+    segm_closed_out_name = f"{segm_folder}aorta_lumen{part}_closed.nii.gz"
+    segm_no_holes_name = f"{segm_folder}aorta_lumen{part}_no_holes.nii.gz"
     forced_min_hu_value = params.get("forced_aorta_min_hu_value", None)
     forced_max_hu_value = params.get("forced_aorta_max_hu_value", None)
-    hu_stats_file = f'{stats_folder}/aorta_skeleton{part}_hu_stats.json'
+    hu_stats_file = f"{stats_folder}/aorta_skeleton{part}_hu_stats.json"
 
     debug = False
 
@@ -214,10 +240,11 @@ def refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
 
     if debug:
         print("SDF for erosion")
-    sdf_mask = -edt.sdf(mask_np_aorta,
-                   anisotropy=[spacing[2], spacing[1], spacing[0]],
-                   parallel=8  # number of threads, <= 0 sets to num CPU
-                   )
+    sdf_mask = -edt.sdf(
+        mask_np_aorta,
+        anisotropy=[spacing[2], spacing[1], spacing[0]],
+        parallel=8,  # number of threads, <= 0 sets to num CPU
+    )
 
     erode_size = 2
     eroded_mask = sdf_mask < -erode_size
@@ -228,9 +255,7 @@ def refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
 
     if verbose:
         print("SDF for dilation of skeleton")
-    sdf_mask = -edt.sdf(skeleton,
-                   anisotropy=[spacing[2], spacing[1], spacing[0]],
-                   parallel=8)  # number of threads, <= 0 sets to num CPU
+    sdf_mask = -edt.sdf(skeleton, anisotropy=[spacing[2], spacing[1], spacing[0]], parallel=8)  # number of threads, <= 0 sets to num CPU
 
     dilate_size = 2
     dilated_mask = sdf_mask < dilate_size
@@ -321,8 +346,7 @@ def refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
     if do_open_close:
         if verbose:
             print("EDT based opening")
-        combined_mask = edt_based_opening(combined_mask, [spacing[2], spacing[1], spacing[0]],
-                                             open_close_radius)
+        combined_mask = edt_based_opening(combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius)
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
@@ -332,8 +356,7 @@ def refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
 
         if verbose:
             print("EDT based closing")
-        combined_mask = edt_based_closing(combined_mask, [spacing[2], spacing[1], spacing[0]],
-                                                open_close_radius)
+        combined_mask = edt_based_closing(combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius)
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
@@ -388,8 +411,7 @@ def refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
 
     surface_volume_ratio = aorta_surface / aorta_volume
     if low_hu_values and surface_volume_ratio > 0.22:
-        msg = f"Surface to volume ratio {surface_volume_ratio:.3f} is higher than 0.22 and very low HU units avg: {avg_hu:.1f} - " \
-                f"we do not dare to do more analysis {input_file}"
+        msg = f"Surface to volume ratio {surface_volume_ratio:.3f} is higher than 0.22 and very low HU units avg: {avg_hu:.1f} - we do not dare to do more analysis {input_file}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -435,22 +457,30 @@ def refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
     return True
 
 
-def extract_pure_aorta_lumen_start_by_finding_parts(input_file, params, segm_folder, stats_folder,
-                                                    verbose, quiet, write_log_file, output_folder):
+def extract_pure_aorta_lumen_start_by_finding_parts(
+    input_file,
+    params,
+    segm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+):
     """
     Take the original aorta segmentation and keep only the lumen
     """
     store_raw_hires_aorta = True
     store_raw_aorta = True
-    segm_out_name = f'{segm_folder}aorta_lumen_raw.nii.gz'
-    segm_out_name_hires = f'{segm_folder}aorta_lumen_hires_raw.nii.gz'
-    segm_out_name_raw = f'{segm_folder}aorta_ts_original.nii.gz'
-    segm_out_name_annulus = f'{segm_folder}aorta_lumen_annulus_raw.nii.gz'
-    segm_out_name_descending = f'{segm_folder}aorta_lumen_descending_raw.nii.gz'
-    segm_in_name_annulus = f'{segm_folder}aorta_lumen_annulus.nii.gz'
-    segm_in_name_descending = f'{segm_folder}aorta_lumen_descending.nii.gz'
-    segm_total_out  = f'{segm_folder}aorta_lumen.nii.gz'
-    stats_file = f'{stats_folder}/aorta_parts.json'
+    segm_out_name = f"{segm_folder}aorta_lumen_raw.nii.gz"
+    segm_out_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_out_name_raw = f"{segm_folder}aorta_ts_original.nii.gz"
+    segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_raw.nii.gz"
+    segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
+    segm_in_name_annulus = f"{segm_folder}aorta_lumen_annulus.nii.gz"
+    segm_in_name_descending = f"{segm_folder}aorta_lumen_descending.nii.gz"
+    segm_total_out = f"{segm_folder}aorta_lumen.nii.gz"
+    stats_file = f"{stats_folder}/aorta_parts.json"
     segm_name_aorta = f"{segm_folder}total.nii.gz"
     segm_name_aorta_hires = f"{segm_folder}heartchambers_highres.nii.gz"
     aorta_segm_id = 52
@@ -544,7 +574,6 @@ def extract_pure_aorta_lumen_start_by_finding_parts(input_file, params, segm_fol
         img_o.CopyInformation(label_img_aorta)
         sitk.WriteImage(img_o, segm_out_name_hires)
 
-
     # TODO: This is completely guesswork
     if slice_thickness < 1:
         min_comp_size = 25000
@@ -602,13 +631,31 @@ def extract_pure_aorta_lumen_start_by_finding_parts(input_file, params, segm_fol
         # print(f"saving {segm_out_name}")
         sitk.WriteImage(img_o, segm_out_name)
 
-        if not refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
-                                        verbose, quiet, write_log_file, output_folder,
-                                        ct_np, "_descending"):
-                return False
-        if not refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
-                                        verbose, quiet, write_log_file, output_folder,
-                                        ct_np, "_annulus"):
+        if not refine_single_aorta_part(
+            input_file,
+            params,
+            segm_folder,
+            stats_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            ct_np,
+            "_descending",
+        ):
+            return False
+        if not refine_single_aorta_part(
+            input_file,
+            params,
+            segm_folder,
+            stats_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            ct_np,
+            "_annulus",
+        ):
             return False
 
         # make a combined segmentation
@@ -643,28 +690,36 @@ def extract_pure_aorta_lumen_start_by_finding_parts(input_file, params, segm_fol
 
         # print(f"saving {segm_out_name}")
         sitk.WriteImage(img_o, segm_out_name)
-        if not refine_single_aorta_part(input_file, params, segm_folder, stats_folder,
-                                        verbose, quiet, write_log_file, output_folder,
-                                        ct_np, ""):
+        if not refine_single_aorta_part(
+            input_file,
+            params,
+            segm_folder,
+            stats_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            ct_np,
+            "",
+        ):
             return False
 
     return True
 
 
-def extract_top_of_iliac_arteries(input_file, segm_folder,
-                                 verbose, quiet, write_log_file, output_folder):
+def extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
     """
     Extract the top part of the iliac arteries if present
     """
-    segm_out_l_name = f'{segm_folder}iliac_artery_left_top.nii.gz'
-    segm_out_r_name = f'{segm_folder}iliac_artery_right_top.nii.gz'
+    segm_out_l_name = f"{segm_folder}iliac_artery_left_top.nii.gz"
+    segm_out_r_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
     # surf_out_l_name = f'{surface_folder}iliac_artery_left_top.vtk'
     # surf_out_r_name = f'{surface_folder}iliac_artery_right_top.vtk'
 
     segm_in_name = f"{segm_folder}total.nii.gz"
     iliac_left_segm_id = 65
     iliac_right_segm_id = 66
-    top_length = 10.0 # mm
+    top_length = 10.0  # mm
 
     if os.path.exists(segm_out_l_name) and os.path.exists(segm_out_r_name):
         if not quiet:
@@ -741,22 +796,29 @@ def extract_top_of_iliac_arteries(input_file, segm_folder,
     return True
 
 
-def extract_aortic_calcifications(input_file, params, segm_folder, stats_folder,
-                                 verbose, quiet, write_log_file, output_folder):
-    """
-    """
-    hu_stats_file = f'{stats_folder}/aorta_skeleton_hu_stats.json'
-    hu_stats_file_2 = f'{stats_folder}/aorta_skeleton_descending_hu_stats.json'
-    calcification_stats_file = f'{stats_folder}/aorta_calcification_stats.json'
+def extract_aortic_calcifications(
+    input_file,
+    params,
+    segm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+):
+    """ """
+    hu_stats_file = f"{stats_folder}/aorta_skeleton_hu_stats.json"
+    hu_stats_file_2 = f"{stats_folder}/aorta_skeleton_descending_hu_stats.json"
+    calcification_stats_file = f"{stats_folder}/aorta_calcification_stats.json"
 
-    segm_in_name_hires = f'{segm_folder}aorta_lumen_hires_raw.nii.gz'
+    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
 
-    segm_out_name = f'{segm_folder}aorta_calcification.nii.gz'
-    segm_dilated_out_name = f'{segm_folder}aorta_lumen_dilated.nii.gz'
-    segm_raw_out_name = f'{segm_folder}aorta_calcification_raw.nii.gz'
+    segm_out_name = f"{segm_folder}aorta_calcification.nii.gz"
+    segm_dilated_out_name = f"{segm_folder}aorta_lumen_dilated.nii.gz"
+    segm_raw_out_name = f"{segm_folder}aorta_calcification_raw.nii.gz"
     # segm_out_name_annulus = f'{segm_folder}aorta_calcification_annulus.nii.gz'
     # segm_out_name_descending = f'{segm_folder}aorta_calcification_descending.nii.gz'
-    segm_name_lumen = f'{segm_folder}aorta_lumen.nii.gz'
+    segm_name_lumen = f"{segm_folder}aorta_lumen.nii.gz"
     calc_min_hu = params["aorta_calcification_min_hu_value"]
     calc_max_hu = params["aorta_calcification_max_hu_value"]
 
@@ -836,7 +898,7 @@ def extract_aortic_calcifications(input_file, params, segm_folder, stats_folder,
     calcification_volume = np.sum(combined_mask) * spacing[0] * spacing[1] * spacing[2]
     stats["calcification_volume"] = calcification_volume
 
-    #if debug:
+    # if debug:
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(label_img_aorta)
 
@@ -848,7 +910,7 @@ def extract_aortic_calcifications(input_file, params, segm_folder, stats_folder,
     stats["aorta_lumen_volume"] = aorta_lumen_volume
 
     try:
-        with Path(calcification_stats_file).open('wt') as handle:
+        with Path(calcification_stats_file).open("wt") as handle:
             json.dump(stats, handle, indent=4, sort_keys=False)
     except IOError as e:
         print(f"I/O error({e.errno}): {e.strerror}: {calcification_stats_file}")
@@ -856,17 +918,17 @@ def extract_aortic_calcifications(input_file, params, segm_folder, stats_folder,
 
     return True
 
-def check_for_aneurysm_sac(segm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+
+def check_for_aneurysm_sac(segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
     """
     Compare the raw TotalSegmentator aorta segmentation and the refined lumen segmentation
     to see if there is an aneurysm sac present
     Since the TotalSegmentator segmentation includes the wall and possible sacs
     """
-    aneurysm_sac_stats_file = f'{stats_folder}aorta_aneurysm_sac_stats.json'
-    calcification_stats_file = f'{stats_folder}aorta_calcification_stats.json'
-    segm_in_name_hires = f'{segm_folder}aorta_lumen_hires_raw.nii.gz'
-    segm_lumen_in  = f'{segm_folder}aorta_lumen.nii.gz'
+    aneurysm_sac_stats_file = f"{stats_folder}aorta_aneurysm_sac_stats.json"
+    calcification_stats_file = f"{stats_folder}aorta_calcification_stats.json"
+    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_lumen_in = f"{segm_folder}aorta_lumen.nii.gz"
 
     if os.path.exists(aneurysm_sac_stats_file):
         if not quiet:
@@ -933,8 +995,7 @@ def check_for_aneurysm_sac(segm_folder, stats_folder,
         volume_stats["aorta_ratio"] = ratio
 
     if verbose:
-        print(f"Found original aorta volume {aorta_volumen_raw:.0f} and lumen volume {aorta_lumen_volume:.0f} "
-              f"ratio {ratio:.2f}")
+        print(f"Found original aorta volume {aorta_volumen_raw:.0f} and lumen volume {aorta_lumen_volume:.0f} ratio {ratio:.2f}")
 
     aorta_surface_raw = convert_label_map_to_surface(segm_in_name_hires, only_largest_component=False)
     aorta_surface_lumen = convert_label_map_to_surface(segm_lumen_in, only_largest_component=False)
@@ -965,7 +1026,7 @@ def check_for_aneurysm_sac(segm_folder, stats_folder,
     volume_stats["q95_distances"] = q95
 
     try:
-        with Path(aneurysm_sac_stats_file).open('wt') as handle:
+        with Path(aneurysm_sac_stats_file).open("wt") as handle:
             json.dump(volume_stats, handle, indent=4, sort_keys=False)
     except IOError as e:
         print(f"I/O error({e.errno}): {e.strerror}: {aneurysm_sac_stats_file}")
@@ -973,12 +1034,11 @@ def check_for_aneurysm_sac(segm_folder, stats_folder,
     return True
 
 
-def compute_ventricularoaortic_landmark(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
     """
     The ventricularoaortic landmark is between the end of the aorta and the start of the left ventricle
     """
-    overlap_name = f'{segm_folder}aorta_lv_overlap.nii.gz'
+    overlap_name = f"{segm_folder}aorta_lv_overlap.nii.gz"
     ventricularoaortic_p_out_file = f"{lm_folder}ventricularoaortic_point.txt"
     ventricularoaortic_p_none_out_file = f"{lm_folder}ventricularoaortic_no_point.txt"
 
@@ -1047,9 +1107,12 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder,
     if verbose:
         print("Finding overlap between aorta and LV using SDF")
     footprint_radius_mm = 5
-    overlap_mask = edt_based_overlap(mask_np_aorta, mask_np_lv,
-                                        spacing=[spacing[2], spacing[1], spacing[0]],
-                                        radius=footprint_radius_mm)
+    overlap_mask = edt_based_overlap(
+        mask_np_aorta,
+        mask_np_lv,
+        spacing=[spacing[2], spacing[1], spacing[0]],
+        radius=footprint_radius_mm,
+    )
 
     min_comp_size = 100
     overlap_mask = get_components_over_certain_size_as_individual_volumes(overlap_mask, min_comp_size, 1)
@@ -1089,14 +1152,24 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder,
 
     return True
 
-def combine_aorta_and_left_ventricle(input_file, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=False):
+
+def combine_aorta_and_left_ventricle(
+    input_file,
+    segm_folder,
+    lm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_ts_org_segmentations=False,
+):
     """
     Combine aorta and left ventricle since this is beneficial for computing the centerline.
     It is ignored if no LV is present and just the aorta is returned
     """
     ventricularoaortic_p_in_file = f"{lm_folder}ventricularoaortic_point.txt"
-    stats_file = f'{stats_folder}/aorta_parts.json'
+    stats_file = f"{stats_folder}/aorta_parts.json"
     aorta_segm_id = 1
     left_ventricle_id = 3
 
@@ -1122,17 +1195,17 @@ def combine_aorta_and_left_ventricle(input_file, segm_folder, lm_folder, stats_f
     if n_aorta_parts == 1:
         if use_ts_org_segmentations:
             segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-            segm_out_name = f'{segm_folder}aorta_left_ventricle_ts_org.nii.gz'
+            segm_out_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen.nii.gz"
-            segm_out_name = f'{segm_folder}aorta_left_ventricle.nii.gz'
+            segm_out_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
     elif n_aorta_parts == 2:
         if use_ts_org_segmentations:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus_raw.nii.gz"
-            segm_out_name = f'{segm_folder}aorta_left_ventricle_ts_org.nii.gz'
+            segm_out_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus.nii.gz"
-            segm_out_name = f'{segm_folder}aorta_left_ventricle.nii.gz'
+            segm_out_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
     else:
         msg = f"Can not handle more than 2 parts. Found {n_aorta_parts}"
         if not quiet:
@@ -1217,8 +1290,7 @@ def combine_aorta_and_left_ventricle(input_file, segm_folder, lm_folder, stats_f
     return True
 
 
-def compute_aortic_arch_landmarks(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def compute_aortic_arch_landmarks(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
     """
     Find the aortic arch landmarks by looking at the overlap between the aorta and the
     brachiocephalic trunk, left common carotid artery and left subclavian artery
@@ -1228,7 +1300,11 @@ def compute_aortic_arch_landmarks(segm_folder, lm_folder,
     segm_name_total = f"{segm_folder}total.nii.gz"
     aorta_segm_id = 1
 
-    lm_names = ["brachiocephalic_trunc", "common_carotid_artery_left", "subclavian_artery_left"]
+    lm_names = [
+        "brachiocephalic_trunc",
+        "common_carotid_artery_left",
+        "subclavian_artery_left",
+    ]
     segm_ids = [54, 58, 56]
 
     try:
@@ -1260,7 +1336,7 @@ def compute_aortic_arch_landmarks(segm_folder, lm_folder,
         segm_id = segm_ids[idx]
         lm_out_name = f"{lm_folder}{lm_name}.txt"
         lm_out_name_none = f"{lm_folder}{lm_name}_done.txt"
-        segm_oname = f'{segm_folder}{lm_name}_aorta_overlap.nii.gz'
+        segm_oname = f"{segm_folder}{lm_name}_aorta_overlap.nii.gz"
 
         if os.path.exists(lm_out_name) or os.path.exists(lm_out_name_none):
             if verbose:
@@ -1274,8 +1350,16 @@ def compute_aortic_arch_landmarks(segm_folder, lm_folder,
         if np.sum(current_segm) > 10:
             if verbose:
                 print(f"EDT based overlap for {lm_out_name}")
-            if not edt_based_compute_landmark_from_segmentation_overlap(mask_np_aorta, current_segm, radius, label_img, segm_oname,
-                                                                    lm_out_name, only_larges_components=True, debug=debug):
+            if not edt_based_compute_landmark_from_segmentation_overlap(
+                mask_np_aorta,
+                current_segm,
+                radius,
+                label_img,
+                segm_oname,
+                lm_out_name,
+                only_larges_components=True,
+                debug=debug,
+            ):
                 f_p_out = open(lm_out_name_none, "w")
                 f_p_out.write("no point")
                 f_p_out.close()
@@ -1291,8 +1375,7 @@ def compute_aortic_arch_landmarks(segm_folder, lm_folder,
     return True
 
 
-def compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
     """
     Compute the diaphragm landmark by finding the highest point of the liver surface
     and the lowest point of the right ventricle surface
@@ -1374,8 +1457,7 @@ def compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder,
         overlap_percent = 0
 
     if overlap_percent > 20:
-        msg = (f"Overlap percent {overlap_percent} found between liver and RV. Something wrong in segmentation. "
-               f"No {lm_check_name}")
+        msg = f"Overlap percent {overlap_percent} found between liver and RV. Something wrong in segmentation. No {lm_check_name}"
         if verbose:
             print(msg)
         if write_log_file:
@@ -1405,8 +1487,7 @@ def compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder,
         f_p_out.close()
         return True
 
-    idx_1, idx_2, avg_p, dist = \
-        find_closests_points_on_two_surfaces_with_start_point(rv_surface, liver_surface, min_rv_p)
+    idx_1, idx_2, avg_p, dist = find_closests_points_on_two_surfaces_with_start_point(rv_surface, liver_surface, min_rv_p)
 
     f_p_out = open(lm_check_name, "w")
     f_p_out.write(f"{avg_p[0]} {avg_p[1]} {avg_p[2]}")
@@ -1415,15 +1496,23 @@ def compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder,
     return True
 
 
-def compute_aorta_scan_type(input_file, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def compute_aorta_scan_type(
+    input_file,
+    segm_folder,
+    lm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+):
     """
     Compute aorta scan type.
     Is it a full aorta, only the aorta at the cardiac section or in the abdomen?
     We use the case types defined here:
     https://github.com/RasmusRPaulsen/AortaExplorer
     """
-    stats_file = f'{stats_folder}/aorta_scan_type.json'
+    stats_file = f"{stats_folder}/aorta_scan_type.json"
 
     if os.path.exists(stats_file):
         if verbose:
@@ -1434,7 +1523,7 @@ def compute_aorta_scan_type(input_file, segm_folder, lm_folder, stats_folder,
         print(f"Computing {stats_file}")
 
     n_aorta_parts = 1
-    parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
 
@@ -1457,8 +1546,11 @@ def compute_aorta_scan_type(input_file, segm_folder, lm_folder, stats_folder,
 
     # Check for top of aortic arch
     # We need all three top landmarks
-    lm_check_names = ["brachiocephalic_trunc.txt", "common_carotid_artery_left.txt",
-                      "subclavian_artery_left.txt"]
+    lm_check_names = [
+        "brachiocephalic_trunc.txt",
+        "common_carotid_artery_left.txt",
+        "subclavian_artery_left.txt",
+    ]
     aortic_arch_present = True
     for cn in lm_check_names:
         if not os.path.exists(f"{lm_folder}{cn}"):
@@ -1498,54 +1590,42 @@ def compute_aorta_scan_type(input_file, segm_folder, lm_folder, stats_folder,
     elif len(sides) == 1 and "up" in sides and lvot_present and il_left and il_right and n_aorta_parts == 1:
         scan_type = "1c"
         scan_type_desc = "full aorta but it is touching the upper side of the scan"
-    elif len(sides) == 1 and "up" in sides and not aortic_arch_present and not lvot_present \
-            and il_left and il_right and n_aorta_parts == 1:
+    elif len(sides) == 1 and "up" in sides and not aortic_arch_present and not lvot_present and il_left and il_right and n_aorta_parts == 1:
         scan_type = "2"
         scan_type_desc = "Lower aorta with iliac bifurcation"
-    elif len(sides) == 1 and "down" in sides and aortic_arch_present and lvot_present \
-            and not il_left and not il_right and n_aorta_parts == 1:
+    elif len(sides) == 1 and "down" in sides and aortic_arch_present and lvot_present and not il_left and not il_right and n_aorta_parts == 1:
         scan_type = "3"
         scan_type_desc = "Upper aorta with aortic arch and LVOT (cardiac scan)"
-    elif len(sides) == 2 and "up" in sides and "down" in sides and not aortic_arch_present and lvot_present \
-            and not il_left and not il_right and n_aorta_parts == 1:
+    elif len(sides) == 2 and "up" in sides and "down" in sides and not aortic_arch_present and lvot_present and not il_left and not il_right and n_aorta_parts == 1:
         scan_type = "3b"
         scan_type_desc = "Upper aorta with partial aortic arch and LVOT (cardiac scan)"
-    elif len(sides) == 1 and "up" in sides and not aortic_arch_present and lvot_present \
-            and il_left and il_right and n_aorta_parts == 2:
+    elif len(sides) == 1 and "up" in sides and not aortic_arch_present and lvot_present and il_left and il_right and n_aorta_parts == 2:
         scan_type = "4"
         scan_type_desc = "Two aorta parts and LVOT (cardiac) and no aortic arch and iliac bifurcation"
-    elif len(sides) == 2 and "up" in sides and "down" in sides and not aortic_arch_present and lvot_present \
-            and not il_left and not il_right and n_aorta_parts == 2:
+    elif len(sides) == 2 and "up" in sides and "down" in sides and not aortic_arch_present and lvot_present and not il_left and not il_right and n_aorta_parts == 2:
         scan_type = "5"
         scan_type_desc = "Two aorta parts and LVOT (cardiac) and no aortic arch"
-    elif len(sides) == 1 and "up" in sides and not aortic_arch_present and lvot_present \
-            and not il_left and not il_right and n_aorta_parts == 1:
+    elif len(sides) == 1 and "up" in sides and not aortic_arch_present and lvot_present and not il_left and not il_right and n_aorta_parts == 1:
         scan_type = "6"
         scan_type_desc = "Only cardiac aorta and LVOT (cardiac) and no aortic arch and no iliac bifurcation"
-    elif len(sides) == 2 and "up" in sides and "down" in sides and not aortic_arch_present and not lvot_present \
-            and not il_left and not il_right and n_aorta_parts == 1:
+    elif len(sides) == 2 and "up" in sides and "down" in sides and not aortic_arch_present and not lvot_present and not il_left and not il_right and n_aorta_parts == 1:
         scan_type = "7 or 8b"
         scan_type_desc = "Only middle part of aorta or only cropped aortic arch"
-    elif len(sides) == 1 and "down" in sides and aortic_arch_present and not lvot_present \
-            and not il_left and not il_right and n_aorta_parts == 1:
+    elif len(sides) == 1 and "down" in sides and aortic_arch_present and not lvot_present and not il_left and not il_right and n_aorta_parts == 1:
         scan_type = "8"
         scan_type_desc = "Only aortic arch"
     # Sometimes the scan does not extend to the side of the volume and the side check is not reliable
-    elif not aortic_arch_present and lvot_present \
-            and not il_left and not il_right and n_aorta_parts == 2:
+    elif not aortic_arch_present and lvot_present and not il_left and not il_right and n_aorta_parts == 2:
         scan_type = "5"
         scan_type_desc = "Two aorta parts and LVOT (cardiac scan) and no aortic arch (best guess)"
-    elif not aortic_arch_present and lvot_present \
-            and il_left and il_right and n_aorta_parts == 2:
+    elif not aortic_arch_present and lvot_present and il_left and il_right and n_aorta_parts == 2:
         scan_type = "4"
         scan_type_desc = "Two aorta parts and LVOT (cardiac scan) and no aortic arch and iliac bifurcation (best guess)"
-    elif not aortic_arch_present and not lvot_present \
-            and il_left and il_right and n_aorta_parts == 1:
+    elif not aortic_arch_present and not lvot_present and il_left and il_right and n_aorta_parts == 1:
         scan_type = "2"
         scan_type_desc = "Lower aorta with iliac bifurcation (best guess)"
     else:
-        msg = f"Could not determine scan type. sides: {sides}, aortic_arch_present: {aortic_arch_present}, " \
-              f"lvot_present: {lvot_present}, il_left: {il_left}, il_right: {il_right}, n_aorta_parts: {n_aorta_parts}"
+        msg = f"Could not determine scan type. sides: {sides}, aortic_arch_present: {aortic_arch_present}, lvot_present: {lvot_present}, il_left: {il_left}, il_right: {il_right}, n_aorta_parts: {n_aorta_parts}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -1556,7 +1636,7 @@ def compute_aorta_scan_type(input_file, segm_folder, lm_folder, stats_folder,
     stats["scan_type"] = scan_type
     stats["scan_type_desc"] = scan_type_desc
     try:
-        with Path(stats_file).open('wt') as handle:
+        with Path(stats_file).open("wt") as handle:
             json.dump(stats, handle, indent=4, sort_keys=False)
     except IOError as e:
         print(f"I/O error({e.errno}): {e.strerror}: {stats_file}")
@@ -1569,11 +1649,11 @@ def compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, outp
     Compute the aorta-iliac artery landmark by finding the center of the top of the iliac arteries
     and then finding the closest point on the aorta surface to the midpoint between the two iliac arteries
     """
-    segm_l_name = f'{segm_folder}iliac_artery_left_top.nii.gz'
-    segm_r_name = f'{segm_folder}iliac_artery_right_top.nii.gz'
-    segm_aorta_name = f'{segm_folder}aorta_lumen.nii.gz'
+    segm_l_name = f"{segm_folder}iliac_artery_left_top.nii.gz"
+    segm_r_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
+    segm_aorta_name = f"{segm_folder}aorta_lumen.nii.gz"
     if use_ts_org_segmentations:
-        segm_aorta_name = f'{segm_folder}aorta_lumen_hires_raw.nii.gz'
+        segm_aorta_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
 
     try:
         label_img_l = sitk.ReadImage(segm_l_name)
@@ -1627,8 +1707,11 @@ def compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, outp
     com_np = [com_np[2], com_np[1], com_np[0]]
     com_phys_2 = label_img_l.TransformIndexToPhysicalPoint([int(com_np[0]), int(com_np[1]), int(com_np[2])])
 
-    mid_point = [(com_phys_1[0] + com_phys_2[0]) / 2, (com_phys_1[1] + com_phys_2[1]) / 2,
-                 (com_phys_1[2] + com_phys_2[2]) / 2]
+    mid_point = [
+        (com_phys_1[0] + com_phys_2[0]) / 2,
+        (com_phys_1[1] + com_phys_2[1]) / 2,
+        (com_phys_1[2] + com_phys_2[2]) / 2,
+    ]
 
     locator = vtk.vtkPointLocator()
     locator.SetDataSet(aorta_surface)
@@ -1640,8 +1723,15 @@ def compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, outp
     return start_p
 
 
-def compute_centerline_landmarks_for_aorta_type_2(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True):
+def compute_centerline_landmarks_for_aorta_type_2(
+    segm_folder,
+    lm_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_ts_org_segmentations=True,
+):
     """
     Type 2 is a single aorta with iliac arteries and cut at the top
     The start landmark is at the aorta-iliac artery bifurcation
@@ -1649,11 +1739,11 @@ def compute_centerline_landmarks_for_aorta_type_2(segm_folder, lm_folder,
     """
     start_p_out_file = f"{lm_folder}aorta_start_point.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point.txt"
-    sdf_name = f'{segm_folder}out_of_scan_sdf.nii.gz'
-    aorta_name = f'{segm_folder}aorta_lumen.nii.gz'
+    sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
+    aorta_name = f"{segm_folder}aorta_lumen.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f'{segm_folder}aorta_lumen_hires_raw.nii.gz'
-    overlap_name_1 = f'{segm_folder}aorta_side_region.nii.gz'
+        aorta_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    overlap_name_1 = f"{segm_folder}aorta_side_region.nii.gz"
     debug = False
 
     if os.path.exists(start_p_out_file) and os.path.exists(end_p_out_file):
@@ -1672,8 +1762,7 @@ def compute_centerline_landmarks_for_aorta_type_2(segm_folder, lm_folder,
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    start_p = compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, output_folder,
-                                                  use_ts_org_segmentations)
+    start_p = compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, output_folder, use_ts_org_segmentations)
     if start_p is None:
         msg = "Could not compute aorta-iliac artery landmark. Can not compute centerline landmarks for type 2"
         if not quiet:
@@ -1717,7 +1806,7 @@ def compute_centerline_landmarks_for_aorta_type_2(segm_folder, lm_folder,
 
     # overlap_dist = 3.0
     # Find the part of the aorta that hits the side of the scan
-    overlap_region =  label_img_np & (sdf_np < overlap_dist)
+    overlap_region = label_img_np & (sdf_np < overlap_dist)
     if np.sum(overlap_region) == 0:
         msg = f"No part of the aorta touch the side of the scan - and it should for type 2. For {aorta_name}"
         if not quiet:
@@ -1771,16 +1860,24 @@ def compute_centerline_landmarks_for_aorta_type_2(segm_folder, lm_folder,
 
     return True
 
-def compute_centerline_landmarks_for_aorta_type_1(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True):
+
+def compute_centerline_landmarks_for_aorta_type_1(
+    segm_folder,
+    lm_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_ts_org_segmentations=True,
+):
     """
     Type 1 is an entire aorta - can sometime touch the top of the scan
     """
     start_p_out_file = f"{lm_folder}aorta_start_point.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point.txt"
-    aorta_name = f'{segm_folder}aorta_left_ventricle.nii.gz'
+    aorta_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f'{segm_folder}aorta_left_ventricle_ts_org.nii.gz'
+        aorta_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
 
     # debug = False
     if os.path.exists(start_p_out_file) and os.path.exists(end_p_out_file):
@@ -1791,9 +1888,7 @@ def compute_centerline_landmarks_for_aorta_type_1(segm_folder, lm_folder,
     if verbose:
         print(f"Computing {start_p_out_file} and {end_p_out_file}")
 
-
-    start_p = compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, output_folder,
-                                                  use_ts_org_segmentations)
+    start_p = compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, output_folder, use_ts_org_segmentations)
     if start_p is None:
         msg = "Could not compute aorta-iliac artery landmark. Can not compute centerline landmarks for type 1"
         if not quiet:
@@ -1841,8 +1936,16 @@ def compute_centerline_landmarks_for_aorta_type_1(segm_folder, lm_folder,
 
     return True
 
-def compute_centerline_landmarks_for_aorta_type_5_annulus(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True):
+
+def compute_centerline_landmarks_for_aorta_type_5_annulus(
+    segm_folder,
+    lm_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_ts_org_segmentations=True,
+):
     """
     Type 5 is a two part aorta with an annulus and a descending part.
     For the annulus part:
@@ -1851,11 +1954,11 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(segm_folder, lm_folder
     """
     start_p_out_file = f"{lm_folder}aorta_start_point_annulus.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point_annulus.txt"
-    sdf_name = f'{segm_folder}out_of_scan_sdf.nii.gz'
-    aorta_lv_name = f'{segm_folder}aorta_left_ventricle.nii.gz'
-    overlap_name_1 = f'{segm_folder}aorta_left_ventricle_side_region.nii.gz'
+    sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
+    aorta_lv_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+    overlap_name_1 = f"{segm_folder}aorta_left_ventricle_side_region.nii.gz"
     if use_ts_org_segmentations:
-        aorta_lv_name = f'{segm_folder}aorta_left_ventricle_ts_org.nii.gz'
+        aorta_lv_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
 
     debug = False
 
@@ -1905,10 +2008,9 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(segm_folder, lm_folder
     overlap_dist = max(3, 3 * max_space)
 
     # Find the part of the aorta that hits the side of the scan
-    overlap_region =  label_img_np & (sdf_np < overlap_dist)
+    overlap_region = label_img_np & (sdf_np < overlap_dist)
     if np.sum(overlap_region) == 0:
-        msg = (f"No part of the ascending aorta touch the side of the scan - and it should for type 5. "
-               f"Can not compute start {start_p_out_file}")
+        msg = f"No part of the ascending aorta touch the side of the scan - and it should for type 5. Can not compute start {start_p_out_file}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -1979,8 +2081,15 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(segm_folder, lm_folder
     return True
 
 
-def compute_centerline_landmarks_for_aorta_type_5_descending(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True):
+def compute_centerline_landmarks_for_aorta_type_5_descending(
+    segm_folder,
+    lm_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_ts_org_segmentations=True,
+):
     """
     Type 5 is a two part aorta with an annulus and a descending part
     For the descending part:
@@ -1989,12 +2098,12 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(segm_folder, lm_fol
     """
     start_p_out_file = f"{lm_folder}aorta_start_point_descending.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point_descending.txt"
-    sdf_name = f'{segm_folder}out_of_scan_sdf.nii.gz'
-    aorta_name = f'{segm_folder}aorta_lumen_descending.nii.gz'
+    sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
+    aorta_name = f"{segm_folder}aorta_lumen_descending.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f'{segm_folder}aorta_lumen_descending_raw.nii.gz'
+        aorta_name = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
 
-    overlap_name_1 = f'{segm_folder}aorta_descending_side_regions.nii.gz'
+    overlap_name_1 = f"{segm_folder}aorta_descending_side_regions.nii.gz"
     debug = False
 
     if os.path.exists(start_p_out_file) and os.path.exists(end_p_out_file):
@@ -2040,13 +2149,12 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(segm_folder, lm_fol
     max_space = np.max(np.asarray(spacing))
     # overlap_dist = 3.0
     overlap_dist = max(3, 3 * max_space)
-    #overlap_dist = 3.0
+    # overlap_dist = 3.0
 
     # Find the part of the aorta that hits the side of the scan
-    overlap_region =  label_img_np & (sdf_np < overlap_dist)
+    overlap_region = label_img_np & (sdf_np < overlap_dist)
     if np.sum(overlap_region) == 0:
-        msg = (f"No part of the descending aorta touch the side of the scan - and it should for type 5. "
-               f"Can not compute start {start_p_out_file}")
+        msg = f"No part of the descending aorta touch the side of the scan - and it should for type 5. Can not compute start {start_p_out_file}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -2070,8 +2178,7 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(segm_folder, lm_fol
         return False
 
     if len(regions) < 2:
-        msg = (f"Did not find two parts of the descending aorta touch the side of the scan - "
-               f"and it should for type 5. For {aorta_name}")
+        msg = f"Did not find two parts of the descending aorta touch the side of the scan - and it should for type 5. For {aorta_name}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -2100,7 +2207,7 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(segm_folder, lm_fol
     slack = 10.0  # mm
     size = label_img.GetSize()
     min_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
-    max_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, size[2]-1])[2]
+    max_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, size[2] - 1])[2]
 
     dist_1 = min(abs(max_z_phys - com_phys_1[2]), abs(min_z_phys - com_phys_1[2]))
     dist_2 = min(abs(max_z_phys - com_phys_2[2]), abs(min_z_phys - com_phys_2[2]))
@@ -2108,14 +2215,12 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(segm_folder, lm_fol
         print(f"Type 5 descending aorta landmark distances to top/bottom of scan: {dist_1:.1f} mm and {dist_2:.1f} mm")
 
     if dist_1 > slack or dist_2 > slack:
-        msg = (f"A landmark is not at the top or bottom of the scan - and it should for type 5. Distances to borders: "
-               f"{dist_1:.1f} mm and {dist_2:.1f} mm. For {aorta_name}")
+        msg = f"A landmark is not at the top or bottom of the scan - and it should for type 5. Distances to borders: {dist_1:.1f} mm and {dist_2:.1f} mm. For {aorta_name}"
         if not quiet:
             print(msg)
         if write_log_file:
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
-
 
     f_p_out = open(p_1_name, "w")
     f_p_out.write(f"{com_phys_1[0]} {com_phys_1[1]} {com_phys_1[2]}")
@@ -2128,13 +2233,21 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(segm_folder, lm_fol
     return True
 
 
-def compute_centerline_landmarks_based_on_scan_type(segm_folder, lm_folder, stats_folder, verbose, quiet,
-                                                    write_log_file, output_folder, use_ts_org_segmentations=True):
+def compute_centerline_landmarks_based_on_scan_type(
+    segm_folder,
+    lm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_ts_org_segmentations=True,
+):
     """
     We need start and end points for the centerline computation
     Depending on the scan type we have different ways of computing these points
     """
-    stats_file = f'{stats_folder}aorta_scan_type.json'
+    stats_file = f"{stats_folder}aorta_scan_type.json"
 
     scan_type_stats = read_json_file(stats_file)
     if not scan_type_stats:
@@ -2148,21 +2261,45 @@ def compute_centerline_landmarks_based_on_scan_type(segm_folder, lm_folder, stat
     scan_type = scan_type_stats["scan_type"]
 
     if scan_type == "2":
-        return compute_centerline_landmarks_for_aorta_type_2(segm_folder, lm_folder,
-                                                             verbose, quiet, write_log_file, output_folder,
-                                                             use_ts_org_segmentations=use_ts_org_segmentations)
+        return compute_centerline_landmarks_for_aorta_type_2(
+            segm_folder,
+            lm_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            use_ts_org_segmentations=use_ts_org_segmentations,
+        )
     if scan_type == "5":
-        if not compute_centerline_landmarks_for_aorta_type_5_annulus(segm_folder, lm_folder,
-                                                             verbose, quiet, write_log_file, output_folder,
-                                                             use_ts_org_segmentations=use_ts_org_segmentations):
+        if not compute_centerline_landmarks_for_aorta_type_5_annulus(
+            segm_folder,
+            lm_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            use_ts_org_segmentations=use_ts_org_segmentations,
+        ):
             return False
-        return compute_centerline_landmarks_for_aorta_type_5_descending(segm_folder, lm_folder,
-                                                             verbose, quiet, write_log_file, output_folder,
-                                                             use_ts_org_segmentations=use_ts_org_segmentations)
+        return compute_centerline_landmarks_for_aorta_type_5_descending(
+            segm_folder,
+            lm_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            use_ts_org_segmentations=use_ts_org_segmentations,
+        )
     if scan_type in ["1", "1b", "1c", "1d"]:
-        return compute_centerline_landmarks_for_aorta_type_1(segm_folder, lm_folder,
-                                                             verbose, quiet, write_log_file, output_folder,
-                                                             use_ts_org_segmentations=use_ts_org_segmentations)
+        return compute_centerline_landmarks_for_aorta_type_1(
+            segm_folder,
+            lm_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            use_ts_org_segmentations=use_ts_org_segmentations,
+        )
 
     msg = f"Can not compute centerline landmarks for scan type {scan_type}"
     if not quiet:
@@ -2172,12 +2309,20 @@ def compute_centerline_landmarks_based_on_scan_type(segm_folder, lm_folder, stat
     return False
 
 
-def extract_surfaces_for_centerlines(segm_folder, stats_folder, surface_folder,
-                           verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True):
+def extract_surfaces_for_centerlines(
+    segm_folder,
+    stats_folder,
+    surface_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_ts_org_segmentations=True,
+):
     """
     Extract the surface(s) needed for centerline computation
     """
-    stats_file = f'{stats_folder}aorta_scan_type.json'
+    stats_file = f"{stats_folder}aorta_scan_type.json"
 
     scan_type_stats = read_json_file(stats_file)
     if not scan_type_stats:
@@ -2191,17 +2336,17 @@ def extract_surfaces_for_centerlines(segm_folder, stats_folder, surface_folder,
     scan_type = scan_type_stats["scan_type"]
 
     if scan_type in ["1", "1b", "1c", "1d", "2"]:
-        aorta_segm_in = f'{segm_folder}aorta_lumen.nii.gz'
+        aorta_segm_in = f"{segm_folder}aorta_lumen.nii.gz"
         if use_ts_org_segmentations:
-            aorta_segm_in = f'{segm_folder}aorta_lumen_hires_raw.nii.gz'
+            aorta_segm_in = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
 
         if scan_type in ["1", "1b", "1c", "1d"]:
-            aorta_segm_in = f'{segm_folder}aorta_left_ventricle.nii.gz'
+            aorta_segm_in = f"{segm_folder}aorta_left_ventricle.nii.gz"
             if use_ts_org_segmentations:
-                aorta_segm_in = f'{segm_folder}aorta_left_ventricle_ts_org.nii.gz'
+                aorta_segm_in = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
 
-        aorta_surface_out = f'{surface_folder}aorta_surface_raw.vtp'
-        aorta_surface_cl_out = f'{surface_folder}aorta_surface_for_centerline.vtp'
+        aorta_surface_out = f"{surface_folder}aorta_surface_raw.vtp"
+        aorta_surface_cl_out = f"{surface_folder}aorta_surface_for_centerline.vtp"
         if os.path.exists(aorta_surface_cl_out):
             if verbose:
                 print(f"{aorta_surface_cl_out} already exists - skipping")
@@ -2237,12 +2382,12 @@ def extract_surfaces_for_centerlines(segm_folder, stats_folder, surface_folder,
         return True
 
     if scan_type == "5":
-        aorta_segm_in = f'{segm_folder}aorta_left_ventricle.nii.gz'
+        aorta_segm_in = f"{segm_folder}aorta_left_ventricle.nii.gz"
         if use_ts_org_segmentations:
-            aorta_segm_in = f'{segm_folder}aorta_left_ventricle_ts_org.nii.gz'
+            aorta_segm_in = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
 
-        aorta_surface_out = f'{surface_folder}aorta_annulus_surface_raw.vtp'
-        aorta_surface_cl_out = f'{surface_folder}aorta_annulus_surface_for_centerline.vtp'
+        aorta_surface_out = f"{surface_folder}aorta_annulus_surface_raw.vtp"
+        aorta_surface_cl_out = f"{surface_folder}aorta_annulus_surface_for_centerline.vtp"
         if os.path.exists(aorta_surface_cl_out):
             if verbose:
                 print(f"{aorta_surface_cl_out} already exists - skipping")
@@ -2275,12 +2420,12 @@ def extract_surfaces_for_centerlines(segm_folder, stats_folder, surface_folder,
             writer.SetInputData(surface_cl)
             writer.Write()
 
-        aorta_segm_in = f'{segm_folder}aorta_lumen_descending.nii.gz'
+        aorta_segm_in = f"{segm_folder}aorta_lumen_descending.nii.gz"
         if use_ts_org_segmentations:
-            aorta_segm_in = f'{segm_folder}aorta_lumen_descending_raw.nii.gz'
+            aorta_segm_in = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
 
-        aorta_surface_out = f'{surface_folder}aorta_descending_surface_raw.vtp'
-        aorta_surface_cl_out = f'{surface_folder}aorta_descending_surface_for_centerline.vtp'
+        aorta_surface_out = f"{surface_folder}aorta_descending_surface_raw.vtp"
+        aorta_surface_cl_out = f"{surface_folder}aorta_descending_surface_for_centerline.vtp"
         if os.path.exists(aorta_surface_cl_out):
             if verbose:
                 print(f"{aorta_surface_cl_out} already exists - skipping")
@@ -2322,9 +2467,17 @@ def extract_surfaces_for_centerlines(segm_folder, stats_folder, surface_folder,
     return False
 
 
-def compute_center_line(stats_folder, lm_folder, surface_folder, cl_folder, verbose, quiet, write_log_file,
-                        output_folder):
-    stats_file = f'{stats_folder}aorta_scan_type.json'
+def compute_center_line(
+    stats_folder,
+    lm_folder,
+    surface_folder,
+    cl_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+):
+    stats_file = f"{stats_folder}aorta_scan_type.json"
 
     scan_type_stats = read_json_file(stats_file)
     if not scan_type_stats:
@@ -2338,7 +2491,7 @@ def compute_center_line(stats_folder, lm_folder, surface_folder, cl_folder, verb
     scan_type = scan_type_stats["scan_type"]
 
     if scan_type in ["1", "1b", "1c", "1d", "2"]:
-        aorta_surf_name = f'{surface_folder}aorta_surface_for_centerline.vtp'
+        aorta_surf_name = f"{surface_folder}aorta_surface_for_centerline.vtp"
 
         cl_name = f"{cl_folder}aorta_centerline.vtp"
         cl_name_fail = f"{cl_folder}aorta_centerline_failed.txt"
@@ -2367,13 +2520,13 @@ def compute_center_line(stats_folder, lm_folder, surface_folder, cl_folder, verb
                 print(msg)
             if write_log_file:
                 write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-            with open(cl_name_fail, 'w') as f:
+            with open(cl_name_fail, "w") as f:
                 f.write(f"Failed to compute centerline from {aorta_surf_name}")
             return False
         return True
 
     if scan_type == "5":
-        aorta_surf_name = f'{surface_folder}aorta_annulus_surface_for_centerline.vtp'
+        aorta_surf_name = f"{surface_folder}aorta_annulus_surface_for_centerline.vtp"
         cl_name = f"{cl_folder}aorta_centerline_annulus.vtp"
         cl_name_fail = f"{cl_folder}aorta_centerline_annulus_failed.txt"
         start_p_file = f"{lm_folder}aorta_start_point_annulus.txt"
@@ -2401,11 +2554,11 @@ def compute_center_line(stats_folder, lm_folder, surface_folder, cl_folder, verb
                 print(msg)
             if write_log_file:
                 write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-            with open(cl_name_fail, 'w') as f:
+            with open(cl_name_fail, "w") as f:
                 f.write(f"Failed to compute centerline from {aorta_surf_name}")
             return False
 
-        aorta_surf_name = f'{surface_folder}aorta_descending_surface_for_centerline.vtp'
+        aorta_surf_name = f"{surface_folder}aorta_descending_surface_for_centerline.vtp"
         cl_name = f"{cl_folder}aorta_centerline_descending.vtp"
         cl_name_fail = f"{cl_folder}aorta_centerline_descending_failed.txt"
         start_p_file = f"{lm_folder}aorta_start_point_descending.txt"
@@ -2433,7 +2586,7 @@ def compute_center_line(stats_folder, lm_folder, surface_folder, cl_folder, verb
                 print(msg)
             if write_log_file:
                 write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-            with open(cl_name_fail, 'w') as f:
+            with open(cl_name_fail, "w") as f:
                 f.write(f"Failed to compute centerline from {aorta_surf_name}")
             return False
         return True
@@ -2445,16 +2598,25 @@ def compute_center_line(stats_folder, lm_folder, surface_folder, cl_folder, verb
         write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
     return False
 
-def compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_folder, lm_folder, cl_folder,
-                           verbose, quiet, write_log_file, output_folder):
+
+def compute_infrarenal_section_using_kidney_to_kidney_line(
+    segm_folder,
+    stats_folder,
+    lm_folder,
+    cl_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+):
     """
     Compute the infrarenal part of the aorta based on the centerline
     and the position of the kidneys
     """
     lm_renal_name_cl = f"{lm_folder}renal_on_centerline.txt"
-    sdf_name = f'{segm_folder}out_of_scan_sdf.nii.gz'
+    sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
     total_in_name = f"{segm_folder}total.nii.gz"
-    parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
 
     segm_id_kidney_l = 3
     segm_id_kidney_r = 2
@@ -2672,18 +2834,24 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_fo
     f_p_out.write(f"{infra_p[0]} {infra_p[1]} {infra_p[2]}")
     f_p_out.close()
 
-    infra_renal_stats = {"low_dist": low_infra_dist, "low_cl_idx": low_idx, "low_cl_pos": list(low_infra_p),
-                         "low_cl_normal": list(low_normal),
-                         "distance": infra_dist, "cl_idx": infra_idx, "cl_pos": list(infra_p),
-                         "cl_normal": list(normal)}
+    infra_renal_stats = {
+        "low_dist": low_infra_dist,
+        "low_cl_idx": low_idx,
+        "low_cl_pos": list(low_infra_p),
+        "low_cl_normal": list(low_normal),
+        "distance": infra_dist,
+        "cl_idx": infra_idx,
+        "cl_pos": list(infra_p),
+        "cl_normal": list(normal),
+    }
     json_object = json.dumps(infra_renal_stats, indent=4)
     with open(infrarenal_out, "w") as outfile:
         outfile.write(json_object)
 
     return True
 
-def compute_aortic_arch_landmarks_on_centerline(lm_folder, cl_folder,
-                           verbose, quiet, write_log_file, output_folder):
+
+def compute_aortic_arch_landmarks_on_centerline(lm_folder, cl_folder, verbose, quiet, write_log_file, output_folder):
     """
     Compute the landmarks on the centerline of the aortic arch by using the landmarks from the three top arteries
     """
@@ -2801,10 +2969,16 @@ def compute_aortic_arch_landmarks_on_centerline(lm_folder, cl_folder,
             write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
         return True
 
-    aortic_arch_stats = {"min_cl_dist": min_val, "min_cl_idx": min_idx, "min_cl_pos": list(min_pos),
-                         "min_cl_normal": list(min_normal),
-                         "max_cl_dist": max_val, "max_cl_idx": max_idx, "max_cl_pos": list(max_pos),
-                         "max_cl_normal": list(max_normal)}
+    aortic_arch_stats = {
+        "min_cl_dist": min_val,
+        "min_cl_idx": min_idx,
+        "min_cl_pos": list(min_pos),
+        "min_cl_normal": list(min_normal),
+        "max_cl_dist": max_val,
+        "max_cl_idx": max_idx,
+        "max_cl_pos": list(max_pos),
+        "max_cl_normal": list(max_normal),
+    }
     json_object = json.dumps(aortic_arch_stats, indent=4)
     with open(aortic_arch_out, "w") as outfile:
         outfile.write(json_object)
@@ -2812,8 +2986,7 @@ def compute_aortic_arch_landmarks_on_centerline(lm_folder, cl_folder,
     return True
 
 
-def compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
     """
     Compute the point on the centerline closest to the diaphragm.
     If we just use the naive closest point, it will be a point on the top of aorta.
@@ -2831,7 +3004,7 @@ def compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder,
             print(f"{diaphragm_out} already exists - skipping")
         return True
 
-    parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
     else:
@@ -2858,7 +3031,7 @@ def compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder,
     arch_dist = np.inf
     if os.path.exists(aortic_arch_in):
         try:
-            with open(aortic_arch_in, 'r') as openfile:
+            with open(aortic_arch_in, "r") as openfile:
                 arch_stats = json.load(openfile)
         except IOError as e:
             print(f"I/O error({e.errno}): {e.strerror}: {aortic_arch_in}")
@@ -2936,16 +3109,19 @@ def compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder,
     f_p_out.write(f"{p_cl_diaphragm[0]} {p_cl_diaphragm[1]} {p_cl_diaphragm[2]}")
     f_p_out.close()
 
-    diaphragm_stats = {"diaphragm_cl_dist": dist_diaphragm, "diaphragm_cl_idx": idx_diaphragm,
-                       "diaphragm_cl_pos": list(p_cl_diaphragm),
-                       "diaphragm_cl_normal": list(diaphragm_normal)}
+    diaphragm_stats = {
+        "diaphragm_cl_dist": dist_diaphragm,
+        "diaphragm_cl_idx": idx_diaphragm,
+        "diaphragm_cl_pos": list(p_cl_diaphragm),
+        "diaphragm_cl_normal": list(diaphragm_normal),
+    }
     json_object = json.dumps(diaphragm_stats, indent=4)
     with open(diaphragm_out, "w") as outfile:
         outfile.write(json_object)
     return True
 
-def compute_ventricularoaortic_point_on_centerline(lm_folder, cl_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+
+def compute_ventricularoaortic_point_on_centerline(lm_folder, cl_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
     """
     Compute the ventricularoaortic point on the centerline by finding the intersection of the aorta and the ventricle on the centerline
     """
@@ -2962,7 +3138,7 @@ def compute_ventricularoaortic_point_on_centerline(lm_folder, cl_folder, stats_f
     if verbose:
         print(f"Computing ventricularoaortic point on centerline {ventri_out}")
 
-    parts_stats = read_json_file(f'{stats_folder}/aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}/aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
     else:
@@ -3017,16 +3193,19 @@ def compute_ventricularoaortic_point_on_centerline(lm_folder, cl_folder, stats_f
     f_p_out.write(f"{p_cl_ventri[0]} {p_cl_ventri[1]} {p_cl_ventri[2]}")
     f_p_out.close()
 
-    ventri_stats = {"ventri_cl_dist": dist_ventri, "ventri_cl_idx": idx_ventri, "ventri_cl_pos": list(p_cl_ventri),
-                         "ventri_cl_normal": list(ventri_normal)}
+    ventri_stats = {
+        "ventri_cl_dist": dist_ventri,
+        "ventri_cl_idx": idx_ventri,
+        "ventri_cl_pos": list(p_cl_ventri),
+        "ventri_cl_normal": list(ventri_normal),
+    }
     json_object = json.dumps(ventri_stats, indent=4)
     with open(ventri_out, "w") as outfile:
         outfile.write(json_object)
     return True
 
 
-def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
     """
     Compute HU stats
     """
@@ -3048,7 +3227,7 @@ def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
     if verbose:
         print(f"Computing {out_file_stats}")
 
-    parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
     else:
@@ -3093,7 +3272,7 @@ def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
         if verbose:
             print("Using infra-renal section for lower bound for sampling")
         try:
-            with open(infrarenal_in, 'r') as openfile:
+            with open(infrarenal_in, "r") as openfile:
                 infrarenal_stats = json.load(openfile)
         except IOError as e:
             print(f"I/O error({e.errno}): {e.strerror}: {infrarenal_in}")
@@ -3106,7 +3285,7 @@ def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
         if verbose:
             print("Using ventricularoaoartic point as last point")
         try:
-            with open(ventri_in, 'r') as openfile:
+            with open(ventri_in, "r") as openfile:
                 ventri_stats = json.load(openfile)
         except IOError as e:
             print(f"I/O error({e.errno}): {e.strerror}: {ventri_in}")
@@ -3186,15 +3365,24 @@ def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
     return stats
 
 
-def compute_straightened_volume_using_cpr(input_file, segm_folder, cl_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder, use_raw_segmentations=False):
+def compute_straightened_volume_using_cpr(
+    input_file,
+    segm_folder,
+    cl_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_raw_segmentations=False,
+):
     """
     Compute straightened volume using curved planar reformation (CPR)
     """
     file_name = input_file
 
-    parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
-    stats_file = f'{stats_folder}aorta_scan_type.json'
+    parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
+    stats_file = f"{stats_folder}aorta_scan_type.json"
 
     if verbose:
         if use_raw_segmentations:
@@ -3244,14 +3432,14 @@ def compute_straightened_volume_using_cpr(input_file, segm_folder, cl_folder, st
         # For scan type 2, the aorta is not coupled with LV
         if scan_type == "2":
             if use_raw_segmentations:
-                label_name =  f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+                label_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
             else:
                 label_name = f"{segm_folder}aorta_lumen.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
         else:
             if use_raw_segmentations:
-                label_name =  f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+                label_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
             else:
                 label_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
@@ -3267,8 +3455,7 @@ def compute_straightened_volume_using_cpr(input_file, segm_folder, cl_folder, st
                 write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
             return False
 
-        if not clutils.compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name,
-                                                                    label_straight_name, verbose):
+        if not clutils.compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name, label_straight_name, verbose):
             msg = f"Error computing straightened volume using CPR for {file_name}"
             if not quiet:
                 print(msg)
@@ -3291,9 +3478,9 @@ def compute_straightened_volume_using_cpr(input_file, segm_folder, cl_folder, st
             cl = cl_in.GetOutput()
 
             if use_raw_segmentations:
-                label_name =  f"{segm_folder}aorta_lumen_{part}_raw.nii.gz"
+                label_name = f"{segm_folder}aorta_lumen_{part}_raw.nii.gz"
                 if part == "annulus":
-                    label_name =  f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+                    label_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_{part}_label_ts_org.nii.gz"
             else:
                 label_name = f"{segm_folder}aorta_lumen_{part}.nii.gz"
@@ -3311,8 +3498,7 @@ def compute_straightened_volume_using_cpr(input_file, segm_folder, cl_folder, st
                     write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
                 return False
 
-            if not clutils.compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name,
-                                                                        label_straight_name, verbose):
+            if not clutils.compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name, label_straight_name, verbose):
                 msg = f"Error computing straightened volume using CPR for {file_name}"
                 if not quiet:
                     print(msg)
@@ -3322,8 +3508,7 @@ def compute_straightened_volume_using_cpr(input_file, segm_folder, cl_folder, st
     return True
 
 
-def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, verbose, quiet, write_log_file,
-                                          output_folder):
+def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
     """
     Finds cross-sectional cuts on the surface of the aorta sampled along the centerline.
     Here the straightened version of the label map is used.
@@ -3335,7 +3520,7 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
     if verbose:
         print("Sampling along straight labelmap")
 
-    parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
     else:
@@ -3368,7 +3553,7 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
             if verbose:
                 print("Using ventricularoaoartic point as last point")
             try:
-                with open(ventri_in, 'r') as openfile:
+                with open(ventri_in, "r") as openfile:
                     ventri_stats = json.load(openfile)
             except IOError as e:
                 print(f"I/O error({e.errno}): {e.strerror}: {ventri_in}")
@@ -3377,9 +3562,14 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
             # We add a 1 cm buffer
             ventri_max_dist = ventri_stats["ventri_cl_dist"] + 10
 
-        if not clutils.sample_along_single_straight_labelmap(straight_label_in, straight_volume_in, cl_sampling_out,
-                                                                        min_cl_dist=0, max_cl_dist=ventri_max_dist,
-                                                             verbose=verbose):
+        if not clutils.sample_along_single_straight_labelmap(
+            straight_label_in,
+            straight_volume_in,
+            cl_sampling_out,
+            min_cl_dist=0,
+            max_cl_dist=ventri_max_dist,
+            verbose=verbose,
+        ):
             msg = f"Could not sample along CPR for {straight_label_in}"
             if not quiet:
                 print(msg)
@@ -3396,7 +3586,7 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
         if os.path.exists(ventri_in):
             print("Using ventricularoaoartic point as last point")
             try:
-                with open(ventri_in, 'r') as openfile:
+                with open(ventri_in, "r") as openfile:
                     ventri_stats = json.load(openfile)
             except IOError as e:
                 print(f"I/O error({e.errno}): {e.strerror}: {ventri_in}")
@@ -3405,8 +3595,13 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
             # We add a 1 cm buffer
             ventri_max_dist = ventri_stats["ventri_cl_dist"] + 10
 
-        if not clutils.sample_along_single_straight_labelmap(straight_label_in, straight_volume_in, cl_sampling_out,
-                                                                        min_cl_dist=0, max_cl_dist=ventri_max_dist):
+        if not clutils.sample_along_single_straight_labelmap(
+            straight_label_in,
+            straight_volume_in,
+            cl_sampling_out,
+            min_cl_dist=0,
+            max_cl_dist=ventri_max_dist,
+        ):
             msg = f"Could not sample along CPR for {straight_label_in}"
             if not quiet:
                 print(msg)
@@ -3418,8 +3613,13 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
         straight_label_in = f"{segm_folder}straight_aorta_descending_label.nii.gz"
         straight_volume_in = f"{segm_folder}straight_aorta_descending_img.nii.gz"
 
-        if not clutils.sample_along_single_straight_labelmap(straight_label_in, straight_volume_in, cl_sampling_out,
-                                                                        min_cl_dist=0, max_cl_dist=ventri_max_dist):
+        if not clutils.sample_along_single_straight_labelmap(
+            straight_label_in,
+            straight_volume_in,
+            cl_sampling_out,
+            min_cl_dist=0,
+            max_cl_dist=ventri_max_dist,
+        ):
             msg = f"Could not sample along CPR for {straight_label_in}"
             if not quiet:
                 print(msg)
@@ -3430,8 +3630,7 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
     return True
 
 
-def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_areas(cl_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_areas(cl_folder, lm_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
     """
     Compute the position of the sinutubular junction from the centerline cross areas
     """
@@ -3441,7 +3640,7 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
     valsalva_stats_out = f"{cl_folder}sinus_of_valsalva.json"
     sinotubular_point_out = f"{lm_folder}sinotubular_junction_on_centerline.txt"
     valsalva_point_out = f"{lm_folder}sinus_of_valsalva_on_centerline.txt"
-    stats_file = f'{stats_folder}aorta_scan_type.json'
+    stats_file = f"{stats_folder}aorta_scan_type.json"
     # debug = False
 
     scan_type_stats = read_json_file(stats_file)
@@ -3461,7 +3660,7 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
         return True
 
     n_aorta_parts = 1
-    parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
 
@@ -3565,8 +3764,11 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
     f_p_out.write(f"{valsalva_point[0]} {valsalva_point[1]} {valsalva_point[2]}")
     f_p_out.close()
 
-    valsalva_stats = {"valsalva_cl_dist": valsalva_dist, "valsalva_area": valsalva_area,
-                      "valsalva_cl_idx": valsalva_cl_idx}
+    valsalva_stats = {
+        "valsalva_cl_dist": valsalva_dist,
+        "valsalva_area": valsalva_area,
+        "valsalva_cl_idx": valsalva_cl_idx,
+    }
     json_object = json.dumps(valsalva_stats, indent=4)
     with open(valsalva_stats_out, "w") as outfile:
         outfile.write(json_object)
@@ -3614,8 +3816,11 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
     f_p_out.write(f"{sinotubular_point[0]} {sinotubular_point[1]} {sinotubular_point[2]}")
     f_p_out.close
 
-    sinotubular_stats = {"sinotubular_cl_dist": sinotubular_dist, "sinotubular_area": sinotubular_area,
-                         "sinotubular_idx": sinotubular_idx}
+    sinotubular_stats = {
+        "sinotubular_cl_dist": sinotubular_dist,
+        "sinotubular_area": sinotubular_area,
+        "sinotubular_idx": sinotubular_idx,
+    }
     json_object = json.dumps(sinotubular_stats, indent=4)
     with open(sinotubular_stats_out, "w") as outfile:
         outfile.write(json_object)
@@ -3623,9 +3828,15 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
     return True
 
 
-def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, segm_folder, verbose, quiet,
-                                                                  write_log_file, output_folder,
-                                                                  use_raw_segmentations=False):
+def identy_and_extract_samples_from_straight_volume_2_parts_aorta(
+    cl_folder,
+    segm_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_raw_segmentations=False,
+):
     """
     Based on the sampled straight volume, we here extract maximum slices and extract their image.
     This function is for when the aorta is split in two
@@ -3838,10 +4049,20 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     segment_name = f"infrarenal_segment{ext}"
     start_cl_dist = min_renal_dist
     end_cl_dist = max_renal_dist
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling_descending,
-                                       cl_descending,
-                                       straight_img_descending_np, label_img_descending_np, img_window, img_level,
-                                       spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling_descending,
+        cl_descending,
+        straight_img_descending_np,
+        label_img_descending_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -3851,10 +4072,20 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     segment_name = f"abdominal_segment{ext}"
     start_cl_dist = max_renal_dist
     end_cl_dist = diaphragm_dist
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling_descending,
-                                       cl_descending,
-                                       straight_img_descending_np, label_img_descending_np,
-                                       img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling_descending,
+        cl_descending,
+        straight_img_descending_np,
+        label_img_descending_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -3866,10 +4097,20 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     if start_cl_dist == np.inf or start_cl_dist == -np.inf:
         start_cl_dist = 0
     end_cl_dist = max_distance_descending
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling_descending,
-                                       cl_descending,
-                                       straight_img_descending_np, label_img_descending_np, img_window, img_level,
-                                       spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling_descending,
+        cl_descending,
+        straight_img_descending_np,
+        label_img_descending_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -3879,10 +4120,20 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     segment_name = f"aortic_arch_segment{ext}"
     start_cl_dist = aortic_arch_min_dist
     end_cl_dist = aortic_arch_max_dist
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling_descending,
-                                       cl_descending,
-                                       straight_img_descending_np, label_img_descending_np,
-                                       img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling_descending,
+        cl_descending,
+        straight_img_descending_np,
+        label_img_descending_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -3893,10 +4144,20 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     # start_cl_dist = aortic_arch_max_dist
     start_cl_dist = 0
     end_cl_dist = sinotubular_dist
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling_annulus,
-                                       cl_annulus,
-                                       straight_img_annulus_np, label_img_annulus_np,
-                                       img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling_annulus,
+        cl_annulus,
+        straight_img_annulus_np,
+        label_img_annulus_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -3906,10 +4167,21 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     segment_name = f"sinotubular_junction_segment{ext}"
     start_cl_dist = sinotubular_dist - 2
     end_cl_dist = sinotubular_dist + 2
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling_annulus,
-                                       cl_annulus,
-                                       straight_img_annulus_np, label_img_annulus_np,
-                                       img_window, img_level, spacing, dims, find_minimum=True)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling_annulus,
+        cl_annulus,
+        straight_img_annulus_np,
+        label_img_annulus_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+        find_minimum=True,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -3919,10 +4191,20 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     segment_name = f"sinus_of_valsalva_segment{ext}"
     start_cl_dist = valsalva_dist - 2
     end_cl_dist = valsalva_dist + 2
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling_annulus,
-                                       cl_annulus,
-                                       straight_img_annulus_np, label_img_annulus_np,
-                                       img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling_annulus,
+        cl_annulus,
+        straight_img_annulus_np,
+        label_img_annulus_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -3932,11 +4214,21 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     segment_name = f"lvot_segment{ext}"
     start_cl_dist = ventri_max_dist - 1
     end_cl_dist = ventri_max_dist + 10
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling_annulus,
-                                       cl_annulus,
-                                       straight_img_annulus_np, label_img_annulus_np,
-                                       img_window, img_level, spacing, dims,
-                                       find_minimum=True)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling_annulus,
+        cl_annulus,
+        straight_img_annulus_np,
+        label_img_annulus_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+        find_minimum=True,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -3946,21 +4238,36 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     return True
 
 
-def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder, use_raw_segmentations=False):
+def identy_and_extract_samples_from_straight_volume(
+    cl_folder,
+    segm_folder,
+    lm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    use_raw_segmentations=False,
+):
     """
     Based on the sampled straight volume, we here extract maximum slices and extract their image
     """
     # debug = False
     n_aorta_parts = 1
-    parts_stats = read_json_file(f'{stats_folder}/aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}/aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
 
     if n_aorta_parts == 2:
-        return identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, segm_folder, verbose, quiet,
-                                                                             write_log_file, output_folder,
-                                                                             use_raw_segmentations)
+        return identy_and_extract_samples_from_straight_volume_2_parts_aorta(
+            cl_folder,
+            segm_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            use_raw_segmentations,
+        )
 
     cl_sampling_in = f"{cl_folder}straight_labelmap_sampling.csv"
     cl_file = f"{cl_folder}aorta_centerline.vtp"
@@ -4121,8 +4428,20 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     segment_name = f"infrarenal_segment{ext}"
     start_cl_dist = min_renal_dist
     end_cl_dist = max_renal_dist
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling,
+        cl,
+        straight_img_np,
+        label_img_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -4132,8 +4451,20 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     segment_name = f"abdominal_segment{ext}"
     start_cl_dist = max_renal_dist
     end_cl_dist = diaphragm_dist
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling,
+        cl,
+        straight_img_np,
+        label_img_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -4147,10 +4478,22 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
         start_cl_dist = min_renal_dist
         if start_cl_dist == np.inf or start_cl_dist == -np.inf:
             start_cl_dist = 0
-    if  end_cl_dist == np.inf or end_cl_dist == -np.inf:
+    if end_cl_dist == np.inf or end_cl_dist == -np.inf:
         end_cl_dist = max_cl_distance
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling,
+        cl,
+        straight_img_np,
+        label_img_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -4160,8 +4503,20 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     segment_name = f"aortic_arch_segment{ext}"
     start_cl_dist = aortic_arch_min_dist
     end_cl_dist = aortic_arch_max_dist
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling,
+        cl,
+        straight_img_np,
+        label_img_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -4171,8 +4526,20 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     segment_name = f"ascending_segment{ext}"
     start_cl_dist = aortic_arch_max_dist
     end_cl_dist = sinotubular_dist
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling,
+        cl,
+        straight_img_np,
+        label_img_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -4183,9 +4550,21 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     segment_name = f"sinotubular_junction_segment{ext}"
     start_cl_dist = sinotubular_dist - 2
     end_cl_dist = sinotubular_dist + 2
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level, spacing, dims,
-                                       find_minimum=True)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling,
+        cl,
+        straight_img_np,
+        label_img_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+        find_minimum=True,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -4195,8 +4574,20 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     segment_name = f"sinus_of_valsalva_segment{ext}"
     start_cl_dist = valsalva_dist - 2
     end_cl_dist = valsalva_dist + 2
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level, spacing, dims)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling,
+        cl,
+        straight_img_np,
+        label_img_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -4206,9 +4597,21 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     segment_name = f"lvot_segment{ext}"
     start_cl_dist = ventri_max_dist - 1
     end_cl_dist = ventri_max_dist + 10
-    result, msg = clutils.extract_max_cut_in_defined_section(cl_folder, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
-                                       straight_img_np, label_img_np, img_window, img_level, spacing, dims,
-                                       find_minimum=True)
+    result, msg = clutils.extract_max_cut_in_defined_section(
+        cl_folder,
+        segment_name,
+        start_cl_dist,
+        end_cl_dist,
+        cl_sampling,
+        cl,
+        straight_img_np,
+        label_img_np,
+        img_window,
+        img_level,
+        spacing,
+        dims,
+        find_minimum=True,
+    )
     if not result:
         if not quiet:
             print(msg)
@@ -4231,15 +4634,20 @@ def combine_cross_section_images_into_one(cl_dir, verbose=False):
     if verbose:
         print(f"Combining cross section images into {out_combined}")
 
-    cut_imgs = [{"file": "lvot_segment_max_slice_rgb_crop", "rgb": [200, 255, 100]},
-                {"file": "sinus_of_valsalva_segment_max_slice_rgb_crop", "rgb": [0, 128, 255]},
-                {"file": "sinotubular_junction_segment_max_slice_rgb_crop", "rgb": [128, 0, 128]},
-                {"file": "distensability_segment_avg_slice_rgb_crop", "rgb": [255, 128, 128]},
-                {"file": "ascending_segment_max_slice_rgb_crop", "rgb": [0, 255, 255]},
-                {"file": "aortic_arch_segment_max_slice_rgb_crop", "rgb": [255, 0, 0]},
-                {"file": "descending_segment_max_slice_rgb_crop", "rgb": [0, 255, 0]},
-                {"file": "abdominal_segment_max_slice_rgb_crop", "rgb": [255, 128, 0]},
-                {"file": "infrarenal_segment_max_slice_rgb_crop", "rgb": [255, 255, 0]}]
+    cut_imgs = [
+        {"file": "lvot_segment_max_slice_rgb_crop", "rgb": [200, 255, 100]},
+        {"file": "sinus_of_valsalva_segment_max_slice_rgb_crop", "rgb": [0, 128, 255]},
+        {
+            "file": "sinotubular_junction_segment_max_slice_rgb_crop",
+            "rgb": [128, 0, 128],
+        },
+        {"file": "distensability_segment_avg_slice_rgb_crop", "rgb": [255, 128, 128]},
+        {"file": "ascending_segment_max_slice_rgb_crop", "rgb": [0, 255, 255]},
+        {"file": "aortic_arch_segment_max_slice_rgb_crop", "rgb": [255, 0, 0]},
+        {"file": "descending_segment_max_slice_rgb_crop", "rgb": [0, 255, 0]},
+        {"file": "abdominal_segment_max_slice_rgb_crop", "rgb": [255, 128, 0]},
+        {"file": "infrarenal_segment_max_slice_rgb_crop", "rgb": [255, 255, 0]},
+    ]
 
     valid_imgs = []
     widths = []
@@ -4274,10 +4682,10 @@ def combine_cross_section_images_into_one(cl_dir, verbose=False):
         shp = img_in.shape
         side_pad = (max_width - shp[1]) // 2
 
-        new_image[cur_row:cur_row + shp[0], 0 + side_pad:shp[1] + side_pad] = img_in[0:shp[0], 0:shp[1]]
+        new_image[cur_row : cur_row + shp[0], 0 + side_pad : shp[1] + side_pad] = img_in[0 : shp[0], 0 : shp[1]]
         # Color sides
-        new_image[cur_row:cur_row + shp[0], 0:3] = rgbs[idx]
-        new_image[cur_row:cur_row + shp[0], max_width-4:max_width-1] = rgbs[idx]
+        new_image[cur_row : cur_row + shp[0], 0:3] = rgbs[idx]
+        new_image[cur_row : cur_row + shp[0], max_width - 4 : max_width - 1] = rgbs[idx]
         cur_row += shp[0] + spacing
 
     imageio.imwrite(out_combined, new_image)
@@ -4302,8 +4710,8 @@ def create_two_long_slices(label_img_np, straight_img_np, dims, img_window, img_
     largest_cc_2 = slice_components == mid_label
 
     # contour = find_contours(img_as_ubyte(largest_cc), 0.5)[0]
-    boundary = find_boundaries(largest_cc, mode='thick')
-    boundary_2 = find_boundaries(largest_cc_2, mode='thick')
+    boundary = find_boundaries(largest_cc, mode="thick")
+    boundary_2 = find_boundaries(largest_cc_2, mode="thick")
 
     # skimage.io.imsave(max_slice_boundary_out, boundary)
     single_slice_np_img = straight_img_np[mid_id, :, :]
@@ -4325,8 +4733,8 @@ def create_two_long_slices(label_img_np, straight_img_np, dims, img_window, img_
 
     return scaled_2_rgb, scaled_2_rgb_2
 
-def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, segm_folder, verbose, quiet,
-                                                                     write_log_file, output_folder):
+
+def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, segm_folder, verbose, quiet, write_log_file, output_folder):
     infrarenal_in = f"{cl_folder}infrarenal_section.json"
     ventri_in = f"{cl_folder}ventricularaortic.json"
     diaphragm_in = f"{cl_folder}diaphragm.json"
@@ -4441,60 +4849,173 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, 
         img_window = cl_stats["img_window"]
         img_level = cl_stats["img_level"]
 
-    single_slice_annulus_1, single_slice_annulus_2 = create_two_long_slices(label_img_np_annulus,
-                                                                            straight_img_np_annulus, dims_annulus,
-                                                                            img_window, img_level)
+    single_slice_annulus_1, single_slice_annulus_2 = create_two_long_slices(
+        label_img_np_annulus,
+        straight_img_np_annulus,
+        dims_annulus,
+        img_window,
+        img_level,
+    )
 
-    single_slice_descending_1, single_slice_descending_2 = create_two_long_slices(label_img_np_descending,
-                                                                                  straight_img_np_descending, dims_descending,
-                                                                                  img_window, img_level)
+    single_slice_descending_1, single_slice_descending_2 = create_two_long_slices(
+        label_img_np_descending,
+        straight_img_np_descending,
+        dims_descending,
+        img_window,
+        img_level,
+    )
 
     line_stats = []
     infrarenal_stats = read_json_file(infrarenal_in)
     if infrarenal_stats:
-        line_stats.append({"part": "descending", "name": "infrarenal_low", "dist": infrarenal_stats["low_dist"], "rgb": [255, 255, 255]})
-        line_stats.append({"part": "descending", "name": "infrarenal", "dist": infrarenal_stats["distance"], "rgb": [255, 255, 255]})
+        line_stats.append(
+            {
+                "part": "descending",
+                "name": "infrarenal_low",
+                "dist": infrarenal_stats["low_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
+        line_stats.append(
+            {
+                "part": "descending",
+                "name": "infrarenal",
+                "dist": infrarenal_stats["distance"],
+                "rgb": [255, 255, 255],
+            }
+        )
 
     ventri_stats = read_json_file(ventri_in)
     if ventri_stats:
-        line_stats.append({"part": "annulus", "name": "ventricularoaoartic", "dist": ventri_stats["ventri_cl_dist"], "rgb": [255, 255, 255]})
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "ventricularoaoartic",
+                "dist": ventri_stats["ventri_cl_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
 
     diaphragm_stats = read_json_file(diaphragm_in)
     if diaphragm_stats:
-        line_stats.append({"part": "descending", "name": "diaphragm", "dist": diaphragm_stats["diaphragm_cl_dist"], "rgb": [255, 255, 255]})
+        line_stats.append(
+            {
+                "part": "descending",
+                "name": "diaphragm",
+                "dist": diaphragm_stats["diaphragm_cl_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
 
     aortic_arch_stats = read_json_file(aortic_arch_in)
     if aortic_arch_stats:
-        line_stats.append({"part": "annulus", "name": "arch_start", "dist": aortic_arch_stats["min_cl_dist"], "rgb": [255, 255, 255]})
-        line_stats.append({"part": "annulus", "name": "arch_end", "dist": aortic_arch_stats["max_cl_dist"], "rgb": [255, 255, 255]})
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "arch_start",
+                "dist": aortic_arch_stats["min_cl_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "arch_end",
+                "dist": aortic_arch_stats["max_cl_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
 
     max_stats = read_json_file(infrarenal_max_in)
     if max_stats:
-        line_stats.append({"part": "descending", "name": "infrarenal_max", "dist": max_stats["cl_dist"], "rgb": [255, 255, 0]})
+        line_stats.append(
+            {
+                "part": "descending",
+                "name": "infrarenal_max",
+                "dist": max_stats["cl_dist"],
+                "rgb": [255, 255, 0],
+            }
+        )
     max_stats = read_json_file(abdominal_max_in)
     if max_stats:
-        line_stats.append({"part": "descending", "name": "abdominal_max_in", "dist": max_stats["cl_dist"], "rgb": [255, 128, 0]})
+        line_stats.append(
+            {
+                "part": "descending",
+                "name": "abdominal_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [255, 128, 0],
+            }
+        )
     max_stats = read_json_file(aortic_arch_max_in)
     if max_stats:
-        line_stats.append({"part": "annulus", "name": "aortic_arch_max_in", "dist": max_stats["cl_dist"], "rgb": [255, 0, 0]})
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "aortic_arch_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [255, 0, 0],
+            }
+        )
     max_stats = read_json_file(ascending_max_in)
     if max_stats:
-        line_stats.append({"part": "annulus","name": "ascending_max_in", "dist": max_stats["cl_dist"], "rgb": [0, 255, 255]})
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "ascending_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [0, 255, 255],
+            }
+        )
     avg_stats = read_json_file(distensability_avg_in)
     if avg_stats:
-        line_stats.append({"part": "annulus", "name": "distensability_avg_in", "dist": avg_stats["cl_dist"], "rgb": [255, 128, 128]})
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "distensability_avg_in",
+                "dist": avg_stats["cl_dist"],
+                "rgb": [255, 128, 128],
+            }
+        )
     max_stats = read_json_file(sinotubular_max_in)
     if max_stats:
-        line_stats.append({"part": "annulus", "name": "sinotubular_max_in", "dist": max_stats["cl_dist"], "rgb": [128, 0, 128]})
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "sinotubular_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [128, 0, 128],
+            }
+        )
     max_stats = read_json_file(sinus_of_valsalva_max_in)
     if max_stats:
-        line_stats.append({"part": "annulus", "name": "sinus_of_valsalva_max_in", "dist": max_stats["cl_dist"], "rgb": [0, 128, 255]})
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "sinus_of_valsalva_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [0, 128, 255],
+            }
+        )
     max_stats = read_json_file(descending_max_in)
     if max_stats:
-        line_stats.append({"part": "descending", "name": "descending_max_in", "dist": max_stats["cl_dist"], "rgb": [0, 255, 0]})
+        line_stats.append(
+            {
+                "part": "descending",
+                "name": "descending_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [0, 255, 0],
+            }
+        )
     max_stats = read_json_file(lvot_max_in)
     if max_stats:
-        line_stats.append({"part": "annulus", "name": "lvot_max_in", "dist": max_stats["cl_dist"], "rgb": [200, 255, 100]})
+        line_stats.append(
+            {
+                "part": "annulus",
+                "name": "lvot_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [200, 255, 100],
+            }
+        )
 
     for lstats in line_stats:
         dist = lstats["dist"]
@@ -4538,8 +5059,8 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, 
     new_width = max(shp_annulus_1[1], shp_descending_1[1])
     new_height = shp_annulus_1[0] + shp_descending_1[0] + spacing
     new_image = np.zeros([new_height, new_width, 3]).astype(np.uint8)
-    new_image[0:shp_annulus_1[0], 0:shp_annulus_1[1]] = single_slice_annulus_1
-    new_image[shp_annulus_1[0] + spacing:, 0:shp_descending_1[1]] = single_slice_descending_1
+    new_image[0 : shp_annulus_1[0], 0 : shp_annulus_1[1]] = single_slice_annulus_1
+    new_image[shp_annulus_1[0] + spacing :, 0 : shp_descending_1[1]] = single_slice_descending_1
 
     imageio.imwrite(out_file_combined_1, new_image)
 
@@ -4552,26 +5073,33 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, 
     new_width = max(shp_annulus_2[1], shp_descending_2[1])
     new_height = shp_annulus_2[0] + shp_descending_2[0] + spacing
     new_image = np.zeros([new_height, new_width, 3]).astype(np.uint8)
-    new_image[0:shp_annulus_2[0], 0:shp_annulus_2[1]] = single_slice_annulus_2
-    new_image[shp_annulus_2[0] + spacing:, 0:shp_descending_2[1]] = single_slice_descending_2
+    new_image[0 : shp_annulus_2[0], 0 : shp_annulus_2[1]] = single_slice_annulus_2
+    new_image[shp_annulus_2[0] + spacing :, 0 : shp_descending_2[1]] = single_slice_descending_2
 
     imageio.imwrite(out_file_combined_2, new_image)
     return True
 
 
-def create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+def create_longitudinal_figure_from_straight_volume(
+    cl_folder,
+    segm_folder,
+    lm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+):
     """
     Based on the sampled straight volume, we here extract the samples along the long axis
     """
     n_aorta_parts = 1
-    parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
 
     if n_aorta_parts == 2:
-        return create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, segm_folder, verbose, quiet,
-                                                                                write_log_file, output_folder)
+        return create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, segm_folder, verbose, quiet, write_log_file, output_folder)
     infrarenal_in = f"{cl_folder}infrarenal_section.json"
     ventri_in = f"{cl_folder}ventricularaortic.json"
     diaphragm_in = f"{cl_folder}diaphragm.json"
@@ -4667,8 +5195,8 @@ def create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, lm_f
     largest_cc_2 = slice_components == mid_label
 
     # contour = find_contours(img_as_ubyte(largest_cc), 0.5)[0]
-    boundary = find_boundaries(largest_cc, mode='thick')
-    boundary_2 = find_boundaries(largest_cc_2, mode='thick')
+    boundary = find_boundaries(largest_cc, mode="thick")
+    boundary_2 = find_boundaries(largest_cc_2, mode="thick")
 
     # skimage.io.imsave(max_slice_boundary_out, boundary)
     single_slice_np_img = straight_img_np[mid_id, :, :]
@@ -4691,46 +5219,130 @@ def create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, lm_f
     line_stats = []
     infrarenal_stats = read_json_file(infrarenal_in)
     if infrarenal_stats:
-        line_stats.append({"name": "infrarenal_low", "dist": infrarenal_stats["low_dist"], "rgb": [255, 255, 255]})
-        line_stats.append({"name": "infrarenal", "dist": infrarenal_stats["distance"], "rgb": [255, 255, 255]})
+        line_stats.append(
+            {
+                "name": "infrarenal_low",
+                "dist": infrarenal_stats["low_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
+        line_stats.append(
+            {
+                "name": "infrarenal",
+                "dist": infrarenal_stats["distance"],
+                "rgb": [255, 255, 255],
+            }
+        )
 
     ventri_stats = read_json_file(ventri_in)
     if ventri_stats:
-        line_stats.append({"name": "ventricularoaoartic", "dist": ventri_stats["ventri_cl_dist"], "rgb": [255, 255, 255]})
+        line_stats.append(
+            {
+                "name": "ventricularoaoartic",
+                "dist": ventri_stats["ventri_cl_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
 
     diaphragm_stats = read_json_file(diaphragm_in)
     if diaphragm_stats:
-        line_stats.append({"name": "diaphragm", "dist": diaphragm_stats["diaphragm_cl_dist"], "rgb": [255, 255, 255]})
+        line_stats.append(
+            {
+                "name": "diaphragm",
+                "dist": diaphragm_stats["diaphragm_cl_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
 
     aortic_arch_stats = read_json_file(aortic_arch_in)
     if aortic_arch_stats:
-        line_stats.append({"name": "arch_start", "dist": aortic_arch_stats["min_cl_dist"], "rgb": [255, 255, 255]})
-        line_stats.append({"name": "arch_end", "dist": aortic_arch_stats["max_cl_dist"], "rgb": [255, 255, 255]})
+        line_stats.append(
+            {
+                "name": "arch_start",
+                "dist": aortic_arch_stats["min_cl_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
+        line_stats.append(
+            {
+                "name": "arch_end",
+                "dist": aortic_arch_stats["max_cl_dist"],
+                "rgb": [255, 255, 255],
+            }
+        )
 
     max_stats = read_json_file(infrarenal_max_in)
     if max_stats:
-        line_stats.append({"name": "infrarenal_max", "dist": max_stats["cl_dist"], "rgb": [255, 255, 0]})
+        line_stats.append(
+            {
+                "name": "infrarenal_max",
+                "dist": max_stats["cl_dist"],
+                "rgb": [255, 255, 0],
+            }
+        )
     max_stats = read_json_file(abdominal_max_in)
     if max_stats:
-        line_stats.append({"name": "abdominal_max_in", "dist": max_stats["cl_dist"], "rgb": [255, 128, 0]})
+        line_stats.append(
+            {
+                "name": "abdominal_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [255, 128, 0],
+            }
+        )
     max_stats = read_json_file(aortic_arch_max_in)
     if max_stats:
-        line_stats.append({"name": "aortic_arch_max_in", "dist": max_stats["cl_dist"], "rgb": [255, 0, 0]})
+        line_stats.append(
+            {
+                "name": "aortic_arch_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [255, 0, 0],
+            }
+        )
     max_stats = read_json_file(ascending_max_in)
     if max_stats:
-        line_stats.append({"name": "ascending_max_in", "dist": max_stats["cl_dist"], "rgb": [0, 255, 255]})
+        line_stats.append(
+            {
+                "name": "ascending_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [0, 255, 255],
+            }
+        )
     max_stats = read_json_file(sinotubular_max_in)
     if max_stats:
-        line_stats.append({"name": "sinotubular_max_in", "dist": max_stats["cl_dist"], "rgb": [128, 0, 128]})
+        line_stats.append(
+            {
+                "name": "sinotubular_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [128, 0, 128],
+            }
+        )
     max_stats = read_json_file(sinus_of_valsalva_max_in)
     if max_stats:
-        line_stats.append({"name": "sinus_of_valsalva_max_in", "dist": max_stats["cl_dist"], "rgb": [0, 128, 255]})
+        line_stats.append(
+            {
+                "name": "sinus_of_valsalva_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [0, 128, 255],
+            }
+        )
     max_stats = read_json_file(descending_max_in)
     if max_stats:
-        line_stats.append({"name": "descending_max_in", "dist": max_stats["cl_dist"], "rgb": [0, 255, 0]})
+        line_stats.append(
+            {
+                "name": "descending_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [0, 255, 0],
+            }
+        )
     max_stats = read_json_file(lvot_max_in)
     if max_stats:
-        line_stats.append({"name": "lvot_max_in", "dist": max_stats["cl_dist"], "rgb": [200, 255, 100]})
+        line_stats.append(
+            {
+                "name": "lvot_max_in",
+                "dist": max_stats["cl_dist"],
+                "rgb": [200, 255, 100],
+            }
+        )
 
     for lstats in line_stats:
         dist = lstats["dist"]
@@ -4755,14 +5367,20 @@ def create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, lm_f
 
 def gather_whole_heart_volumes(segm_folder, stats):
     segm_name_hc = f"{segm_folder}heartchambers_highres.nii.gz"
-    segm_data,  spacing, size = read_nifti_itk_to_numpy(segm_name_hc)
+    segm_data, spacing, size = read_nifti_itk_to_numpy(segm_name_hc)
 
     if segm_data is None:
         return False
 
     vox_volume = spacing[0] * spacing[1] * spacing[2]
 
-    segments = ["heart_myocardium", "heart_left_atrium", "heart_left_ventricle", "heart_right_atrium","heart_right_ventricle"]
+    segments = [
+        "heart_myocardium",
+        "heart_left_atrium",
+        "heart_left_ventricle",
+        "heart_right_atrium",
+        "heart_right_ventricle",
+    ]
     segment_ids = [1, 2, 3, 4, 5]
 
     for i in range(len(segment_ids)):
@@ -4773,6 +5391,7 @@ def gather_whole_heart_volumes(segm_folder, stats):
 
     return True
 
+
 def compile_aorta_cut_statistics(cl_folder, compare_with_raw_segmentations=False):
     cl_dir = cl_folder
     ext = ""
@@ -4780,14 +5399,22 @@ def compile_aorta_cut_statistics(cl_folder, compare_with_raw_segmentations=False
         ext = "_ts_original"
 
     # currently we do not use the colors
-    cut_infos = [{"file": f"lvot_segment{ext}_max_slice_info", "rgb": [200, 255, 100]},
-                {"file": f"sinus_of_valsalva_segment{ext}_max_slice_info", "rgb": [0, 128, 255]},
-                {"file": f"sinotubular_junction_segment{ext}_max_slice_info", "rgb": [128, 0, 128]},
-                {"file": f"ascending_segment{ext}_max_slice_info", "rgb": [0, 255, 255]},
-                {"file": f"aortic_arch_segment{ext}_max_slice_info", "rgb": [255, 0, 0]},
-                {"file": f"descending_segment{ext}_max_slice_info", "rgb": [0, 255, 0]},
-                {"file": f"abdominal_segment{ext}_max_slice_info", "rgb": [255, 128, 0]},
-                {"file": f"infrarenal_segment{ext}_max_slice_info", "rgb": [255, 255, 0]}]
+    cut_infos = [
+        {"file": f"lvot_segment{ext}_max_slice_info", "rgb": [200, 255, 100]},
+        {
+            "file": f"sinus_of_valsalva_segment{ext}_max_slice_info",
+            "rgb": [0, 128, 255],
+        },
+        {
+            "file": f"sinotubular_junction_segment{ext}_max_slice_info",
+            "rgb": [128, 0, 128],
+        },
+        {"file": f"ascending_segment{ext}_max_slice_info", "rgb": [0, 255, 255]},
+        {"file": f"aortic_arch_segment{ext}_max_slice_info", "rgb": [255, 0, 0]},
+        {"file": f"descending_segment{ext}_max_slice_info", "rgb": [0, 255, 0]},
+        {"file": f"abdominal_segment{ext}_max_slice_info", "rgb": [255, 128, 0]},
+        {"file": f"infrarenal_segment{ext}_max_slice_info", "rgb": [255, 255, 0]},
+    ]
 
     # cut_stats = []
     cut_stats = {}
@@ -4809,7 +5436,7 @@ def compile_aorta_cut_statistics(cl_folder, compare_with_raw_segmentations=False
 
 
 def compile_aortic_aneurysm_sac_statistics(stats_folder):
-    stats_file = f'{stats_folder}aorta_aneurysm_sac_stats.json'
+    stats_file = f"{stats_folder}aorta_aneurysm_sac_stats.json"
 
     out_stats = {}
     stats = read_json_file(stats_file)
@@ -4823,8 +5450,9 @@ def compile_aortic_aneurysm_sac_statistics(stats_folder):
     out_stats["sac_q95_distance"] = stats["q95_distances"]
     return out_stats
 
+
 def compile_aortic_calcification_statistics(stats_folder):
-    calcification_stats_file = f'{stats_folder}aorta_calcification_stats.json'
+    calcification_stats_file = f"{stats_folder}aorta_calcification_stats.json"
 
     out_stats = {}
 
@@ -4844,14 +5472,24 @@ def compile_aortic_calcification_statistics(stats_folder):
 
     return out_stats
 
-def compute_all_aorta_statistics(input_file, cl_folder, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+
+def compute_all_aorta_statistics(
+    input_file,
+    cl_folder,
+    segm_folder,
+    lm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+):
     """
     Compute aorta statistics from scan.
     including HU distributions, volume and surface
     """
-    stats_file = f'{stats_folder}/aorta_statistics.json'
-    scan_type_file = f'{stats_folder}/aorta_scan_type.json'
+    stats_file = f"{stats_folder}/aorta_statistics.json"
+    scan_type_file = f"{stats_folder}/aorta_scan_type.json"
     gather_wh_stats = True
 
     if os.path.exists(stats_file):
@@ -4863,7 +5501,7 @@ def compute_all_aorta_statistics(input_file, cl_folder, segm_folder, lm_folder, 
         print(f"Computing {stats_file}")
 
     n_aorta_parts = 1
-    parts_stats = read_json_file(f'{stats_folder}/aorta_parts.json')
+    parts_stats = read_json_file(f"{stats_folder}/aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
 
@@ -4905,7 +5543,11 @@ def compute_all_aorta_statistics(input_file, cl_folder, segm_folder, lm_folder, 
     stats["scan_name"] = input_file
     stats["spacing"] = spacing
     stats["volume_dims"] = vol_dims
-    stats["volume_size"] = [vol_dims[0] * spacing[0], vol_dims[1] * spacing[1], vol_dims[2] * spacing[2]]
+    stats["volume_size"] = [
+        vol_dims[0] * spacing[0],
+        vol_dims[1] * spacing[1],
+        vol_dims[2] * spacing[2],
+    ]
     stats["avg_hu"] = np.average(hu_values)
     stats["std_hu"] = np.std(hu_values)
     stats["med_hu"] = np.median(hu_values)
@@ -4947,19 +5589,32 @@ def compute_all_aorta_statistics(input_file, cl_folder, segm_folder, lm_folder, 
         stats["scan_type"] = scan_type["scan_type"]
         stats["scan_type_desc"] = scan_type["scan_type_desc"]
 
-    surfutils.aorta_volume_properties(segm_folder, stats_folder,
-                           quiet, write_log_file, output_folder, stats)
+    surfutils.aorta_volume_properties(segm_folder, stats_folder, quiet, write_log_file, output_folder, stats)
 
-    cl_stats = sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder, verbose, quiet, write_log_file,
-                                                 output_folder)
+    cl_stats = sample_aorta_center_line_hu_stats(
+        input_file,
+        cl_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    )
     # https://stackoverflow.com/questions/38987/how-do-i-merge-two-dictionaries-in-a-single-expression-in-python
     stats = {**stats, **cl_stats}
 
     cut_stats = compile_aorta_cut_statistics(cl_folder, False)
     stats = {**stats, **cut_stats}
 
-    ati_stats = clutils.compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder,
-                                                                    stats_folder, verbose, quiet, write_log_file, output_folder)
+    ati_stats = clutils.compute_tortuosity_index_based_on_scan_type(
+        cl_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    )
     if ati_stats is not None:
         stats = {**stats, **ati_stats}
     else:
@@ -4980,15 +5635,23 @@ def compute_all_aorta_statistics(input_file, cl_folder, segm_folder, lm_folder, 
     # TODO: Implement a method to add patient metadata
 
     try:
-        with Path(stats_file).open('wt') as handle:
+        with Path(stats_file).open("wt") as handle:
             json.dump(stats, handle, indent=4, sort_keys=False)
     except IOError as e:
         print(f"I/O error({e.errno}): {e.strerror}: {stats_file}")
     return True
 
 
-def aorta_visualization(input_file, cl_folder, segm_folder, stats_folder, vis_folder, verbose, params,
-                        save_to_file=True):
+def aorta_visualization(
+    input_file,
+    cl_folder,
+    segm_folder,
+    stats_folder,
+    vis_folder,
+    verbose,
+    params,
+    save_to_file=True,
+):
     mask_with_body_segmentation = True
     vis_file = f"{vis_folder}aorta_visualization.png"
     win_size = params.get("rendering_window_size", [1600, 1200])
@@ -5005,7 +5668,7 @@ def aorta_visualization(input_file, cl_folder, segm_folder, stats_folder, vis_fo
 
     segm_name = None
     if mask_with_body_segmentation:
-        segm_name = f'{segm_folder}body.nii.gz'
+        segm_name = f"{segm_folder}body.nii.gz"
 
     render_aorta_data.set_sitk_image_file(input_file, segm_name)
     render_aorta_data.set_aorta_statistics(stats_folder)
@@ -5022,6 +5685,7 @@ def aorta_visualization(input_file, cl_folder, segm_folder, stats_folder, vis_fo
     render_aorta_data.render_to_file(vis_file)
     # render_aorta_data.render_interactive()
     return True
+
 
 def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, input_file):
     """
@@ -5076,97 +5740,243 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         return False
     if not compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
         return False
-    if not extract_pure_aorta_lumen_start_by_finding_parts(input_file, params, segm_folder, stats_folder,
-                                                           verbose, quiet, write_log_file, output_folder):
+    if not extract_pure_aorta_lumen_start_by_finding_parts(
+        input_file,
+        params,
+        segm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not extract_top_of_iliac_arteries(input_file, segm_folder,
-                                        verbose, quiet, write_log_file, output_folder):
+    if not extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
         return False
-    if not extract_aortic_calcifications(input_file, params, segm_folder, stats_folder,
-                                        verbose, quiet, write_log_file, output_folder):
+    if not extract_aortic_calcifications(
+        input_file,
+        params,
+        segm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not check_for_aneurysm_sac(segm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not check_for_aneurysm_sac(segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
         return False
 
     # TODO: Issue warning if large difference between TotalSegmentator and lumen segmentations is found
     # and the centerline computation is based on TotalSegmentator segmentations
     # This typically happens if there are large sac-like aneurysms
 
-    if not compute_ventricularoaortic_landmark(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
         return False
-    if not combine_aorta_and_left_ventricle(input_file, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=False):
+    if not combine_aorta_and_left_ventricle(
+        input_file,
+        segm_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+        use_ts_org_segmentations=False,
+    ):
         return False
-    if not combine_aorta_and_left_ventricle(input_file, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True):
+    if not combine_aorta_and_left_ventricle(
+        input_file,
+        segm_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+        use_ts_org_segmentations=True,
+    ):
         return False
-    if not compute_aortic_arch_landmarks(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not compute_aortic_arch_landmarks(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
         return False
-    if not compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
         return False
-    if not compute_aorta_scan_type(input_file, segm_folder, lm_folder, stats_folder,
-                            verbose, quiet, write_log_file, output_folder):
-          return False
-    if not compute_centerline_landmarks_based_on_scan_type(segm_folder, lm_folder, stats_folder, verbose, quiet,
-                                                           write_log_file, output_folder,
-                                                           use_ts_org_segmentations=use_org_ts_segmentations):
+    if not compute_aorta_scan_type(
+        input_file,
+        segm_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not extract_surfaces_for_centerlines(segm_folder,
-                                           stats_folder, surface_folder, verbose, quiet, write_log_file, output_folder,
-                                           use_ts_org_segmentations=use_org_ts_segmentations):
+    if not compute_centerline_landmarks_based_on_scan_type(
+        segm_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+        use_ts_org_segmentations=use_org_ts_segmentations,
+    ):
         return False
-    if not compute_center_line(stats_folder, lm_folder, surface_folder, cl_folder, verbose, quiet, write_log_file,
-                               output_folder):
+    if not extract_surfaces_for_centerlines(
+        segm_folder,
+        stats_folder,
+        surface_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+        use_ts_org_segmentations=use_org_ts_segmentations,
+    ):
         return False
-    if not compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_folder, lm_folder, cl_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not compute_center_line(
+        stats_folder,
+        lm_folder,
+        surface_folder,
+        cl_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not compute_aortic_arch_landmarks_on_centerline(lm_folder, cl_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not compute_infrarenal_section_using_kidney_to_kidney_line(
+        segm_folder,
+        stats_folder,
+        lm_folder,
+        cl_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not compute_aortic_arch_landmarks_on_centerline(lm_folder, cl_folder, verbose, quiet, write_log_file, output_folder):
         return False
-    if not compute_ventricularoaortic_point_on_centerline(lm_folder, cl_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not compute_diaphragm_point_on_centerline(
+        lm_folder,
+        cl_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder) is None:
+    if not compute_ventricularoaortic_point_on_centerline(
+        lm_folder,
+        cl_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not compute_straightened_volume_using_cpr(input_file, segm_folder, cl_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder, use_raw_segmentations=False):
+    if (
+        sample_aorta_center_line_hu_stats(
+            input_file,
+            cl_folder,
+            stats_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+        )
+        is None
+    ):
+        return False
+    if not compute_straightened_volume_using_cpr(
+        input_file,
+        segm_folder,
+        cl_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+        use_raw_segmentations=False,
+    ):
         return False
     if compare_with_raw_ts_segmentations:
-        if not compute_straightened_volume_using_cpr(input_file, segm_folder, cl_folder, stats_folder,
-                               verbose, quiet, write_log_file, output_folder, use_raw_segmentations=True):
+        if not compute_straightened_volume_using_cpr(
+            input_file,
+            segm_folder,
+            cl_folder,
+            stats_folder,
+            verbose,
+            quiet,
+            write_log_file,
+            output_folder,
+            use_raw_segmentations=True,
+        ):
             return False
-    if not compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, verbose, quiet, write_log_file,
-                                                 output_folder):
+    if not compute_cuts_along_straight_labelmaps(
+        segm_folder,
+        cl_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_areas(cl_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_areas(
+        cl_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder, use_raw_segmentations=False):
+    if not identy_and_extract_samples_from_straight_volume(
+        cl_folder,
+        segm_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+        use_raw_segmentations=False,
+    ):
         return False
     if not combine_cross_section_images_into_one(cl_folder, verbose):
         return False
-    if not create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, lm_folder, stats_folder,
-                           verbose, quiet, write_log_file, output_folder):
+    if not create_longitudinal_figure_from_straight_volume(
+        cl_folder,
+        segm_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
-    if not compute_all_aorta_statistics(input_file, cl_folder, segm_folder, lm_folder, stats_folder, verbose,
-                                        quiet, write_log_file, output_folder):
+    if not compute_all_aorta_statistics(
+        input_file,
+        cl_folder,
+        segm_folder,
+        lm_folder,
+        stats_folder,
+        verbose,
+        quiet,
+        write_log_file,
+        output_folder,
+    ):
         return False
     if not aorta_visualization(input_file, cl_folder, segm_folder, stats_folder, vis_folder, verbose, params):
         return False
 
-
     return True
-
 
 
 def computer_process(verbose, quiet, write_log_file, params, output_folder, process_queue, process_id):
@@ -5182,10 +5992,17 @@ def computer_process(verbose, quiet, write_log_file, params, output_folder, proc
         print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
 
 
-def aorta_analysis(in_files, output_folder, params=None, nr_tg=1, verbose=False, quiet=False, write_log_file=True):
+def aorta_analysis(
+    in_files,
+    output_folder,
+    params=None,
+    nr_tg=1,
+    verbose=False,
+    quiet=False,
+    write_log_file=True,
+):
     if verbose:
-        print(f"Computing aorta data with {nr_tg} processes"
-              f" on {len(in_files)} files. Output to {output_folder}")
+        print(f"Computing aorta data with {nr_tg} processes on {len(in_files)} files. Output to {output_folder}")
 
     num_processes = nr_tg
     process_queue = mp.Queue()
@@ -5197,8 +6014,18 @@ def aorta_analysis(in_files, output_folder, params=None, nr_tg=1, verbose=False,
 
     processes = []
     for i in range(num_processes):
-        p = mp.Process(target=computer_process, args=(verbose, quiet, write_log_file, params,
-                                                      output_folder, process_queue, i + 1))
+        p = mp.Process(
+            target=computer_process,
+            args=(
+                verbose,
+                quiet,
+                write_log_file,
+                params,
+                output_folder,
+                process_queue,
+                i + 1,
+            ),
+        )
         p.start()
         processes.append(p)
 

@@ -6,6 +6,7 @@ from vtk.util.numpy_support import vtk_to_numpy
 from vtk.util.numpy_support import numpy_to_vtk
 import aortaexplorer.general_utils as gu
 
+
 def sitk2vtk(img, flip_for_volume_rendering=False, debugOn=False):
     """Convert a SimpleITK image to a VTK image, via numpy."""
 
@@ -84,7 +85,7 @@ def sitk2vtk(img, flip_for_volume_rendering=False, debugOn=False):
     return vtk_image
 
 
-def filter_image_with_segmentation(img, mask_img_name, fill_val = -1000):
+def filter_image_with_segmentation(img, mask_img_name, fill_val=-1000):
     i2 = sitk.GetArrayFromImage(img)
 
     try:
@@ -118,8 +119,7 @@ def read_nifti_itk_to_vtk(file_name, img_mask_name=None, flip_for_volume_renderi
     return vtk_image
 
 
-def convert_label_map_to_surface(label_name, reset_direction_matrix=False, segment_id=1,
-                                only_largest_component=False):
+def convert_label_map_to_surface(label_name, reset_direction_matrix=False, segment_id=1, only_largest_component=False):
     debug = False
     vtk_img = read_nifti_itk_to_vtk(label_name)
     if vtk_img is None:
@@ -154,7 +154,7 @@ def convert_label_map_to_surface(label_name, reset_direction_matrix=False, segme
         conn.SetInputConnection(mc.GetOutputPort())
         conn.SetExtractionModeToLargestRegion()
         conn.Update()
-        surface = conn. GetOutput()
+        surface = conn.GetOutput()
 
     cleaner = vtk.vtkCleanPolyData()
     cleaner.SetInputData(surface)
@@ -293,20 +293,23 @@ def preprocess_surface_for_centerline_extraction(vtk_in):
     return normals.GetOutput()
 
 
-def aorta_volume_properties(segm_folder, stats_folder,
-                           quiet, write_log_file, output_folder, stats):
+def aorta_volume_properties(segm_folder, stats_folder, quiet, write_log_file, output_folder, stats):
     """
     Compute volume properties of aorta including volume and surface area
     """
     n_aorta_parts = 1
-    parts_stats = gu.read_json_file(f'{stats_folder}aorta_parts.json')
+    parts_stats = gu.read_json_file(f"{stats_folder}aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
 
     if n_aorta_parts == 1:
         aorta_segm_file = f"{segm_folder}aorta_lumen.nii.gz"
-        aorta_surface = convert_label_map_to_surface(aorta_segm_file, reset_direction_matrix=False,
-                                                    segment_id=1, only_largest_component=True)
+        aorta_surface = convert_label_map_to_surface(
+            aorta_segm_file,
+            reset_direction_matrix=False,
+            segment_id=1,
+            only_largest_component=True,
+        )
         if aorta_surface is None:
             msg = f"Could not extract aorta surface from {aorta_segm_file}"
             if write_log_file:
@@ -323,8 +326,12 @@ def aorta_volume_properties(segm_folder, stats_folder,
         stats["surface_area"] = mass.GetSurfaceArea()
     else:
         aorta_segm_file = f"{segm_folder}aorta_lumen_annulus.nii.nii.gz"
-        aorta_surface = convert_label_map_to_surface(aorta_segm_file, reset_direction_matrix=False,
-                                                    segment_id=1, only_largest_component=True)
+        aorta_surface = convert_label_map_to_surface(
+            aorta_segm_file,
+            reset_direction_matrix=False,
+            segment_id=1,
+            only_largest_component=True,
+        )
         if aorta_surface is None:
             msg = f"Could not extract aorta surface from {aorta_segm_file}"
             if write_log_file:
@@ -341,8 +348,12 @@ def aorta_volume_properties(segm_folder, stats_folder,
         stats["annulus_surface_area"] = mass.GetSurfaceArea()
 
         aorta_segm_file = f"{segm_folder}aorta_lumen_descending.nii.nii.gz"
-        aorta_surface = convert_label_map_to_surface(aorta_segm_file, reset_direction_matrix=False,
-                                                    segment_id=1, only_largest_component=True)
+        aorta_surface = convert_label_map_to_surface(
+            aorta_segm_file,
+            reset_direction_matrix=False,
+            segment_id=1,
+            only_largest_component=True,
+        )
         if aorta_surface is None:
             msg = f"Could not extract aorta surface from {aorta_segm_file}"
             if write_log_file:

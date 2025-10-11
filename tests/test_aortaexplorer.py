@@ -1,5 +1,6 @@
 from aortaexplorer.python_api import aortaexplorer, get_default_parameters
 
+
 def test_aortaexplorer():
     params = get_default_parameters()
 
@@ -33,4 +34,3 @@ def test_aortaexplorer():
 
 if __name__ == "__main__":
     test_aortaexplorer()
-    
