@@ -35,7 +35,6 @@ class RenderTotalSegmentatorData:
         self.iren.SetInteractorStyle(style)
 
         self.actors = []
-        self.segments = []
         self.landmarks = []
         self.centerlines = []
 
@@ -361,22 +360,10 @@ class RenderAortaData(RenderTotalSegmentatorData):
             if aneurysm_sac_stats:
                 aneurysm_sac_ratio = aneurysm_sac_stats["aorta_ratio"]
                 q95_dists = aneurysm_sac_stats["q95_distances"]
-                if aneurysm_sac_ratio > 1.2 and q95_dists > 2.5:
-                    self.segments.append(
-                        {
-                            "task": "total",
-                            "id": 52,
-                            "segment": "aorta",
-                            "max_components": 2,
-                            "min_component_size": 5000,
-                            "color": "OldLace",
-                            "opacity": 0.6,
-                            "visible": True,
-                        }
-                    )
-
-        # self.generate_actors_from_combined_segments_with_tasks()
-
+                if aneurysm_sac_ratio > 1.18 and q95_dists > 2.5:
+                    # Show original total segmentations since they include the sac
+                    segm_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+                    self.generate_actors_from_segment_file_name(segm_name, "OldLace", 0.6, smooth="heavy")
         if n_aorta_parts == 1:
             self.centerlines.append(
                 {
@@ -844,6 +831,8 @@ class RenderAortaData(RenderTotalSegmentatorData):
             self.message_text += f"Ratio: {ratio:.2f}\n"
             self.message_text += f"Enlarged percent: {dif_percent:.0f}%\n"
             self.message_text += f"Q95 distances: {q95_dists:0.1f} mm\n"
+            if ratio > 1.18 and q95_dists > 2.5:
+                self.message_text += f"Indication of aneurysm sac!\n"
         else:
             print(f"Can not set aortic aneurysm sac statistics for scan type: {scan_type}")
 
