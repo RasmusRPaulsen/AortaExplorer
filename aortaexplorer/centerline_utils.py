@@ -396,13 +396,13 @@ def compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_stra
         print(f"Computing straightened volume with spacing {slice_resolution} and size {slice_size_mm} mm "
               f"and output spacing {outputSpacingMm} mm")
     cpr = CurvedPlanarReformat(slice_resolution, slice_size_mm, convert_system)
-    transform = cpr.computeStraighteningTransform(cl, slice_size_mm, outputSpacingMm, convert_system)
+    transform = cpr.compute_straightening_transform(cl, slice_size_mm, outputSpacingMm, convert_system)
 
     if verbose:
         print(f"Performing straightening")
 
-    cpr.straightenVolume(ct_img, transform, slice_resolution, isLabelmap=False, file_name=img_straight_name)
-    cpr.straightenVolume(label_img, transform, slice_resolution, isLabelmap=True, file_name=label_straight_name)
+    cpr.straighten_volume(ct_img, transform, slice_resolution, isLabelmap=False, file_name=img_straight_name)
+    cpr.straighten_volume(label_img, transform, slice_resolution, isLabelmap=True, file_name=label_straight_name)
 
     return True
 
@@ -554,11 +554,9 @@ def set_window_and_level_on_single_slice(img_in, img_window, img_level):
 def extract_max_cut_in_defined_section(cl_dir, segment_name, start_cl_dist, end_cl_dist, cl_sampling, cl,
                                        straight_img_np, label_img_np, img_window, img_level,
                                        spacing, dims, find_minimum = False):
-    # cl_dir = settings["centerline_dir"]
     max_slice_out_rgb = f"{cl_dir}{segment_name}_max_slice_rgb.png"
     max_slice_out_rgb_crop = f"{cl_dir}{segment_name}_max_slice_rgb_crop.png"
     max_slice_out_info = f"{cl_dir}{segment_name}_max_slice_info.json"
-    # scan_id = settings["scan_id"]
     debug = False
 
     if start_cl_dist == np.inf or start_cl_dist == -np.inf or end_cl_dist == np.inf or end_cl_dist == -np.inf:

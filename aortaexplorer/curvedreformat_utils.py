@@ -4,13 +4,12 @@ import math
 import numpy as np
 import vtk
 import SimpleITK as sitk
-from scipy.linalg import svd # For GetBestFitPlane
 from vtk import vtkMatrix4x4
 from vtk import vtkMatrix3x3
 import vtk.util.numpy_support
 
 
-def pointsToPoly(points):
+def points_to_poly(points):
     numberOfPoints = points.GetNumberOfPoints()
     polyLine = vtk.vtkPolyLine()
     polyLine.GetPointIds().SetNumberOfIds(numberOfPoints)
@@ -28,7 +27,7 @@ def pointsToPoly(points):
 
     return polyData
 
-def arrayFromVTKMatrix(vmatrix):
+def array_from_vtk_matrix(vmatrix):
     '''
     From Slicer discord
     Returns vtkMatrix 4x4 or vtkMatrix3x3 elements as numpy array.
@@ -44,7 +43,7 @@ def arrayFromVTKMatrix(vmatrix):
     vmatrix.DeepCopy(narray.ravel(),vmatrix)
     return narray
 
-def vtkMatrixFromArray(narray):
+def vtk_matrix_from_array(narray):
     '''
     From Slicer.util.py:
     Create VTK matrix from a 3x3 or 4x4 numpy array.
@@ -58,16 +57,16 @@ def vtkMatrixFromArray(narray):
     narrayshape = narray.shape
     if narrayshape == (4,4):
         vmatrix = vtkMatrix4x4()
-        updateVTKMatrixFromArray(vmatrix, narray)
+        update_vtk_matrix_from_array(vmatrix, narray)
         return vmatrix
     elif narrayshape == (3,3):
         vmatrix = vtkMatrix3x3()
-        updateVTKMatrixFromArray(vmatrix, narray)
+        update_vtk_matrix_from_array(vmatrix, narray)
         return vmatrix
     else:
         raise RuntimeError("Unsupported numpy array shape: "+str(narrayshape)+" expected (4,4)")
 
-def updateVTKMatrixFromArray(vmatrix, narray):
+def update_vtk_matrix_from_array(vmatrix, narray):
     """
     From Slicer.util.py:
     Update VTK matrix values from a numpy array.
@@ -88,7 +87,7 @@ def updateVTKMatrixFromArray(vmatrix, narray):
         raise RuntimeError("Input narray size must match output vmatrix size ({0}x{0})".format(matrixSize))
     vmatrix.DeepCopy(narray.ravel())
 
-def arrayFromGridTransform(displacementGrid):
+def array_from_grid_transform(displacementGrid):
     nshape = tuple(reversed(displacementGrid.GetDimensions()))
     nshape = nshape + (3,)
     import vtk.util.numpy_support
@@ -122,7 +121,7 @@ class CurvedPlanarReformat:
 # Helper-methods
 # ==============================================================================
 
-    def ResamplePoints(self,originalPoints, sampledPoints, samplingDistance):
+    def resample_points(self, originalPoints, sampledPoints, samplingDistance):
         '''
         Resamples given original points into sampledPoints using given samplingDistance
 
@@ -208,7 +207,7 @@ class CurvedPlanarReformat:
 # Note that this framework is modified to only work within one coordinate system,
 # making transforms between systems obsolete.
 
-    def RotateVector(self, in_vector, out_vector, axis, angle):
+    def rotate_vector(self, in_vector, out_vector, axis, angle):
         '''
         Rotates a given vector a given angle.
         Helper-function for ComputeAxisDirections
@@ -230,7 +229,7 @@ class CurvedPlanarReformat:
 
         return True
 
-    def ComputeAxisDirections(self,curve, idx, tangents, normals, binormals):
+    def compute_axis_directions(self, curve, idx, tangents, normals, binormals):
         '''
         Helper-function for RequestData()
 
@@ -320,7 +319,7 @@ class CurvedPlanarReformat:
             rotationAxis = np.zeros(3)
             vtk.vtkMath.Cross(tangent0, tangent1, rotationAxis)
 
-            self.RotateVector(normal0, normal1, rotationAxis, theta)
+            self.rotate_vector(normal0, normal1, rotationAxis, theta)
             dot = vtk.vtkMath.Dot(tangent1, normal1)
             normal1[0] -= dot * tangent1[0]
             normal1[1] -= dot * tangent1[1]
@@ -353,7 +352,7 @@ class CurvedPlanarReformat:
 
         return True
 
-    def RequestData(self, curve, output_curve):
+    def request_data(self, curve, output_curve):
         '''
         Calculates tangents, normals and binormals for all points in given curve
 
@@ -389,7 +388,7 @@ class CurvedPlanarReformat:
             print("Number of cells", numberOfCells)
 
         for cellIndex in range(0,numberOfCells):
-            self.ComputeAxisDirections(curve, cellIndex,tangentsArray,normalsArray,binormalsArray)
+            self.compute_axis_directions(curve, cellIndex, tangentsArray, normalsArray, binormalsArray)
 
         output_curve.GetPointData().AddArray(tangentsArray)
         output_curve.GetPointData().AddArray(normalsArray)
@@ -399,7 +398,7 @@ class CurvedPlanarReformat:
         return 1
 
 
-    def GetCurvePointToWorldTransformAtPointIndex(self, curve, curvePointIndex, curvePointToWorld):
+    def get_curve_point_to_world_transform_at_point_index(self, curve, curvePointIndex, curvePointToWorld):
         '''
         From a given curve, calculate normal, binormal, tangent and position of curvePointIndex and save in curvePointToWorld
 
@@ -417,7 +416,7 @@ class CurvedPlanarReformat:
         # Note that curvePoly is derived from CurveCoordinateSystemGeneratorWorld, which means that it might already contain tangens etc from having called RequestData
         # !!! Therefore - call RequestData!!
 
-        self.RequestData(curve, curvePoly) # TO DO: Only do if not already done?
+        self.request_data(curve, curvePoly) # TO DO: Only do if not already done?
         # Check that not empty
         if (not curvePoly):
             print("GetCurvePointToWorldTransformAtPointIndex() expects non-empty curve")
@@ -462,7 +461,7 @@ class CurvedPlanarReformat:
 # ------------------------------------------------------------------------------
 # Helper-functions for curve properties (for transformation grid)
 
-    def GetCurveLength(self, curvePoints, startCurvePointIndex = 0, numberOfCurvePoints = None):
+    def get_curve_length(self, curvePoints, startCurvePointIndex = 0, numberOfCurvePoints = None):
         '''
         Measures length to end of given curve from a given point index.
         Assumes open curve!
@@ -499,89 +498,8 @@ class CurvedPlanarReformat:
         # Add length of closing segment omitted, since open curve is assumed
         return length
 
-    def GetBestFitPlane(self, curveNode, plane):
-        '''
-        Attempts to calculate the best fitting plane for a curve
 
-        curveNode (vtkPoints (vtkMRMLMarkupsNode* in original)): Points to get fitted plane to
-        plane (vtkPlane*): Obj to save results
-
-        Simplified version from vtkAddonMathUtilities.cxx (FitPlaneToPoints())
-        '''
-
-        # Check inputs
-        if ((not curveNode) or (not plane)):
-            print(" GetBestFitPlane inputs wrong")
-            return False
-        curvePointsWorld = curveNode # Since all coordinates are world coordinates
-
-        if curvePointsWorld.GetNumberOfPoints() < 3: # At least 3 points are required for computing a plane
-            print(" GetBestFitPlane needs at least 3 points")
-            return False
-
-        # Calculate output using helper
-        transformToBestFitPlane = vtk.vtkMatrix4x4()
-
-        if (not self.FitPlaneToPoints(curveNode, transformToBestFitPlane)):
-            print("FitPlaneToPoints failed")
-            return False
-
-        # Save results
-        plane.SetOrigin(transformToBestFitPlane.GetElement(0, 3), transformToBestFitPlane.GetElement(1, 3), transformToBestFitPlane.GetElement(2, 3))
-        plane.SetNormal(transformToBestFitPlane.GetElement(0, 2), transformToBestFitPlane.GetElement(1, 2), transformToBestFitPlane.GetElement(2, 2))
-        return True
-
-    def FitPlaneToPoints(self, points, transformToBestFitPlane):
-        '''
-        Given at least 3 points, attempts to find best transform to make plane fit points
-
-        points (vtkPoints*): Points that plane has to be fitted to
-        transformToBestFitPlane (vtkMatrix4x4*): Obj to store calculated transform
-
-        Simplified version from vtkAddonMathUtilities.cxx
-        '''
-        # Check input
-        if ((not points) or (not transformToBestFitPlane) or (points.GetNumberOfPoints() < 3)):
-            print("FitPlaneToPoints() inputs wrong")
-            return False
-
-        numberOfPoints = points.GetNumberOfPoints()
-        #TODO: C++ uses the Eigen library, consider a python equivivalent?
-        pointCoords = np.zeros((3,numberOfPoints)) # To be filled with all the points to fit plane to
-        point = [0,0,0]
-
-        for pointIndex in range(0,numberOfPoints):
-            points.GetPoint(pointIndex,point)
-            pointCoords[0,pointIndex] = point[0]
-            pointCoords[1,pointIndex] = point[1]
-            pointCoords[2,pointIndex] = point[2]
-
-        # Subtract centroid
-        # Define centroid
-        centroid = np.array([pointCoords[0,:].mean(),pointCoords[1,:].mean(),pointCoords[2,:].mean()])
-
-        # Standardize pointCoords with centroid
-        pointCoords[0,:] -= centroid[0]
-        pointCoords[1,:] -= centroid[1]
-        pointCoords[2,:] -= centroid[2]
-        # Calculate SVD
-        #Eigen::BDCSVD<Eigen::MatrixXd> svd(pointCoords, Eigen::ComputeFullU)
-        U, s, VT = svd(pointCoords)
-
-        # Make parameter into an identity matrix
-        transformToBestFitPlane.Identity()
-
-        # Fill with results
-        for row in range(0,3):
-            # transformToBestFitPlane->SetElement(row, 0, svd.matrixU()(row, 0))
-            transformToBestFitPlane.SetElement(row,0,U[row,0])
-            transformToBestFitPlane.SetElement(row,1,U[row,1])
-            transformToBestFitPlane.SetElement(row,2,U[row,2])
-            transformToBestFitPlane.SetElement(row,3,centroid[row])
-
-        return True
-
-    def GetCurveCenter(self, points):
+    def get_curve_center(self, points):
         '''
         points (vtkPolyData): Contains points to find center
         '''
@@ -614,8 +532,8 @@ class CurvedPlanarReformat:
 # Main methods handling CPR logic
 
     #def computeStraighteningTransform(self, transformToStraightenedNode, curve, sliceSizeMm = [40.0, 40,0], outputSpacingMm = 1.0):
-    def computeStraighteningTransform(self, curve, sliceSizeMm = [40.0, 40,0], outputSpacingMm = 1.0,
-                                      convertCoordinatSystem = False):
+    def compute_straightening_transform(self, curve, sliceSizeMm = [40.0, 40, 0], outputSpacingMm = 1.0,
+                                        convertCoordinatSystem = False):
         '''
         Computes transform used to map each slice of volume during straightening/reformatting.
         transformToStraightenedNode: Container to store result (deprecated)
@@ -633,8 +551,8 @@ class CurvedPlanarReformat:
         sampledPoints = vtk.vtkPoints()
 
         # Resample points - todo: insert try-catch?
-        self.ResamplePoints(originalCurvePoints, sampledPoints, resamplingCurveSpacing)
-        self.resampledCurveNode = pointsToPoly(sampledPoints)
+        self.resample_points(originalCurvePoints, sampledPoints, resamplingCurveSpacing)
+        self.resampledCurveNode = points_to_poly(sampledPoints)
 
         numberOfSlices = self.resampledCurveNode.GetNumberOfPoints()
 
@@ -652,8 +570,8 @@ class CurvedPlanarReformat:
         sumCurveAxisX_RAS = np.zeros(3)
         for gridK in range(numberOfSlices): # gridK is slice idx
             curvePointToWorld = vtk.vtkMatrix4x4()
-            self.GetCurvePointToWorldTransformAtPointIndex(self.resampledCurveNode, gridK, curvePointToWorld) # On assumption that the two index type are equivivalent
-            curvePointToWorldArray = arrayFromVTKMatrix(curvePointToWorld)# Convert to numpy
+            self.get_curve_point_to_world_transform_at_point_index(self.resampledCurveNode, gridK, curvePointToWorld) # On assumption that the two index type are equivivalent
+            curvePointToWorldArray = array_from_vtk_matrix(curvePointToWorld)# Convert to numpy
             curveAxisX_RAS = curvePointToWorldArray[0:3, 0]
             sumCurveAxisX_RAS += curveAxisX_RAS
         meanCurveAxisX_RAS = sumCurveAxisX_RAS/np.linalg.norm(sumCurveAxisX_RAS)
@@ -668,11 +586,11 @@ class CurvedPlanarReformat:
         transformGridAxisX = transformGridAxisX/np.linalg.norm(transformGridAxisX)
 
         # Origin (makes the grid centered at the curve)
-        curveLength = self.GetCurveLength(self.resampledCurveNode,numberOfCurvePoints = numberOfSlices)
+        curveLength = self.get_curve_length(self.resampledCurveNode, numberOfCurvePoints = numberOfSlices)
         #curveNodePlane = vtk.vtkPlane()
         #self.GetBestFitPlane(resampledCurveNode, curveNodePlane)
 
-        curveCentroid = self.GetCurveCenter(self.resampledCurveNode)
+        curveCentroid = self.get_curve_center(self.resampledCurveNode)
         #print("curveCentroid: ", curveCentroid)
         #print("Plane center: ", np.array(curveNodePlane.GetOrigin()))
 
@@ -693,7 +611,7 @@ class CurvedPlanarReformat:
         gridDirectionMatrixArray[0:3, 0] = transformGridAxisX
         gridDirectionMatrixArray[0:3, 1] = transformGridAxisY
         gridDirectionMatrixArray[0:3, 2] = transformGridAxisZ
-        gridDirectionMatrix = vtkMatrixFromArray(gridDirectionMatrixArray)
+        gridDirectionMatrix = vtk_matrix_from_array(gridDirectionMatrixArray)
 
 
         gridImage = vtk.vtkImageData()
@@ -708,15 +626,15 @@ class CurvedPlanarReformat:
         orientedTransformVTK = (transformVTK, gridDirectionMatrix)
 
         # Compute displacements
-        transformDisplacements_RAS = arrayFromGridTransform(gridImage)
+        transformDisplacements_RAS = array_from_grid_transform(gridImage)
 
         for gridK in range(gridDimensions[2]):
             #print(gridK)
             curvePointToWorld = vtk.vtkMatrix4x4()
             # resampledCurveNode.GetCurvePointToWorldTransformAtPointIndex(resampledCurveNode.GetCurvePointIndexFromControlPointIndex(gridK), curvePointToWorld)
             # resampledCurveNode.GetCurvePointToWorldTransformAtPointIndex(resampledCurveNode.GetCurvePointIndexFromControlPointIndex(gridK), curvePointToWorld)
-            self.GetCurvePointToWorldTransformAtPointIndex(self.resampledCurveNode, gridK, curvePointToWorld) # On assumption that the two index type are equivivalent
-            curvePointToWorldArray = arrayFromVTKMatrix(curvePointToWorld)
+            self.get_curve_point_to_world_transform_at_point_index(self.resampledCurveNode, gridK, curvePointToWorld) # On assumption that the two index type are equivivalent
+            curvePointToWorldArray = array_from_vtk_matrix(curvePointToWorld)
             curveAxisX_RAS = curvePointToWorldArray[0:3, 0]
             curveAxisY_RAS = curvePointToWorldArray[0:3, 1]
             curvePoint_RAS = curvePointToWorldArray[0:3, 3]
@@ -776,8 +694,8 @@ class CurvedPlanarReformat:
 
         return itk_transform_RAS
 
-    def straightenVolume(self, volumeNode, straighteningTransformNode, outputStraightenedVolumeSpacing,
-                         isLabelmap = False, file_name=None):
+    def straighten_volume(self, volumeNode, straighteningTransformNode, outputStraightenedVolumeSpacing,
+                          isLabelmap, file_name):
         """
         Compute straightened volume (useful for example for visualization of curved vessels)
         straighteningTransformNode (sitk gridTransform)
@@ -799,7 +717,7 @@ class CurvedPlanarReformat:
         # Reshape direction/orientation to 3x3 matrix, since it is stored flat
         gridDirection = np.array(gridOrientation).reshape(3,3)
 
-        ### Compute IJK to RAS matrix of output volume - TODO: Do we use this?
+        ### Compute IJK to RAS matrix of output volume -
         # Save grid axis directions as 4x4 array
         straightenedVolumeIJKToLPSArray = np.zeros([4,4])
         straightenedVolumeIJKToLPSArray[0:3,0:3] = gridDirection
@@ -834,24 +752,7 @@ class CurvedPlanarReformat:
         outResampled = resampled.Execute(volumeNode)
 
         writer = sitk.ImageFileWriter()
-        # if file_name is None:
-        #     # Save result
-        #     if volumeId:
-        #         filename = self.volumeOutputDir + '/' + volumeId + '_'
-        #     else:
-        #         filename = self.volumeOutputDir + '/'
-        #
-        #     if isLabelmap:
-        #         # writer.SetFileName(self.volumeOutputDir + filename + 'labelmap_straightened.nrrd')
-        #         writer.SetFileName(filename + 'straightened_labelmap.nii.gz')
-        #     else:
-        #         # writer.SetFileName(self.volumeOutputDir + filename + '_straightened.nrrd')
-        #         writer.SetFileName(filename + 'straightened_volume.nii.gz')
-        # else:
-
         writer.SetFileName(file_name)
         writer.Execute(outResampled)
 
         return outResampled
-# ==============================================================================
-# MAIN
