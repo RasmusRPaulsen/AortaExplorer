@@ -190,7 +190,7 @@ def compute_min_and_max_z_landmark(surface):
     min_p_list = []
     max_p_list = []
 
-    min_z = np.Inf
+    min_z = np.inf
     max_z = -np.inf
     for i in range(n_points):
         p = surface.GetPoint(i)
@@ -216,7 +216,7 @@ def find_closests_points_on_two_surfaces_with_start_point(surface_1, surface_2, 
     """
     Find the two points that are closest on each other on the two surfaces
     """
-    min_dist = np.Inf
+    min_dist = np.inf
 
     locator_1 = vtk.vtkPointLocator()
     locator_1.SetDataSet(surface_1)
