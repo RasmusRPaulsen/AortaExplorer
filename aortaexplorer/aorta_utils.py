@@ -134,7 +134,7 @@ def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose
     sitk.WriteImage(img_o, segm_out_name)
 
     if verbose:
-        print(f"Computing SDF for out-of-scan-field")
+        print("Computing SDF for out-of-scan-field")
     spacing = ct_img.GetSpacing()
     sdf_mask = -edt.sdf(combined_mask,
                    anisotropy=[spacing[2], spacing[1], spacing[0]],
@@ -798,7 +798,7 @@ def extract_aortic_calcifications(input_file, params, segm_folder, stats_folder,
     ct_np = sitk.GetArrayFromImage(ct_img)
 
     if debug:
-        print(f"SDF for dilation")
+        print("SDF for dilation")
     # 1 mm radius
     dilation_size = 1
     dilated_mask = edt_based_dilation(mask_np_aorta, [spacing[2], spacing[1], spacing[0]], dilation_size)
@@ -1045,7 +1045,7 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder,
     mask_np_lv = label_img_lv_np == left_ventricle_id
 
     if verbose:
-        print(f"Finding overlap between aorta and LV using SDF")
+        print("Finding overlap between aorta and LV using SDF")
     footprint_radius_mm = 5
     overlap_mask = edt_based_overlap(mask_np_aorta, mask_np_lv,
                                         spacing=[spacing[2], spacing[1], spacing[0]],
@@ -1055,7 +1055,7 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder,
     overlap_mask = get_components_over_certain_size_as_individual_volumes(overlap_mask, min_comp_size, 1)
     if overlap_mask is None:
         if verbose:
-            print(f"No overlap between aorta and LV found: No ventriculaortic point")
+            print("No overlap between aorta and LV found: No ventriculaortic point")
         f_p_out = open(ventricularoaortic_p_none_out_file, "w")
         f_p_out.write("no point")
         f_p_out.close()
@@ -1065,7 +1065,7 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder,
 
     if np.sum(overlap_mask) < 1:
         if verbose:
-            print(f"No overlap between aorta and LV found: No ventriculaortic point")
+            print("No overlap between aorta and LV found: No ventriculaortic point")
         f_p_out = open(ventricularoaortic_p_none_out_file, "w")
         f_p_out.write("no point")
         f_p_out.close()
@@ -1359,7 +1359,7 @@ def compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder,
 
     if n_heart < volume_threshold or n_liver < volume_threshold or n_rv < volume_threshold:
         if verbose:
-            print(f"Heart, liver or RV too small or not present - no diaphragm landmark")
+            print("Heart, liver or RV too small or not present - no diaphragm landmark")
         f_p_out = open(lm_check_name_none, "w")
         f_p_out.write("no point")
         f_p_out.close()
@@ -1675,7 +1675,7 @@ def compute_centerline_landmarks_for_aorta_type_2(segm_folder, lm_folder,
     start_p = compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, output_folder,
                                                   use_ts_org_segmentations)
     if start_p is None:
-        msg = f"Could not compute aorta-iliac artery landmark. Can not compute centerline landmarks for type 2"
+        msg = "Could not compute aorta-iliac artery landmark. Can not compute centerline landmarks for type 2"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -1795,7 +1795,7 @@ def compute_centerline_landmarks_for_aorta_type_1(segm_folder, lm_folder,
     start_p = compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, output_folder,
                                                   use_ts_org_segmentations)
     if start_p is None:
-        msg = f"Could not compute aorta-iliac artery landmark. Can not compute centerline landmarks for type 1"
+        msg = "Could not compute aorta-iliac artery landmark. Can not compute centerline landmarks for type 1"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -2508,7 +2508,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_fo
 
     mask_np_l = label_img_np == segm_id_kidney_l
     if np.sum(mask_np_l) < min_size:
-        msg = f"Missing kidney left for infrarenal region computation"
+        msg = "Missing kidney left for infrarenal region computation"
         if verbose:
             print(msg)
         return True
@@ -2521,7 +2521,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_fo
         min_dist = np.min(sdf_filter)
         if min_dist <= min_touch_dist:
             if verbose:
-                msg = f"Kidney left is touching out-of-scan for infrarenal region computation"
+                msg = "Kidney left is touching out-of-scan for infrarenal region computation"
                 print(msg)
             return True
 
@@ -2532,7 +2532,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_fo
     # We assume that left and right kidney are in the same label img
     mask_np_r = label_img_np == segm_id_kidney_r
     if np.sum(mask_np_r) < 100:
-        msg = f"Missing kidney right for infrarenal region computation"
+        msg = "Missing kidney right for infrarenal region computation"
         if verbose:
             print(msg)
         return True
@@ -2544,7 +2544,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_fo
         sdf_filter = sdf_data[mask_np_r]
         min_dist = np.min(sdf_filter)
         if min_dist <= min_touch_dist:
-            msg = f"Kidney right is touching out-of-scan for infrarenal region computation"
+            msg = "Kidney right is touching out-of-scan for infrarenal region computation"
             if verbose:
                 print(msg)
             return True
@@ -2586,7 +2586,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_fo
             break
 
     if low_idx < 0:
-        msg = f"CL low idx < 0: something weird. No infrarenal point"
+        msg = "CL low idx < 0: something weird. No infrarenal point"
         if verbose:
             print(msg)
         if write_log_file:
@@ -2639,12 +2639,12 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(segm_folder, stats_fo
             print(f"Dist l: {dist_l} dist r: {dist_r}")
         if dist_l > dist_r:
             if verbose:
-                print(f"Using left kidney since right kidney probably very low")
+                print("Using left kidney since right kidney probably very low")
             infra_idx = idx_l
             infra_dist = dist_l
         else:
             if verbose:
-                print(f"Using right kidney since left kidney probably very low")
+                print("Using right kidney since left kidney probably very low")
             infra_idx = idx_r
             infra_dist = dist_r
 
@@ -3091,7 +3091,7 @@ def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
     max_dist = np.inf
     if os.path.exists(infrarenal_in):
         if verbose:
-            print(f"Using infra-renal section for lower bound for sampling")
+            print("Using infra-renal section for lower bound for sampling")
         try:
             with open(infrarenal_in, 'r') as openfile:
                 infrarenal_stats = json.load(openfile)
@@ -3104,7 +3104,7 @@ def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
     # TODO: Should use the scan type to do proper sampling instead of just checking the number of parts
     if n_aorta_parts == 1 and os.path.exists(ventri_in):
         if verbose:
-            print(f"Using ventricularoaoartic point as last point")
+            print("Using ventricularoaoartic point as last point")
         try:
             with open(ventri_in, 'r') as openfile:
                 ventri_stats = json.load(openfile)
@@ -3126,13 +3126,13 @@ def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder,
     use_mean_filter = False
     if use_mean_filter:
         if verbose:
-            print(f"Mean filtering for value extraction")
+            print("Mean filtering for value extraction")
         meanfilter = sitk.MeanImageFilter()
         meanfilter.SetRadius(1)
         meanfilter = meanfilter.Execute(img)
         i2 = sitk.GetArrayFromImage(meanfilter)
         if verbose:
-            print(f"Mean filtering done")
+            print("Mean filtering done")
     else:
         i2 = sitk.GetArrayFromImage(img)
     i2_np = i2.transpose(2, 1, 0)
@@ -3333,7 +3333,7 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
     # debug = False
 
     if verbose:
-        print(f"Sampling along straight labelmap")
+        print("Sampling along straight labelmap")
 
     parts_stats = read_json_file(f'{stats_folder}aorta_parts.json')
     if parts_stats:
@@ -3366,7 +3366,7 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
         ventri_max_dist = np.inf
         if os.path.exists(ventri_in):
             if verbose:
-                print(f"Using ventricularoaoartic point as last point")
+                print("Using ventricularoaoartic point as last point")
             try:
                 with open(ventri_in, 'r') as openfile:
                     ventri_stats = json.load(openfile)
@@ -3394,7 +3394,7 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
 
         ventri_max_dist = np.inf
         if os.path.exists(ventri_in):
-            print(f"Using ventricularoaoartic point as last point")
+            print("Using ventricularoaoartic point as last point")
             try:
                 with open(ventri_in, 'r') as openfile:
                     ventri_stats = json.load(openfile)
@@ -3499,7 +3499,7 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
     ventri_stats = read_json_file(ventri_in)
     if ventri_stats:
         if verbose:
-            print(f"Using ventricularoaoartic point as last point")
+            print("Using ventricularoaoartic point as last point")
         ventri_dist = ventri_stats["ventri_cl_dist"]
     else:
         msg = f"Could not read {ventri_in} for sinutubular junction and valsalva. It is needed."
@@ -3539,7 +3539,7 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
             org_idx.append(idx)
 
     if len(areas) < 4:
-        msg = f"Can not find sinus of valsalva - probably to close to border of scan"
+        msg = "Can not find sinus of valsalva - probably to close to border of scan"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -3553,7 +3553,7 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
 
     cl_true_idx, _ = clutils.find_position_on_centerline_based_on_scalar(cl, valsalva_dist)
     if cl_true_idx is None:
-        msg = f"Could not find sinus of valsalva on centerline. Something wrong."
+        msg = "Could not find sinus of valsalva on centerline. Something wrong."
         if not quiet:
             print(msg)
         if write_log_file:
@@ -3588,7 +3588,7 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
             org_idx.append(idx)
 
     if len(areas) < 2:
-        msg = f"Can not find sinotubular junction. Probably out of scan."
+        msg = "Can not find sinotubular junction. Probably out of scan."
         if not quiet:
             print(msg)
         if write_log_file:
@@ -3602,7 +3602,7 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
 
     cl_true_idx, _ = clutils.find_position_on_centerline_based_on_scalar(cl, sinotubular_dist)
     if cl_true_idx is None:
-        msg = f"Could not find sinotubular junction on centerline. Something wrong."
+        msg = "Could not find sinotubular junction on centerline. Something wrong."
         if not quiet:
             print(msg)
         if write_log_file:
@@ -3791,7 +3791,7 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     infrarenal_stats = read_json_file(infrarenal_in)
     if infrarenal_stats:
         if debug:
-            print(f"Using infra-renal section")
+            print("Using infra-renal section")
         min_renal_dist = infrarenal_stats["low_dist"]
         max_renal_dist = infrarenal_stats["distance"]
 
@@ -3799,14 +3799,14 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     ventri_stats = read_json_file(ventri_in)
     if ventri_stats:
         if verbose:
-            print(f"Using ventricularoaoartic point as last point")
+            print("Using ventricularoaoartic point as last point")
         ventri_max_dist = ventri_stats["ventri_cl_dist"]
 
     diaphragm_dist = np.inf
     diaphragm_stats = read_json_file(diaphragm_in)
     if diaphragm_stats:
         if verbose:
-            print(f"Using diaphragm info")
+            print("Using diaphragm info")
         diaphragm_dist = diaphragm_stats["diaphragm_cl_dist"]
 
     aortic_arch_min_dist = -np.inf
@@ -3814,7 +3814,7 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     aortic_arch_stats = read_json_file(aortic_arch_in)
     if aortic_arch_stats:
         if verbose:
-            print(f"Using aortic arch info")
+            print("Using aortic arch info")
         aortic_arch_min_dist = aortic_arch_stats["min_cl_dist"]
         aortic_arch_max_dist = aortic_arch_stats["max_cl_dist"]
 
@@ -3822,14 +3822,14 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, seg
     valsalva_stats = read_json_file(valsalva_in)
     if valsalva_stats:
         if verbose:
-            print(f"Using valsalva info")
+            print("Using valsalva info")
         valsalva_dist = valsalva_stats["valsalva_cl_dist"]
 
     sinotubular_dist = np.inf
     sinotubular_stats = read_json_file(sinotubular_in)
     if sinotubular_stats:
         if verbose:
-            print(f"Using sinutubular  info")
+            print("Using sinutubular  info")
         sinotubular_dist = sinotubular_stats["sinotubular_cl_dist"]
 
     # max_distance_annulus = cl_annulus.GetPointData().GetScalars().GetValue(cl_annulus.GetNumberOfPoints() - 1)
@@ -4077,7 +4077,7 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     infrarenal_stats = read_json_file(infrarenal_in)
     if infrarenal_stats:
         if verbose:
-            print(f"Using infra-renal section")
+            print("Using infra-renal section")
         min_renal_dist = infrarenal_stats["low_dist"]
         max_renal_dist = infrarenal_stats["distance"]
 
@@ -4085,14 +4085,14 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     ventri_stats = read_json_file(ventri_in)
     if ventri_stats:
         if verbose:
-            print(f"Using ventricularoaoartic point as last point")
+            print("Using ventricularoaoartic point as last point")
         ventri_max_dist = ventri_stats["ventri_cl_dist"]
 
     diaphragm_dist = np.inf
     diaphragm_stats = read_json_file(diaphragm_in)
     if diaphragm_stats:
         if verbose:
-            print(f"Using diaphragm info")
+            print("Using diaphragm info")
         diaphragm_dist = diaphragm_stats["diaphragm_cl_dist"]
 
     aortic_arch_min_dist = -np.inf
@@ -4100,7 +4100,7 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     aortic_arch_stats = read_json_file(aortic_arch_in)
     if aortic_arch_stats:
         if verbose:
-            print(f"Using aortic arch info")
+            print("Using aortic arch info")
         aortic_arch_min_dist = aortic_arch_stats["min_cl_dist"]
         aortic_arch_max_dist = aortic_arch_stats["max_cl_dist"]
 
@@ -4108,14 +4108,14 @@ def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, lm_f
     valsalva_stats = read_json_file(valsalva_in)
     if valsalva_stats:
         if verbose:
-            print(f"Using valsalva info")
+            print("Using valsalva info")
         valsalva_dist = valsalva_stats["valsalva_cl_dist"]
 
     sinotubular_dist = np.inf
     sinotubular_stats = read_json_file(sinotubular_in)
     if sinotubular_stats:
         if verbose:
-            print(f"Using sinutubular  info")
+            print("Using sinutubular  info")
         sinotubular_dist = sinotubular_stats["sinotubular_cl_dist"]
 
     segment_name = f"infrarenal_segment{ext}"
@@ -4260,7 +4260,7 @@ def combine_cross_section_images_into_one(cl_dir, verbose=False):
 
     if len(valid_imgs) < 1:
         if verbose:
-            print(f"No valid cut sections found")
+            print("No valid cut sections found")
         return False
 
     spacing = 5
@@ -4437,7 +4437,7 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, 
     cl_stats = read_json_file(cl_hu_stats_file)
     if cl_stats:
         if verbose:
-            print(f"Using centerline HU stats")
+            print("Using centerline HU stats")
         img_window = cl_stats["img_window"]
         img_level = cl_stats["img_level"]
 
@@ -5042,7 +5042,6 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
     vis_folder = f"{output_folder}{scan_id}/visualization/"
 
     total_in_name = f"{segm_folder}total.nii.gz"
-    hc_in_name = f"{segm_folder}heartchambers_highres.nii.gz"
     use_org_ts_segmentations = params.get("compute_centerline_from_ts_segmentation", True)
 
     # It is possible to compare with the results that the raw TotalSegmentator segmentations would give

@@ -201,7 +201,7 @@ class RenderTotalSegmentatorData:
     def generate_actor_from_surface(surface, color=np.array([1, 0, 0]), opacity=1.0, smooth="heavy"):
         n_points = surface.GetNumberOfPoints()
         if n_points < 2:
-            print(f"Not enough points in surface")
+            print("Not enough points in surface")
             return None
 
         # https://kitware.github.io/vtk-examples/site/Python/Modelling/SmoothDiscreteMarchingCubes/
@@ -349,12 +349,12 @@ class RenderAortaData(RenderTotalSegmentatorData):
         # self.generate_actors_from_combined_segments_with_tasks()
 
         if n_aorta_parts == 1:
-            self.centerlines.append({"name": "aorta_center_line", "file": f"aorta_centerline.vtp", "size": 1,
+            self.centerlines.append({"name": "aorta_center_line", "file": "aorta_centerline.vtp", "size": 1,
                                      "color": "white", "opacity": 1.0})
         elif n_aorta_parts == 2:
-            self.centerlines.append({"name": "aorta_center_line_annulus", "file": f"aorta_centerline_annulus.vtp",
+            self.centerlines.append({"name": "aorta_center_line_annulus", "file": "aorta_centerline_annulus.vtp",
                                      "size": 1, "color": "white", "opacity": 1.0})
-            self.centerlines.append({"name": "aorta_center_line_descending", "file": f"aorta_centerline_descending.vtp",
+            self.centerlines.append({"name": "aorta_center_line_descending", "file": "aorta_centerline_descending.vtp",
                                      "size": 1, "color": "white", "opacity": 1.0})
 
         self.generate_actors_from_centerlines(cl_folder)

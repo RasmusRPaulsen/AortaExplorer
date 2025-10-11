@@ -50,7 +50,7 @@ def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str],
                     return [], msg
             except Exception as e:
                 msg = f"Could not read {in_name}: {str(e)}"
-                print(f"msg")
+                print("msg")
                 return [], msg
         else:
             in_files = [in_name]

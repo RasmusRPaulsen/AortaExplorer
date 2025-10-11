@@ -1,8 +1,6 @@
 import os.path
 import numpy as np
 import vtk
-from vtk.util.numpy_support import vtk_to_numpy
-from vtk.util.numpy_support import numpy_to_vtk
 from scipy.interpolate import UnivariateSpline
 from aortaexplorer.curvedreformat_utils import CurvedPlanarReformat
 from aortaexplorer.general_utils import write_message_to_log_file, read_json_file
@@ -259,12 +257,6 @@ def compute_single_center_line(surface_name, cl_name, start_p_name, end_p_name):
         print(f"Got an exception {str(e)}")
         print(f"When computing cl on {surface_name}")
         return False
-    # except:
-    #     print(f"Got an exception")
-    #     print(f"When computing cl on {aorta_surf_name}")
-    #     return False
-    # print(centerlinePolyData.Centerlines)
-    # print("\n--compute centerlines done--")
 
     if debug:
         assignAttribute_v = vtk.vtkAssignAttribute()
@@ -306,7 +298,7 @@ def estimate_normal_from_centerline(cl, idx, n_samples=4):
     n_samples is the number of points to use in the estimation
     """
     if cl.GetNumberOfPoints() < 2:
-        print(f"Centerline has less than 2 points. Can not estimate normal.")
+        print("Centerline has less than 2 points. Can not estimate normal.")
         return None
         # return [1, 0, 0]
     elif cl.GetNumberOfPoints() < n_samples:
@@ -328,7 +320,7 @@ def estimate_normal_from_centerline(cl, idx, n_samples=4):
     normal = np.subtract(p_1, p_2)
     norm_length = np.linalg.norm(normal)
     if norm_length < 0.001:
-        print(f"Normal estimation issue. Normal length too small")
+        print("Normal estimation issue. Normal length too small")
         return None
         # normal = [1, 0, 0]
     else:
@@ -379,7 +371,7 @@ def compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_stra
     transform = cpr.compute_straightening_transform(cl, slice_size_mm, outputSpacingMm, convert_system)
 
     if verbose:
-        print(f"Performing straightening")
+        print("Performing straightening")
 
     cpr.straighten_volume(ct_img, transform, slice_resolution, isLabelmap=False, file_name=img_straight_name)
     cpr.straighten_volume(label_img, transform, slice_resolution, isLabelmap=True, file_name=label_straight_name)
@@ -471,8 +463,8 @@ def compute_diameters_from_contour(contour, org, pix_spacing):
 
     for idx in range(n_points):
         p = contour[idx]
-        l_1 = np.subtract(p, org)
-        l_2_end = np.subtract(org, 10 * l_1)
+        # l_1 = np.subtract(p, org)
+        # l_2_end = np.subtract(org, 10 * l_1)
 
         dist_p_to_org = np.linalg.norm(p - org)
 
@@ -701,7 +693,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
     stats_file = f'{stats_folder}aorta_scan_type.json'
     start_p_name = f"{lm_folder}aorta_start_point.txt"
     end_p_name = f"{lm_folder}aorta_end_point.txt"
-    debug = False
+    # debug = False
 
     if verbose:
         print("computing tortuosity index")
@@ -950,7 +942,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         pd.Update()
         cl = pd.GetOutput()
         if cl.GetNumberOfPoints() < 2:
-            print(f"Centerline with too few points - cannot compute tortuosity")
+            print("Centerline with too few points - cannot compute tortuosity")
             return None
 
         # The start point of the centerline (close to top of scan)
@@ -963,7 +955,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         # The point at the annulus (the ventrial-aortic junction)
         ventri = read_json_file(ventri_in)
         if not ventri:
-            print(f"Missing ventricular-aortic junction - cannot compute tortuosity")
+            print("Missing ventricular-aortic junction - cannot compute tortuosity")
             return ati_stats
 
         ventri_cl_dist = ventri["ventri_cl_dist"]
@@ -994,7 +986,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         pd.Update()
         cl = pd.GetOutput()
         if cl.GetNumberOfPoints() < 2:
-            print(f"Centerline with too few points - cannot compute tortuosity")
+            print("Centerline with too few points - cannot compute tortuosity")
             return None
 
         # The start point at the bottom of the scan
@@ -1051,7 +1043,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         pd.Update()
         cl = pd.GetOutput()
         if cl.GetNumberOfPoints() < 2:
-            print(f"Centerline with too few points - cannot compute tortuosity")
+            print("Centerline with too few points - cannot compute tortuosity")
             return None
 
         # The start point of the centerline (close to top of scan)
@@ -1063,7 +1055,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         # The point at the annulus (the ventrial-aortic junction)
         ventri = read_json_file(ventri_in)
         if not ventri:
-            print(f"Missing ventricular-aortic junction - cannot compute tortuosity")
+            print("Missing ventricular-aortic junction - cannot compute tortuosity")
             return ati_stats
 
         ventri_cl_dist = ventri["ventri_cl_dist"]
@@ -1094,7 +1086,7 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         pd.Update()
         cl = pd.GetOutput()
         if cl.GetNumberOfPoints() < 2:
-            print(f"Centerline with too few points - cannot compute tortuosity")
+            print("Centerline with too few points - cannot compute tortuosity")
             return None
 
         # The start point of the centerline

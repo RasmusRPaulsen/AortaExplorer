@@ -183,7 +183,7 @@ def compute_min_and_max_z_landmark(surface):
 
     n_points = surface.GetNumberOfPoints()
     if n_points < 2:
-        print(f"Not enough points in surface")
+        print("Not enough points in surface")
         return None, None
 
     # There can be more than one minimum point if is a flat end surface

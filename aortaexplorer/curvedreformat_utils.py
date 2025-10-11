@@ -611,7 +611,7 @@ class CurvedPlanarReformat:
         gridDirectionMatrixArray[0:3, 0] = transformGridAxisX
         gridDirectionMatrixArray[0:3, 1] = transformGridAxisY
         gridDirectionMatrixArray[0:3, 2] = transformGridAxisZ
-        gridDirectionMatrix = vtk_matrix_from_array(gridDirectionMatrixArray)
+        # gridDirectionMatrix = vtk_matrix_from_array(gridDirectionMatrixArray)
 
 
         gridImage = vtk.vtkImageData()
@@ -623,7 +623,7 @@ class CurvedPlanarReformat:
         transformVTK = vtk.vtkGridTransform()
         transformVTK.SetDisplacementGridData(gridImage) #vtkTransform does not have orientation, but Slicer uses vtkAddons vtkOrientedGridTransform
 
-        orientedTransformVTK = (transformVTK, gridDirectionMatrix)
+        # orientedTransformVTK = (transformVTK, gridDirectionMatrix)
 
         # Compute displacements
         transformDisplacements_RAS = array_from_grid_transform(gridImage)
