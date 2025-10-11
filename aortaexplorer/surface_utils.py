@@ -1,25 +1,9 @@
-#
-# import os.path
-# from pathlib import Path
 import numpy as np
 import vtk
 from vtk.vtkCommonCore import vtkMath
 import SimpleITK as sitk
 from vtk.util.numpy_support import vtk_to_numpy
 from vtk.util.numpy_support import numpy_to_vtk
-# import json
-# import csv
-# from scipy.ndimage import measurements
-# import skimage.io
-# from skimage.util import img_as_ubyte
-# from skimage.segmentation import find_boundaries, mark_boundaries
-# from skimage import color
-# from skimage.exposure import rescale_intensity
-# from skimage.measure import label, regionprops, find_contours
-# from datetime import datetime
-# import edt
-# from scipy.interpolate import UnivariateSpline
-# from vtk.vtkCommonCore import vtkMath
 import aortaexplorer.general_utils as gu
 
 def sitk2vtk(img, flip_for_volume_rendering=False, debugOn=False):

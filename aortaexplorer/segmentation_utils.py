@@ -1,18 +1,7 @@
-# from scipy.ndimage import measurements
-# from pathlib import Path
-# import time
-# import multiprocessing as mp
-# from aortaexplorer.general_utils import write_message_to_log_file
-# from aortaexplorer.surface_utils import convert_label_map_to_surface
-# import SimpleITK as sitk
 import numpy as np
 from skimage.measure import label
 from scipy.ndimage import measurements
-# from skimage.morphology import skeletonize
 import edt
-# import json
-# import vtk
-# import os
 import SimpleITK as sitk
 
 

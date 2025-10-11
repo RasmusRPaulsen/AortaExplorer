@@ -1,8 +1,4 @@
 import os
-# import glob
-# from typing import List, Union, Tuple
-# from pathlib import Path
-# from datetime import datetime
 from totalsegmentator.python_api import totalsegmentator
 from pathlib import Path
 import time

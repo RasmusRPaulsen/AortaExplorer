@@ -5170,7 +5170,7 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
 
 
 
-def computer_process(device, verbose, quiet, write_log_file, params, output_folder, process_queue, process_id):
+def computer_process(verbose, quiet, write_log_file, params, output_folder, process_queue, process_id):
     while not process_queue.empty():
         q_size = process_queue.qsize()
         input_file = process_queue.get()
@@ -5183,10 +5183,9 @@ def computer_process(device, verbose, quiet, write_log_file, params, output_fold
         print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
 
 
-def aorta_analysis(in_files, output_folder, params=None, nr_tg=1,
-                                           device="gpu", verbose=False, quiet=False, write_log_file=True):
+def aorta_analysis(in_files, output_folder, params=None, nr_tg=1, verbose=False, quiet=False, write_log_file=True):
     if verbose:
-        print(f"Computing aorta data with {nr_tg} processes on device {device}"
+        print(f"Computing aorta data with {nr_tg} processes"
               f" on {len(in_files)} files. Output to {output_folder}")
 
     num_processes = nr_tg
@@ -5199,7 +5198,7 @@ def aorta_analysis(in_files, output_folder, params=None, nr_tg=1,
 
     processes = []
     for i in range(num_processes):
-        p = mp.Process(target=computer_process, args=(device, verbose, quiet, write_log_file, params,
+        p = mp.Process(target=computer_process, args=(verbose, quiet, write_log_file, params,
                                                       output_folder, process_queue, i + 1))
         p.start()
         processes.append(p)

@@ -1,47 +1,27 @@
 import os.path
-# from tabnanny import verbose
-# from pathlib import Path
 import numpy as np
 import vtk
-# from vtk.vtkCommonCore import vtkMath
-# import SimpleITK as sitk
 from vtk.util.numpy_support import vtk_to_numpy
 from vtk.util.numpy_support import numpy_to_vtk
-# import json
-# import csv
-# from scipy.ndimage import measurements
-# import skimage.io
-# from skimage.util import img_as_ubyte
-# from skimage.segmentation import find_boundaries, mark_boundaries
-# from skimage import color
-# from skimage.exposure import rescale_intensity
-# from skimage.measure import label
-# from datetime import datetime
-# import edt
 from scipy.interpolate import UnivariateSpline
 from aortaexplorer.curvedreformat_utils import CurvedPlanarReformat
 from aortaexplorer.general_utils import write_message_to_log_file, read_json_file
 import SimpleITK as sitk
 import json
 from skimage.measure import label, regionprops, find_contours
-from skimage.segmentation import find_boundaries, mark_boundaries
+from skimage.segmentation import find_boundaries
 import skimage.io
-# from skimage.transform import rescale, resize
 from skimage import color
 from skimage.util import img_as_ubyte
 from skimage.exposure import rescale_intensity
-from skimage.draw import line, line_aa
-# from scipy.signal import find_peaks
-# from sklearn.decomposition import PCA
-# from scipy.ndimage import measurements
-# import imageio
+from skimage.draw import line
 
 
 # VMTK only works with a very specific environment
 try:
     from vmtk import vmtkscripts
 except ImportError as e:
-    # print(f"Failed to import vmtk name {e.name} and path {e.path}")
+    print(f"Failed to import vmtk name {e.name} and path {e.path}")
     pass
 
 def read_landmarks(filename):
