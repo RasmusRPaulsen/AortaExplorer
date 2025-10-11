@@ -40,6 +40,17 @@ import skimage.io
 from skimage import color
 from skimage.util import img_as_ubyte
 
+def setup_vtk_error_handling(err_dir):
+    """
+    Create a text file where potential VTK errors are dumped instead of a window popping up
+    """
+    error_out_file = os.path.join(err_dir, "vtk_errors.txt")
+
+    error_out = vtk.vtkFileOutputWindow()
+    error_out.SetFileName(error_out_file)
+    vtk_std_error_out = vtk.vtkOutputWindow()
+    vtk_std_error_out.SetInstance(error_out)
+
 
 def compute_body_segmentation(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
     """
@@ -5717,6 +5728,8 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
     Path(lm_folder).mkdir(parents=True, exist_ok=True)
     Path(cl_folder).mkdir(parents=True, exist_ok=True)
     Path(vis_folder).mkdir(parents=True, exist_ok=True)
+
+    setup_vtk_error_handling(output_folder)
 
     if not os.path.exists(input_file):
         msg = f"Could not find {input_file} for aorta analysis"
