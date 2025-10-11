@@ -267,7 +267,10 @@ class RenderTotalSegmentatorData:
 
         return actor
 
-    def generate_actors_from_segment_file_name(self, segm_name, surface_name, color_name, opacity, smooth="heavy"):
+    def generate_actors_from_segment_file_name(self, segm_name, color_name, opacity, smooth="heavy"):
+        if not os.path.exists(segm_name):
+            print(f"No {segm_name}")
+            return
         surface = surfutils.convert_label_map_to_surface(segm_name)
         if surface is not None:
             rgba = [0.0, 0.0, 0.0, 0.0]
@@ -330,26 +333,26 @@ class RenderAortaData(RenderTotalSegmentatorData):
         if n_aorta_parts == 1:
             segm_name_aorta = f"{segm_folder}aorta_lumen.nii.gz"
             # surf_name_aorta = f"{surf_output_dir}computed_aorta_lumen_surface.vtk"
-            self.generate_actors_from_segment_file_name(segm_name_aorta, None, "Crimson", 0.8)
+            self.generate_actors_from_segment_file_name(segm_name_aorta, "Crimson", 0.8)
         elif n_aorta_parts == 2:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus.nii.gz"
             # surf_name_aorta = f"{surf_output_dir}aorta_lumen_annulus.vtk"
-            self.generate_actors_from_segment_file_name(segm_name_aorta, None, "Crimson", 0.8)
+            self.generate_actors_from_segment_file_name(segm_name_aorta, "Crimson", 0.8)
             segm_name_aorta = f"{segm_folder}aorta_lumen_descending.nii.gz"
             # surf_name_aorta = f"{surf_output_dir}aorta_lumen_descending.vtk"
-            self.generate_actors_from_segment_file_name(segm_name_aorta, None, "Crimson", 0.8)
+            self.generate_actors_from_segment_file_name(segm_name_aorta, "Crimson", 0.8)
 
         segm_name_calc = f"{segm_folder}aorta_calcification_raw.nii.gz"
         # surf_name_calc = f"{surf_output_dir}aorta_calcification.vtk"
-        self.generate_actors_from_segment_file_name(segm_name_calc, None, "Ivory", 1.0, smooth="light")
+        self.generate_actors_from_segment_file_name(segm_name_calc, "Ivory", 1.0, smooth="light")
 
         segm_name = f"{segm_folder}iliac_artery_left_top.nii.gz"
         # surf_name = f"{surf_output_dir}computed_iliac_artery_left_top.vtk"
-        self.generate_actors_from_segment_file_name(segm_name, None, "DarkSalmon", 1.0, smooth="heavy")
+        self.generate_actors_from_segment_file_name(segm_name, "DarkSalmon", 1.0, smooth="heavy")
 
         segm_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
         # surf_name = f"{surf_output_dir}computed_iliac_artery_right_top.vtk"
-        self.generate_actors_from_segment_file_name(segm_name, None, "PaleVioletRed", 1.0, smooth="heavy")
+        self.generate_actors_from_segment_file_name(segm_name, "PaleVioletRed", 1.0, smooth="heavy")
 
         # TODO: THis is hacky and should be updated
         if n_aorta_parts == 1:
@@ -509,7 +512,9 @@ class RenderAortaData(RenderTotalSegmentatorData):
         # else:
         #     cl_length = 0
 
-        aorta_txt = f"\nAorta HU avg: {aorta_stats['avg_hu']:.0f} ({aorta_stats['cl_mean']:.0f})\nstd.dev: {aorta_stats['std_hu']:.0f} ({aorta_stats['cl_std']:.0f})\nmedian: {aorta_stats['med_hu']:.0f} ({aorta_stats['cl_med']:.0f})\n99%: {aorta_stats['q99_hu']:.0f} ({aorta_stats['cl_q99']:.0f})\n1%: {aorta_stats['q01_hu']:.0f} ({aorta_stats['cl_q01']:.0f})\nAorta vol: {aorta_stats['tot_vol'] / 1000.0:.0f} cm3\nscan type: {scan_type}\nAorta Surface area: {aorta_stats['surface_area'] / 100.0:.1f} cm2\n"
+        aorta_txt = f"\nAorta HU avg: {aorta_stats['avg_hu']:.0f} ({aorta_stats['cl_mean']:.0f})\nstd.dev: {aorta_stats['std_hu']:.0f} ({aorta_stats['cl_std']:.0f})\nmedian: {aorta_stats['med_hu']:.0f} ({aorta_stats['cl_med']:.0f})\n99%: {aorta_stats['q99_hu']:.0f} ({aorta_stats['cl_q99']:.0f})\n1%: {aorta_stats['q01_hu']:.0f} ({aorta_stats['cl_q01']:.0f})\nAorta vol: {aorta_stats['tot_vol'] / 1000.0:.0f} cm3\nscan type: {scan_type}"
+        if "surface_area" in aorta_stats:
+            aorta_txt += f"\nAorta Surface area: {aorta_stats['surface_area'] / 100.0:.1f} cm2\n"
         # f'Centerline length: {cl_length / 10.0:.1f} cm\n' \
 
         self.message_text += aorta_txt
