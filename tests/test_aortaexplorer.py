@@ -13,8 +13,13 @@ def test_aortaexplorer():
 
     # Type 1:
     # input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
-    input_file = "C:/data/AortaExplorer/input/DTU_053.nii.gz"
-    #input_file = "C:/data/AortaExplorer/input/DTU_060.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/DTU_053.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/DTU_060.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/DTU_074.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/DTU_078.nii.gz"
+
+    # Very low contrast
+    # input_file = "C:/data/AortaExplorer/input/DTU_085.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/"
     output_folder = "C:/data/AortaExplorer/testoutput/"
     device = "gpu"
