@@ -27,7 +27,15 @@ keywords = [
     'CT'
 ]
 dependencies = [
-    "TotalSegmentator>=2.9.0",
+    "TotalSegmentator",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "scikit-image",
+    "SimpleITK",
+    "imageio",
+    "edt",
+    "vtk"
 ]
 
 [project.urls]
