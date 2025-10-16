@@ -1616,6 +1616,9 @@ def compute_aorta_scan_type(
     elif len(sides) == 2 and "up" in sides and "down" in sides and not aortic_arch_present and lvot_present and not il_left and not il_right and n_aorta_parts == 2:
         scan_type = "5"
         scan_type_desc = "Two aorta parts and LVOT (cardiac) and no aortic arch"
+    elif len(sides) > 2 and "up" in sides and "down" in sides and not aortic_arch_present and lvot_present and not il_left and not il_right and n_aorta_parts == 2:
+        scan_type = "5b"
+        scan_type_desc = "Two aorta parts, LVOT (cardiac), no aortic arch and aorta hits multiple sides and might be cropped."
     elif len(sides) == 1 and "up" in sides and not aortic_arch_present and lvot_present and not il_left and not il_right and n_aorta_parts == 1:
         scan_type = "6"
         scan_type_desc = "Only cardiac aorta and LVOT (cardiac) and no aortic arch and no iliac bifurcation"
@@ -3032,8 +3035,9 @@ def compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder, ve
             msg = f"Missing {f_r} for diaphragm computation for {cl_file}"
             if verbose:
                 print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+            # no need to log this
+            # if write_log_file:
+            #     write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
             return True
 
     if verbose:
@@ -3055,9 +3059,10 @@ def compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder, ve
         msg = f"Could not read {infrarenal_in} for diaphragm computation for {cl_file}"
         if verbose:
             print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
-            return True
+        # no need to log this
+        # if write_log_file:
+        #     write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+        return True
 
     infra_dist = infra_stats["distance"]
 
@@ -3091,18 +3096,18 @@ def compute_diaphragm_point_on_centerline(lm_folder, cl_folder, stats_folder, ve
         msg = f"No matching point found on centerline for diaphragm computation for {cl_file}"
         if verbose:
             print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        # if write_log_file:
+        #     write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return True
 
     idx_diaphragm = min_idx
     dist_diaphragm = cl.GetPointData().GetScalars().GetValue(idx_diaphragm)
     if dist_diaphragm < infra_dist:
-        msg = "Abdominal cl dist less than infrarenal cl dist. No abdominal point for {cl_file}"
+        msg = f"Abdominal cl dist less than infrarenal cl dist. No abdominal point for {cl_file}"
         if verbose:
             print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        # if write_log_file:
+        #     write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return True
 
     p_cl_diaphragm = cl.GetPoint(idx_diaphragm)
@@ -5996,13 +6001,15 @@ def computer_process(verbose, quiet, write_log_file, params, output_folder, proc
     while not process_queue.empty():
         q_size = process_queue.qsize()
         input_file = process_queue.get()
-        print(f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left")
+        if verbose:
+            print(f"Process {process_id} running aorta analysis on: {input_file} - {q_size} left")
         local_start_time = time.time()
         do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, input_file)
         elapsed_time = time.time() - local_start_time
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
-        print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
+        if verbose:
+            print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
 
 
 def aorta_analysis(
@@ -6023,7 +6030,8 @@ def aorta_analysis(
         input_file = idx.strip()
         process_queue.put(input_file)
 
-    print(f"Starting {num_processes} processes")
+    if verbose:
+        print(f"Starting {num_processes} processes")
 
     processes = []
     for i in range(num_processes):
@@ -6042,6 +6050,7 @@ def aorta_analysis(
         p.start()
         processes.append(p)
 
-    print("Waiting for processes to finish")
+    if verbose:
+        print("Waiting for processes to finish")
     for p in processes:
         p.join()

@@ -99,8 +99,11 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
         try:
             label_img = sitk.ReadImage(total_out_name)
         except RuntimeError as e:
-            print(f"Got an exception {str(e)}")
-            print(f"Error reading {total_out_name}")
+            msg = f"Could not red {total_out_name} after TotalSegmentator run. Exception {str(e)}"
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
             return False
 
         spacing = label_img.GetSpacing()
@@ -156,13 +159,15 @@ def computer_process(device, verbose, quiet, write_log_file, output_folder, proc
     while not process_queue.empty():
         q_size = process_queue.qsize()
         input_file = process_queue.get()
-        print(f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left")
+        if verbose:
+            print(f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left")
         local_start_time = time.time()
         do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, input_file)
         elapsed_time = time.time() - local_start_time
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
-        print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
+        if verbose:
+            print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
 
 
 def compute_totalsegmentator_segmentations(
@@ -183,7 +188,8 @@ def compute_totalsegmentator_segmentations(
         input_file = idx.strip()
         process_queue.put(input_file)
 
-    print(f"Starting {num_processes} processes")
+    if verbose:
+        print(f"Starting {num_processes} processes")
 
     processes = []
     for i in range(num_processes):
@@ -202,6 +208,7 @@ def compute_totalsegmentator_segmentations(
         p.start()
         processes.append(p)
 
-    print("Waiting for processes to finish")
+    if verbose:
+        print("Waiting for processes to finish")
     for p in processes:
         p.join()
