@@ -6021,38 +6021,52 @@ def aorta_analysis(
     nr_tg=1,
     verbose=False,
     quiet=False,
-    write_log_file=True,
-):
+    write_log_file=True):
     if verbose:
-        print(f"Computing aorta data with {nr_tg} processes on {len(in_files)} files. Output to {output_folder}")
+        print(f"Computing aorta data with max {nr_tg} processes on {len(in_files)} files. Output to {output_folder}")
 
     num_processes = nr_tg
-    process_queue = mp.Queue()
-    for idx in in_files:
-        input_file = idx.strip()
-        process_queue.put(input_file)
+    # no need to spawn more processes than files
+    num_processes = min(num_processes, len(in_files))
 
-    if verbose:
-        print(f"Starting {num_processes} processes")
+    # no need to do multiprocessing for one file
+    if num_processes == 1:
+        input_file = in_files[0].strip()
+        if verbose:
+            print(f"Running aorta analysis on: {input_file}")
+        local_start_time = time.time()
+        do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, input_file)
+        elapsed_time = time.time() - local_start_time
+        if verbose:
+            print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
 
-    processes = []
-    for i in range(num_processes):
-        p = mp.Process(
-            target=computer_process,
-            args=(
-                verbose,
-                quiet,
-                write_log_file,
-                params,
-                output_folder,
-                process_queue,
-                i + 1,
-            ),
-        )
-        p.start()
-        processes.append(p)
+    else:
+        process_queue = mp.Queue()
+        for idx in in_files:
+            input_file = idx.strip()
+            process_queue.put(input_file)
 
-    if verbose:
-        print("Waiting for processes to finish")
-    for p in processes:
-        p.join()
+        if verbose:
+            print(f"Starting {num_processes} processes")
+
+        processes = []
+        for i in range(num_processes):
+            p = mp.Process(
+                target=computer_process,
+                args=(
+                    verbose,
+                    quiet,
+                    write_log_file,
+                    params,
+                    output_folder,
+                    process_queue,
+                    i + 1,
+                ),
+            )
+            p.start()
+            processes.append(p)
+
+        if verbose:
+            print("Waiting for processes to finish")
+        for p in processes:
+            p.join()

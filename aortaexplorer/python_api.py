@@ -6,7 +6,7 @@ from aortaexplorer.general_utils import (
 )
 from aortaexplorer.totalsegmentator_utils import compute_totalsegmentator_segmentations
 from aortaexplorer.aorta_utils import aorta_analysis
-
+from aortaexplorer.measurement_utils import process_measurements
 
 def get_default_parameters():
     default_parms = {
@@ -43,7 +43,7 @@ def aortaexplorer(
     """
     # TODO: Need real article link
     if not quiet:
-        print("\nIf you use this tool please cite AortaExplorer article\n")
+        print("\nIf you use this tool please cite the AortaExplorer article\n")
 
     ts_nr_proc = aorta_parameters.get("num_proc_total_segmentator", 1)
     tg_nr_proc = aorta_parameters.get("num_proc_general", 1)
@@ -80,4 +80,6 @@ def aortaexplorer(
         quiet=quiet,
         write_log_file=write_log_file,
     )
+
+    process_measurements(in_files=in_files, output_folder=output, verbose=verbose, quiet=quiet)
     return True
