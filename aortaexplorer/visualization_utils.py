@@ -578,8 +578,11 @@ class RenderAortaData(RenderTotalSegmentatorData):
         for elem in measurements:
             dist = float(elem[0])
             area = float(elem[1])
-            PlotPoints.InsertNextPoint(dist, 0, 0)
-            PlotScalars.InsertNextValue(area)
+            prc = float(elem[2])
+            # Only plot points that have at most 15% out of scan
+            if prc < 15:
+                PlotPoints.InsertNextPoint(dist, 0, 0)
+                PlotScalars.InsertNextValue(area)
 
         if PlotPoints.GetNumberOfPoints() < 1:
             print(f"No valid data in {data_file}")

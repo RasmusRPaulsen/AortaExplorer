@@ -5385,6 +5385,9 @@ def create_longitudinal_figure_from_straight_volume(
 
 def gather_whole_heart_volumes(segm_folder, stats):
     segm_name_hc = f"{segm_folder}heartchambers_highres.nii.gz"
+    if not os.path.exists(segm_name_hc):
+        return False
+
     segm_data, spacing, size = read_nifti_itk_to_numpy(segm_name_hc)
 
     if segm_data is None:
