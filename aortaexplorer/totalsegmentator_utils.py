@@ -186,7 +186,7 @@ def compute_totalsegmentator_segmentations(
     num_processes = min(num_processes, len(in_files))
 
     # no need to do multiprocessing for one file
-    if num_processes == 1:
+    if len(in_files) == 1:
         input_file = in_files[0].strip()
         if verbose:
             print(f"Running TotalSegmentator on: {input_file}")

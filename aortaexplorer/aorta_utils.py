@@ -6033,7 +6033,7 @@ def aorta_analysis(
     num_processes = min(num_processes, len(in_files))
 
     # no need to do multiprocessing for one file
-    if num_processes == 1:
+    if len(in_files) == 1:
         input_file = in_files[0].strip()
         if verbose:
             print(f"Running aorta analysis on: {input_file}")
