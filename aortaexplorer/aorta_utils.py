@@ -2315,7 +2315,7 @@ def compute_centerline_landmarks_based_on_scan_type(
             use_ts_org_segmentations=use_ts_org_segmentations,
         )
 
-    msg = f"Can not compute centerline landmarks for scan type {scan_type}"
+    msg = f"Can not compute centerline landmarks for scan type {scan_type} for {segm_folder}"
     if not quiet:
         print(msg)
     if write_log_file:
@@ -2765,8 +2765,8 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(
         msg = "CL low idx < 0: something weird. No infrarenal point"
         if verbose:
             print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        # if write_log_file:
+        #     write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return True
 
     low_infra_p = cl.GetPoint(low_idx)
@@ -2799,8 +2799,8 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(
         msg = f"Very low kidney(s) detected. Re-estiming renal point for {cl_file}"
         if verbose:
             print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+        # if write_log_file:
+        #     write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
         locator = vtk.vtkPointLocator()
         locator.SetDataSet(cl)
         locator.BuildLocator()
@@ -2826,11 +2826,11 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(
 
     # If both kidneys are very low. We can not estimat renal point
     if infra_dist < low_dist:
-        msg = f"Can not compute infrarenal point. Probably both kids are too low. For {cl_file}"
+        msg = f"Can not compute infrarenal point. Probably both kidneys are too low. For {cl_file}"
         if verbose:
             print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+        # if write_log_file:
+        #     write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
         return True
 
     infra_p = cl.GetPoint(infra_idx)
@@ -3600,7 +3600,8 @@ def compute_cuts_along_straight_labelmaps(segm_folder, cl_folder, stats_folder, 
 
         ventri_max_dist = np.inf
         if os.path.exists(ventri_in):
-            print("Using ventricularoaoartic point as last point")
+            if verbose:
+                print("Using ventricularoaoartic point as last point")
             try:
                 with open(ventri_in, "r") as openfile:
                     ventri_stats = json.load(openfile)
@@ -4783,7 +4784,8 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, 
     # debug = False
 
     if os.path.exists(out_file_combined_1):
-        print(f"{out_file_combined_1} already exists - skipping")
+        if verbose:
+            print(f"{out_file_combined_1} already exists - skipping")
         return True
 
     if not os.path.exists(straight_label_in_annulus):

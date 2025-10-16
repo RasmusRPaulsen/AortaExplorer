@@ -563,6 +563,7 @@ def extract_max_cut_in_defined_section(
     spacing,
     dims,
     find_minimum=False,
+    verbose=False
 ):
     max_slice_out_rgb = f"{cl_dir}{segment_name}_max_slice_rgb.png"
     max_slice_out_rgb_crop = f"{cl_dir}{segment_name}_max_slice_rgb_crop.png"
@@ -570,7 +571,8 @@ def extract_max_cut_in_defined_section(
     debug = False
 
     if start_cl_dist == np.inf or start_cl_dist == -np.inf or end_cl_dist == np.inf or end_cl_dist == -np.inf:
-        print(f"Can not compute {segment_name} since distances are not defined.")
+        if verbose:
+            print(f"Can not compute {segment_name} since distances are not defined.")
         return True, ""
 
     n_slices = len(cl_sampling)

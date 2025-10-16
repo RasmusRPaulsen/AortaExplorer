@@ -268,7 +268,7 @@ class RenderTotalSegmentatorData:
 
     def generate_actors_from_segment_file_name(self, segm_name, color_name, opacity, smooth="heavy"):
         if not os.path.exists(segm_name):
-            print(f"No {segm_name}")
+            # print(f"No {segm_name}")
             return
         surface = surfutils.convert_label_map_to_surface(segm_name)
         if surface is not None:
