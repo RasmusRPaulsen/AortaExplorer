@@ -162,7 +162,7 @@ AortaExplorer includes a large range of checks for the validity and type of scan
 
 ## Example data and outputs
 
-**Visualization of a full (type 2) aorta:**
+**Visualization of a full (type 1) aorta:**
 
 ![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortaexplorer_visualization2.png)
 
