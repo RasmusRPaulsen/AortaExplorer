@@ -3,7 +3,7 @@
 
 An open source tool for accurate segmentation of the aorta in 3D computed tomography scans. 
 
-![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/figs/aortaexplorer_visualization.png)
+![AortaExplorer](figs/aortaexplorer_visualization.png)
 
 **Highlights:**
 
