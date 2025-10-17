@@ -133,21 +133,21 @@ def main():
         "--max_hu",
         type=float,
         help="The lowest possible maximum HU value for lumen segmentation",
-        default=80,
+        default=400,
     )
     parser.add_argument(
         "-clhu",
         "--calc_low_hu",
         type=float,
         help="The minimum HU value for calcification segmentation",
-        default=80,
+        default=400,
     )
     parser.add_argument(
         "-cmhu",
         "--calc_max_hu",
         type=float,
         help="The maximum HU value for calcification segmentation",
-        default=80,
+        default=1500,
     )
     parser.add_argument(
         "-ts",

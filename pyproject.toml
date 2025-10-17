@@ -4,15 +4,15 @@ version = "0.1.0"
 requires-python = ">=3.9"
 description = "AortaExplorer can segment and analyse the human aorta in CT scans."
 readme = "readme.md"
-license = { file = "LICENSE" }
+license = "MIT"
 authors = [
     { name = "Rasmus R. Paulsen", email = "rapa@dtu.dk"}
 ]
+license-files = ["LICEN[CS]E*"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Image Recognition",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
@@ -56,6 +56,9 @@ dev = [
 [build-system]
 requires = ["setuptools>=67.8.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+exclude=["figs"]
 
 [tool.codespell]
 skip = '.git,*.pdf,*.svg'
