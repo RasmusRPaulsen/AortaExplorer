@@ -13,7 +13,7 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 - Computes tortuosity.
 - Lumen areas have been validated against a large (10.000+) population with manual annotations.
 - Tortuosity measures on a large population (10.000+) are consistent with previously reported results.
-- Automatically determines [scan field-of-view (FOW)](SCANFOV.MD)
+- Automatically determines [scan field-of-view (FOW)](SCANFOV.md)
 - Provides an experimental and non-validated calcification visualization.
 - Generates visualizations for easy validation of outputs.
 - Designed as a research tool for population studies.
