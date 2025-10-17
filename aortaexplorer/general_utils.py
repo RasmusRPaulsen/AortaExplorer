@@ -44,6 +44,8 @@ def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str],
                 with open(in_name, "r") as f:
                     in_files = f.readlines()
                 in_files = [x.strip() for x in in_files]
+                # Remove empty lines
+                in_files = [x for x in in_files if x]
                 if len(in_files) < 1:
                     msg = f"No files found in {in_name}"
                     print(msg)

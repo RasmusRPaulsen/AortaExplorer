@@ -306,10 +306,22 @@ def refine_single_aorta_part(
     low_thresh = avg_hu - 5 * hu_stdev
     high_thresh = avg_hu + 3 * hu_stdev
 
+    # TODO: Update this to something smarter
+    high_std = False
+    if hu_stdev > 100:
+        high_std = True
+        msg = f"High HU stdev in {input_file} avg: {avg_hu:.1f} stdev: {hu_stdev:.1f}. Could be caused by metal implants."
+        if verbose:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+
     low_hu_values = False
     if q01_hu < params["aorta_min_hu_value"]:
         low_hu_values = True
-        msg = f"Low HU values in {input_file} avg: {avg_hu:.1f} q01: {q01_hu:.1f} low thresh {low_thresh:.1f}"
+        msg = f"Low threshold HU values in {input_file} avg: {avg_hu:.1f} q01: {q01_hu:.1f} low thresh {low_thresh:.1f}"
+        if high_std:
+            msg += f". Could be caused by the high stdev {hu_stdev}."
         if verbose:
             print(msg)
         if write_log_file:
@@ -1639,7 +1651,9 @@ def compute_aorta_scan_type(
         scan_type = "2"
         scan_type_desc = "Lower aorta with iliac bifurcation (best guess)"
     else:
-        msg = f"Could not determine scan type. sides: {sides}, aortic_arch_present: {aortic_arch_present}, lvot_present: {lvot_present}, il_left: {il_left}, il_right: {il_right}, n_aorta_parts: {n_aorta_parts}"
+        msg = (f"Could not determine scan type. sides: {list(sides)}, aortic_arch_present: {aortic_arch_present}, "
+               f"lvot_present: {lvot_present}, il_left: {il_left}, il_right: {il_right}, n_aorta_parts: {n_aorta_parts}"
+               f" for {input_file}")
         if not quiet:
             print(msg)
         if write_log_file:

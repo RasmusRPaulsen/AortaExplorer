@@ -27,6 +27,14 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/DTU_085.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/"
     output_folder = "C:/data/AortaExplorer/testoutput/"
+
+    # input_file = "/storage/Data/DTU-CGPS-1/NIFTI/CGPS-1_10407_SERIES0019.nii.gz"
+    # output_folder = "/data/Data/RAPA/AortaExplorer/output/"
+
+    input_file = "/data/Data/RAPA/totalsegmentator_all_ct/s0016_ct.nii.gz"
+    output_folder = "/data/Data/RAPA/AortaExplorer/ts_train_output/"
+
+
     device = "gpu"
     verbose = True
     quiet = False
