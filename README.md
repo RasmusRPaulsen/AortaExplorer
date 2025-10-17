@@ -131,7 +131,7 @@ The `params` is a dictionary, where the individual values can be changed before 
 
 AortaExplorer computes aortic segments based on the ESC standard. This is illustrated here:
 
-![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/figs/aortic_sections.png)
+![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortic_sections.png)
 
 From these, the following cross sectional areas are computed:
 
