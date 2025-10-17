@@ -3,7 +3,7 @@
 
 An open source tool for accurate segmentation of the aorta in 3D computed tomography scans. 
 
-![AortaExplorer](figs/aortaexplorer_visualization.png)
+![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortaexplorer_visualization.png)
 
 **Highlights:**
 
@@ -13,6 +13,7 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 - Computes tortuosity.
 - Lumen areas have been validated against a large (10.000+) population with manual annotations.
 - Tortuosity measures on a large population (10.000+) are consistent with previously reported results.
+- Automatically determines [scan field-of-view (FOW)](SCANFOV.MD)
 - Provides an experimental and non-validated calcification visualization.
 - Generates visualizations for easy validation of outputs.
 - Designed as a research tool for population studies.
@@ -135,7 +136,7 @@ AortaExplorer computes aortic segments based on the ESC standard. This is illust
 
 From these, the following cross sectional areas are computed:
 
-![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/figs/aortic_measurements.png)
+![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortic_measurements.png)
 
 
 ## TotalSegmentator aorta segmentations and lumen segmentations
@@ -163,15 +164,15 @@ AortaExplorer includes a large range of checks for the validity and type of scan
 
 **Visualization of a full (type 2) aorta:**
 
-![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/figs/aortaexplorer_visualization2.png)
+![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortaexplorer_visualization2.png)
 
 **Visualization of an abdominal (type 2) aorta:**
 
-![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/figs/aortaexplorer_visualization3.png)
+![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortaexplorer_visualization3.png)
 
 **Visualization of cardiac (type 5) aorta:**
 
-![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/figs/aortaexplorer_visualization4.png)
+![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortaexplorer_visualization4.png)
 
 
 ## Relevant references
