@@ -775,6 +775,7 @@ def extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write
     iliac_left_segm_id = 65
     iliac_right_segm_id = 66
     top_length = 10.0  # mm
+    min_size = 10 * 5 * 5 # mm^3
 
     if os.path.exists(segm_out_l_name) and os.path.exists(segm_out_r_name):
         if verbose:
@@ -803,6 +804,9 @@ def extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write
     slice_thickness = spacing[2]
 
     n_top_slices = int(top_length / slice_thickness)
+    min_size_vox = min_size / (spacing[0] * spacing[1] * spacing[2])
+    if verbose:
+        print(f"n_top_slices: {n_top_slices} min_size_vox: {min_size_vox:.1f}")
 
     label_img_np = sitk.GetArrayFromImage(label_img)
     mask_np_left = label_img_np == iliac_left_segm_id
@@ -820,7 +824,8 @@ def extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write
                 elif start_slice - z > n_top_slices:
                     mask_np_left[z, :, :] = 0
 
-        large_components, _ = get_components_over_certain_size(mask_np_left, 500, 1)
+        large_components, _ = get_components_over_certain_size(mask_np_left, min_size_vox,
+                                                               1)
         if large_components is None or np.sum(large_components) == 0:
             if verbose:
                 print(f"No iliac artery left found in {input_file}")
@@ -844,7 +849,7 @@ def extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write
                 elif start_slice - z > n_top_slices:
                     mask_np_right[z, :, :] = 0
 
-        large_components, _ = get_components_over_certain_size(mask_np_right, 500, 1)
+        large_components, _ = get_components_over_certain_size(mask_np_right, min_size_vox, 1)
         if large_components is None or np.sum(large_components) == 0:
             if verbose:
                 print(f"No iliac artery right found in {input_file}")

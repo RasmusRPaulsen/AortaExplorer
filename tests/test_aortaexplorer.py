@@ -41,10 +41,11 @@ def test_aortaexplorer():
 
     # TYpe 2 with major aneurysm and stents
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0045_ct.nii.gz"
-    # output_folder = "C:/data/AortaExplorer/testoutput/"
     # params["compute_centerline_from_ts_segmentation"] = False
 
-    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0016_ct.nii.gz"
+    # output_folder = "C:/data/AortaExplorer/testoutput/"
+
+    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
 
