@@ -161,12 +161,16 @@ def compute_segmentation_volume(segmentation_file, segm_id):
     """
     Compute the volume of a segmentation
     """
-    try:
-        segmentation = sitk.ReadImage(segmentation_file)
-    except RuntimeError as e:
-        print(f"Got an exception {str(e)}")
-        print(f"Error reading {segmentation_file}")
+    segmentation, _ = read_nifti_file_robustly(segmentation_file)
+    if segmentation is None:
         return 0
+    #
+    # try:
+    #     segmentation = sitk.ReadImage(segmentation_file)
+    # except RuntimeError as e:
+    #     print(f"Got an exception {str(e)}")
+    #     print(f"Error reading {segmentation_file}")
+    #     return 0
 
     spacing = segmentation.GetSpacing()
 

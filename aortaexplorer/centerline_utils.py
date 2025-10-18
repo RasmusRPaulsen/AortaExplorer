@@ -4,6 +4,7 @@ import vtk
 from scipy.interpolate import UnivariateSpline
 from aortaexplorer.curvedreformat_utils import CurvedPlanarReformat
 from aortaexplorer.general_utils import write_message_to_log_file, read_json_file
+from aortaexplorer.io_utils import read_nifti_file_robustly
 import SimpleITK as sitk
 import json
 from skimage.measure import label, regionprops, find_contours
@@ -410,19 +411,26 @@ def sample_along_single_straight_labelmap(
     the straight versus the original centerline. The renal section is for example defined using CL distances.
     We use the original volume to check for out-of-scan values (typically -2048)
     """
-    try:
-        label_img = sitk.ReadImage(straight_label_in)
-    except RuntimeError as e:
-        print(f"Got an exception {str(e)}")
-        print(f"Error reading {straight_label_in}")
+    label_img, _ = read_nifti_file_robustly(straight_label_in)
+    if label_img is None:
+        return False
+    ct_img, _ = read_nifti_file_robustly(straight_volume_in)
+    if ct_img is None:
         return False
 
-    try:
-        ct_img = sitk.ReadImage(straight_volume_in)
-    except RuntimeError as e:
-        print(f"Got an exception {str(e)}")
-        print(f"Error reading {straight_volume_in}")
-        return False
+    # try:
+    #     label_img = sitk.ReadImage(straight_label_in)
+    # except RuntimeError as e:
+    #     print(f"Got an exception {str(e)}")
+    #     print(f"Error reading {straight_label_in}")
+    #     return False
+    #
+    # try:
+    #     ct_img = sitk.ReadImage(straight_volume_in)
+    # except RuntimeError as e:
+    #     print(f"Got an exception {str(e)}")
+    #     print(f"Error reading {straight_volume_in}")
+    #     return False
 
     label_img_np = sitk.GetArrayFromImage(label_img)
     label_img_np = label_img_np.transpose(2, 1, 0)

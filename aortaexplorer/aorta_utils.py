@@ -1778,27 +1778,34 @@ def compute_aorta_iliac_artery_landmark(segm_folder, quiet, write_log_file, outp
     if use_ts_org_segmentations:
         segm_aorta_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
 
-    try:
-        label_img_l = sitk.ReadImage(segm_l_name)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_l_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_l = read_nifti_with_logging_cached(segm_l_name, False, quiet, write_log_file, output_folder)
+    if label_img_l is None:
         return None
+    label_img_r = read_nifti_with_logging_cached(segm_r_name, False, quiet, write_log_file, output_folder)
+    if label_img_r is None:
+        return None
+
+    # try:
+    #     label_img_l = sitk.ReadImage(segm_l_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_l_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return None
 
     label_img_l_np = sitk.GetArrayFromImage(label_img_l)
 
-    try:
-        label_img_r = sitk.ReadImage(segm_r_name)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_r_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        return None
+    # try:
+    #     label_img_r = sitk.ReadImage(segm_r_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_r_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return None
     label_img_r_np = sitk.GetArrayFromImage(label_img_r)
 
     # try:
@@ -1898,27 +1905,35 @@ def compute_centerline_landmarks_for_aorta_type_2(
     f_p_out.write(f"{start_p[0]} {start_p[1]} {start_p[2]}")
     f_p_out.close()
 
-    try:
-        sdf_img = sitk.ReadImage(sdf_name)
-    except RuntimeError as e:
-        msg = f"Could not read {sdf_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    sdf_img = read_nifti_with_logging_cached(sdf_name, False, quiet, write_log_file, output_folder)
+    if sdf_img is None:
         return False
+    #
+    # try:
+    #     sdf_img = sitk.ReadImage(sdf_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {sdf_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     sdf_np = sitk.GetArrayFromImage(sdf_img)
-
-    try:
-        label_img = sitk.ReadImage(aorta_name)
-    except RuntimeError as e:
-        msg = f"Could not read {aorta_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img = read_nifti_with_logging_cached(aorta_name, False, quiet, write_log_file, output_folder)
+    if label_img is None:
         return False
+    #
+    #
+    # try:
+    #     label_img = sitk.ReadImage(aorta_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {aorta_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     label_img_np = sitk.GetArrayFromImage(label_img)
 
@@ -2101,28 +2116,36 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    try:
-        sdf_img = sitk.ReadImage(sdf_name)
-    except RuntimeError as e:
-        msg = f"Could not read {sdf_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    sdf_img = read_nifti_with_logging_cached(sdf_name, False, quiet, write_log_file, output_folder)
+    if sdf_img is None:
         return False
+    #
+    # try:
+    #     sdf_img = sitk.ReadImage(sdf_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {sdf_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     sdf_np = sitk.GetArrayFromImage(sdf_img)
 
-    # Start by the annulus part (aorta+LV)
-    try:
-        label_img = sitk.ReadImage(aorta_lv_name)
-    except RuntimeError as e:
-        msg = f"Could not read {aorta_lv_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img = read_nifti_with_logging_cached(aorta_lv_name, False, quiet, write_log_file, output_folder)
+    if label_img is None:
         return False
+    #
+    # # Start by the annulus part (aorta+LV)
+    # try:
+    #     label_img = sitk.ReadImage(aorta_lv_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {aorta_lv_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     label_img_np = sitk.GetArrayFromImage(label_img)
     spacing = label_img.GetSpacing()
@@ -2245,27 +2268,35 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    try:
-        sdf_img = sitk.ReadImage(sdf_name)
-    except RuntimeError as e:
-        msg = f"Could not read {sdf_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    sdf_img = read_nifti_with_logging_cached(sdf_name, False, quiet, write_log_file, output_folder)
+    if sdf_img is None:
         return False
+    #
+    # try:
+    #     sdf_img = sitk.ReadImage(sdf_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {sdf_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     sdf_np = sitk.GetArrayFromImage(sdf_img)
-
-    try:
-        label_img = sitk.ReadImage(aorta_name)
-    except RuntimeError as e:
-        msg = f"Could not read {aorta_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img = read_nifti_with_logging_cached(aorta_name, verbose, quiet, write_log_file, output_folder)
+    if label_img is None:
         return False
+    #
+    #
+    # try:
+    #     label_img = sitk.ReadImage(aorta_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {aorta_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     label_img_np = sitk.GetArrayFromImage(label_img)
     spacing = label_img.GetSpacing()
@@ -2767,27 +2798,36 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    try:
-        sdf_img = sitk.ReadImage(sdf_name)
-    except RuntimeError as e:
-        msg = f"Could not read {sdf_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    sdf_img = read_nifti_with_logging_cached(sdf_name, verbose, quiet, write_log_file, output_folder)
+    if sdf_img is None:
         return False
+
+    # try:
+    #     sdf_img = sitk.ReadImage(sdf_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {sdf_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     sdf_data = sitk.GetArrayFromImage(sdf_img)
 
-    try:
-        label_img = sitk.ReadImage(total_in_name)
-    except RuntimeError as e:
-        msg = f"Could not read {total_in_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img = read_nifti_with_logging_cached(total_in_name, verbose, quiet, write_log_file, output_folder)
+    if label_img is None:
         return False
+    #
+    #
+    # try:
+    #     label_img = sitk.ReadImage(total_in_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {total_in_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     label_img_np = sitk.GetArrayFromImage(label_img)
 
@@ -3417,15 +3457,19 @@ def sample_aorta_center_line_hu_stats(input_file, cl_folder, stats_folder, verbo
             return None
         max_dist = ventri_stats["ventri_cl_dist"]
 
-    try:
-        img = sitk.ReadImage(ct_name)
-    except RuntimeError as e:
-        msg = f"Could not read {ct_name}: Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    img = read_nifti_with_logging_cached(ct_name, verbose, quiet, write_log_file, output_folder)
+    if img is None:
         return None
+
+    # try:
+    #     img = sitk.ReadImage(ct_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {ct_name}: Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return None
 
     use_mean_filter = False
     if use_mean_filter:
@@ -3531,15 +3575,19 @@ def compute_straightened_volume_using_cpr(
 
     scan_type = scan_type_stats["scan_type"]
 
-    try:
-        ct_img = sitk.ReadImage(input_file)
-    except RuntimeError as e:
-        msg = f"Could not read {input_file} for straigthening: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    ct_img = read_nifti_with_logging_cached(input_file, verbose, quiet, write_log_file, output_folder)
+    if ct_img is None:
         return False
+    #
+    # try:
+    #     ct_img = sitk.ReadImage(input_file)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {input_file} for straigthening: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     if n_aorta_parts == 1:
         cl_file = f"{cl_folder}aorta_centerline.vtp"
@@ -3570,15 +3618,19 @@ def compute_straightened_volume_using_cpr(
                 label_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
 
-        try:
-            label_img = sitk.ReadImage(label_name)
-        except RuntimeError as e:
-            msg = f"Could not read {label_name} for straigthening: {str(e)} got an exception"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        label_img = read_nifti_with_logging_cached(label_name, verbose, quiet, write_log_file, output_folder)
+        if label_img is None:
             return False
+
+        # try:
+        #     label_img = sitk.ReadImage(label_name)
+        # except RuntimeError as e:
+        #     msg = f"Could not read {label_name} for straigthening: {str(e)} got an exception"
+        #     if not quiet:
+        #         print(msg)
+        #     if write_log_file:
+        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        #     return False
 
         if not clutils.compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name, label_straight_name, verbose):
             msg = f"Error computing straightened volume using CPR for {file_name}"
@@ -3613,15 +3665,19 @@ def compute_straightened_volume_using_cpr(
                     label_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_{part}_label.nii.gz"
 
-            try:
-                label_img = sitk.ReadImage(label_name)
-            except RuntimeError as e:
-                msg = f"Could not read {label_name} for straigthening: {str(e)} got an exception"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            label_img = read_nifti_with_logging_cached(label_name, verbose, quiet, write_log_file, output_folder)
+            if label_img is None:
                 return False
+            #
+            # try:
+            #     label_img = sitk.ReadImage(label_name)
+            # except RuntimeError as e:
+            #     msg = f"Could not read {label_name} for straigthening: {str(e)} got an exception"
+            #     if not quiet:
+            #         print(msg)
+            #     if write_log_file:
+            #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            #     return False
 
             if not clutils.compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name, label_straight_name, verbose):
                 msg = f"Error computing straightened volume using CPR for {file_name}"
@@ -4037,25 +4093,35 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    try:
-        label_img_annulus = sitk.ReadImage(straight_label_in_annulus)
-    except RuntimeError as e:
-        msg = f"Could not read {straight_label_in_annulus}: Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_annulus = read_nifti_with_logging_cached(straight_label_in_annulus, verbose, quiet, write_log_file,
+                                                       output_folder)
+    if label_img_annulus is None:
         return False
 
-    try:
-        straight_img_annulus = sitk.ReadImage(straight_vol_in_annulus)
-    except RuntimeError as e:
-        msg = f"Could not read {straight_vol_in_annulus}: Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    # try:
+    #     label_img_annulus = sitk.ReadImage(straight_label_in_annulus)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {straight_label_in_annulus}: Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    straight_img_annulus = read_nifti_with_logging_cached(straight_vol_in_annulus, verbose, quiet, write_log_file,
+                                                          output_folder)
+    if straight_img_annulus is None:
         return False
+
+    # try:
+    #     straight_img_annulus = sitk.ReadImage(straight_vol_in_annulus)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {straight_vol_in_annulus}: Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     straight_img_annulus_np = sitk.GetArrayFromImage(straight_img_annulus)
     straight_img_annulus_np = straight_img_annulus_np.transpose(2, 1, 0)
@@ -4063,25 +4129,35 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(
     label_img_annulus_np = sitk.GetArrayFromImage(label_img_annulus)
     label_img_annulus_np = label_img_annulus_np.transpose(2, 1, 0)
 
-    try:
-        label_img_descending = sitk.ReadImage(straight_label_in_descending)
-    except RuntimeError as e:
-        msg = f"Could not read {straight_label_in_descending}: Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_descending = read_nifti_with_logging_cached(straight_label_in_descending, verbose, quiet, write_log_file,
+                                                         output_folder)
+    if label_img_descending is None:
+        return False
+    #
+    # try:
+    #     label_img_descending = sitk.ReadImage(straight_label_in_descending)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {straight_label_in_descending}: Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    straight_img_descending = read_nifti_with_logging_cached(straight_vol_in_descending, verbose, quiet,
+                                                             write_log_file, output_folder)
+    if straight_img_descending is None:
         return False
 
-    try:
-        straight_img_descending = sitk.ReadImage(straight_vol_in_descending)
-    except RuntimeError as e:
-        msg = f"Could not read {straight_vol_in_descending}: Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        return False
+    # try:
+    #     straight_img_descending = sitk.ReadImage(straight_vol_in_descending)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {straight_vol_in_descending}: Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     straight_img_descending_np = sitk.GetArrayFromImage(straight_img_descending)
     straight_img_descending_np = straight_img_descending_np.transpose(2, 1, 0)
@@ -4451,25 +4527,34 @@ def identy_and_extract_samples_from_straight_volume(
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    try:
-        label_img = sitk.ReadImage(straight_label_in)
-    except RuntimeError as e:
-        msg = f"Got an exception {str(e)} reading {straight_label_in}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img = read_nifti_with_logging_cached(straight_label_in, verbose, quiet, write_log_file, output_folder)
+    if label_img is None:
         return False
 
-    try:
-        straight_img = sitk.ReadImage(straight_vol_in)
-    except RuntimeError as e:
-        msg = f"Got an exception {str(e)} reading {straight_vol_in}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    # try:
+    #     label_img = sitk.ReadImage(straight_label_in)
+    # except RuntimeError as e:
+    #     msg = f"Got an exception {str(e)} reading {straight_label_in}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+
+    straight_img = read_nifti_with_logging_cached(straight_vol_in, verbose, quiet, write_log_file, output_folder)
+    if straight_img is None:
         return False
+
+    # try:
+    #     straight_img = sitk.ReadImage(straight_vol_in)
+    # except RuntimeError as e:
+    #     msg = f"Got an exception {str(e)} reading {straight_vol_in}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     straight_img_np = sitk.GetArrayFromImage(straight_img)
     straight_img_np = straight_img_np.transpose(2, 1, 0)
@@ -4908,25 +4993,35 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, 
     if verbose:
         print(f"Creating long figure axis using {straight_label_in_annulus} and {straight_label_in_descending}")
 
-    try:
-        label_img_annulus = sitk.ReadImage(straight_label_in_annulus)
-    except RuntimeError as e:
-        msg = f"Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_annulus = read_nifti_with_logging_cached(straight_label_in_annulus, verbose, quiet, write_log_file,
+                                                       output_folder)
+    if label_img_annulus is None:
+        return False
+    #
+    # try:
+    #     label_img_annulus = sitk.ReadImage(straight_label_in_annulus)
+    # except RuntimeError as e:
+    #     msg = f"Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    straight_img_annulus = read_nifti_with_logging_cached(straight_vol_in_annulus, verbose, quiet, write_log_file,
+                                                          output_folder)
+    if straight_img_annulus is None:
         return False
 
-    try:
-        straight_img_annulus = sitk.ReadImage(straight_vol_in_annulus)
-    except RuntimeError as e:
-        msg = f"Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        return False
+    # try:
+    #     straight_img_annulus = sitk.ReadImage(straight_vol_in_annulus)
+    # except RuntimeError as e:
+    #     msg = f"Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     straight_img_np_annulus = sitk.GetArrayFromImage(straight_img_annulus)
     straight_img_np_annulus = straight_img_np_annulus.transpose(2, 1, 0)
@@ -4934,25 +5029,35 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, 
     label_img_np_annulus = sitk.GetArrayFromImage(label_img_annulus)
     label_img_np_annulus = label_img_np_annulus.transpose(2, 1, 0)
 
-    try:
-        label_img_descending = sitk.ReadImage(straight_label_in_descending)
-    except RuntimeError as e:
-        msg = f"Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_descending = read_nifti_with_logging_cached(straight_label_in_descending, verbose, quiet, write_log_file,
+                                                          output_folder)
+    if label_img_descending is None:
         return False
 
-    try:
-        straight_img_descending = sitk.ReadImage(straight_vol_in_descending)
-    except RuntimeError as e:
-        msg = f"Got an exception {str(e)}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    straight_img_descending = read_nifti_with_logging_cached(straight_vol_in_descending, verbose, quiet, write_log_file,
+                                                             output_folder)
+    if straight_img_descending is None:
         return False
+
+    # try:
+    #     label_img_descending = sitk.ReadImage(straight_label_in_descending)
+    # except RuntimeError as e:
+    #     msg = f"Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    # try:
+    #     straight_img_descending = sitk.ReadImage(straight_vol_in_descending)
+    # except RuntimeError as e:
+    #     msg = f"Got an exception {str(e)}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     straight_img_np_descending = sitk.GetArrayFromImage(straight_img_descending)
     straight_img_np_descending = straight_img_np_descending.transpose(2, 1, 0)
@@ -5265,25 +5370,35 @@ def create_longitudinal_figure_from_straight_volume(
     if verbose:
         print(f"Computing long axis figures from {straight_label_in}")
 
-    try:
-        label_img = sitk.ReadImage(straight_label_in)
-    except RuntimeError as e:
-        msg = f"Got an exception {str(e)} reading {straight_label_in}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img = read_nifti_with_logging_cached(straight_label_in, verbose, quiet, write_log_file,
+                                               output_folder)
+    if label_img is None:
         return False
+    #
+    # try:
+    #     label_img = sitk.ReadImage(straight_label_in)
+    # except RuntimeError as e:
+    #     msg = f"Got an exception {str(e)} reading {straight_label_in}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
-    try:
-        straight_img = sitk.ReadImage(straight_vol_in)
-    except RuntimeError as e:
-        msg = f"Got an exception {str(e)} reading {straight_vol_in}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    straight_img = read_nifti_with_logging_cached(straight_vol_in, verbose, quiet, write_log_file,
+                                                  output_folder)
+    if straight_img is None:
         return False
+    #
+    # try:
+    #     straight_img = sitk.ReadImage(straight_vol_in)
+    # except RuntimeError as e:
+    #     msg = f"Got an exception {str(e)} reading {straight_vol_in}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     straight_img_np = sitk.GetArrayFromImage(straight_img)
     straight_img_np = straight_img_np.transpose(2, 1, 0)
@@ -5915,25 +6030,13 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         success = compute_aorta_scan_type(input_file, segm_folder, lm_folder, stats_folder, verbose, quiet,
                                           write_log_file, output_folder)
     if success:
-        success = compute_centerline_landmarks_based_on_scan_type(
-        segm_folder,
-        lm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder,
-        use_ts_org_segmentations=use_org_ts_segmentations)
+        success = extract_surfaces_for_centerlines(segm_folder, stats_folder, surface_folder, verbose, quiet,
+                                                   write_log_file, output_folder,
+                                                   use_ts_org_segmentations=use_org_ts_segmentations)
     if success:
-        success = extract_surfaces_for_centerlines(
-        segm_folder,
-        stats_folder,
-        surface_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder,
-        use_ts_org_segmentations=use_org_ts_segmentations)
+        success = compute_centerline_landmarks_based_on_scan_type(segm_folder, lm_folder, stats_folder, verbose,
+                                                                  quiet, write_log_file, output_folder,
+                                                                  use_ts_org_segmentations=use_org_ts_segmentations)
     if success:
         success = compute_center_line(
         stats_folder,
