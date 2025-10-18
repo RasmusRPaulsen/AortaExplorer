@@ -4,6 +4,7 @@ from pathlib import Path
 import time
 import multiprocessing as mp
 from aortaexplorer.general_utils import write_message_to_log_file
+from aortaexplorer.io_utils import read_nifti_with_logging
 import SimpleITK as sitk
 import numpy as np
 
