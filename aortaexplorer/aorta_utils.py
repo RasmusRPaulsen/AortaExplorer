@@ -225,7 +225,7 @@ def refine_single_aorta_part(
     debug = False
 
     if os.path.exists(segm_out_name):
-        if not quiet:
+        if verbose:
             print(f"{segm_out_name} already exists - skipping")
         return True
 
@@ -240,15 +240,19 @@ def refine_single_aorta_part(
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    try:
-        label_img_aorta = sitk.ReadImage(segm_in_name)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_in_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_aorta = read_nifti_with_logging_cached(segm_in_name, verbose, quiet, write_log_file, output_folder)
+    if label_img_aorta is None:
         return False
+    #
+    # try:
+    #     label_img_aorta = sitk.ReadImage(segm_in_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_in_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     spacing = label_img_aorta.GetSpacing()
     # in_slice_spacing = spacing[0]
@@ -519,7 +523,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     aorta_segm_id = 52
     aorta_hires_segm_id = 6
 
-    ct_name = input_file
+    # ct_name = input_file
     # debug = False
 
     if os.path.exists(segm_out_name):
@@ -704,25 +708,33 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
             return False
 
         # make a combined segmentation
-        try:
-            label_img_annulus = sitk.ReadImage(segm_in_name_annulus)
-        except RuntimeError as e:
-            msg = f"Could not read {segm_in_name_annulus}: {str(e)} got an exception"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        label_img_annulus = read_nifti_with_logging_cached(segm_in_name_annulus, verbose, quiet, write_log_file)
+        if label_img_annulus is None:
             return False
+        
+        # try:
+        #     label_img_annulus = sitk.ReadImage(segm_in_name_annulus)
+        # except RuntimeError as e:
+        #     msg = f"Could not read {segm_in_name_annulus}: {str(e)} got an exception"
+        #     if not quiet:
+        #         print(msg)
+        #     if write_log_file:
+        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        #     return False
 
-        try:
-            label_img_descending = sitk.ReadImage(segm_in_name_descending)
-        except RuntimeError as e:
-            msg = f"Could not read {segm_in_name_descending}: {str(e)} got an exception"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        label_img_descending = read_nifti_with_logging_cached(segm_in_name_descending, verbose, quiet, write_log_file)
+        if label_img_descending is None:
             return False
+        # 
+        # try:
+        #     label_img_descending = sitk.ReadImage(segm_in_name_descending)
+        # except RuntimeError as e:
+        #     msg = f"Could not read {segm_in_name_descending}: {str(e)} got an exception"
+        #     if not quiet:
+        #         print(msg)
+        #     if write_log_file:
+        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        #     return False
 
         label_img_comb = sitk.GetArrayFromImage(label_img_annulus) | sitk.GetArrayFromImage(label_img_descending)
 
@@ -758,8 +770,6 @@ def extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write
     """
     segm_out_l_name = f"{segm_folder}iliac_artery_left_top.nii.gz"
     segm_out_r_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
-    # surf_out_l_name = f'{surface_folder}iliac_artery_left_top.vtk'
-    # surf_out_r_name = f'{surface_folder}iliac_artery_right_top.vtk'
 
     segm_in_name = f"{segm_folder}total.nii.gz"
     iliac_left_segm_id = 65
@@ -767,22 +777,26 @@ def extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write
     top_length = 10.0  # mm
 
     if os.path.exists(segm_out_l_name) and os.path.exists(segm_out_r_name):
-        if not quiet:
+        if verbose:
             print(f"{segm_out_l_name} and {segm_out_r_name} already exist - skipping")
         return True
 
     if verbose:
         print(f"Extracting top {top_length} mm of iliac arteries to {segm_out_l_name} and {segm_out_r_name}")
 
-    try:
-        label_img = sitk.ReadImage(segm_in_name)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_in_name}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img = read_nifti_with_logging_cached(segm_in_name, verbose, quiet, write_log_file, output_folder)
+    if label_img is None:
         return False
+    # 
+    # try:
+    #     label_img = sitk.ReadImage(segm_in_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_in_name}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     spacing = label_img.GetSpacing()
     # in_slice_spacing = spacing[0]
@@ -871,7 +885,7 @@ def extract_aortic_calcifications(
     debug = False
 
     if os.path.exists(calcification_stats_file):
-        if not quiet:
+        if verbose:
             print(f"{calcification_stats_file} already exists - skipping")
         return True
 
@@ -879,25 +893,33 @@ def extract_aortic_calcifications(
         print(f"Computing aortic calcifications to {segm_out_name}")
 
     stats = {}
-    try:
-        label_img_aorta = sitk.ReadImage(segm_in_name_hires)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_in_name_hires}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_aorta = read_nifti_with_logging_cached(segm_in_name_hires, verbose, quiet, write_log_file, output_folder)
+    if label_img_aorta is None:
         return False
 
-    try:
-        ct_img = sitk.ReadImage(input_file)
-    except RuntimeError as e:
-        msg = f"Could not read {input_file} for calcification segmentation: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    ct_img = read_nifti_with_logging_cached(input_file, verbose, quiet, write_log_file, output_folder)
+    if ct_img is None:
         return False
+
+    # try:
+    #     label_img_aorta = sitk.ReadImage(segm_in_name_hires)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_in_name_hires}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    # try:
+    #     ct_img = sitk.ReadImage(input_file)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {input_file} for calcification segmentation: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     spacing = ct_img.GetSpacing()
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
@@ -993,25 +1015,35 @@ def check_for_aneurysm_sac(segm_folder, stats_folder, verbose, quiet, write_log_
     #     print(f"Found {n_aorta_parts} aorta parts - not computing aneurysm sac statistics. We can only handle one part.")
     #     return True
 
-    try:
-        label_img_aorta_raw = sitk.ReadImage(segm_in_name_hires)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_in_name_hires}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_aorta_raw = read_nifti_with_logging_cached(segm_in_name_hires, verbose, quiet, write_log_file,
+                                                         output_folder)
+    if label_img_aorta_raw is None:
         return False
 
-    try:
-        label_img_aorta_lumen = sitk.ReadImage(segm_lumen_in)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_lumen_in}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_aorta_lumen = read_nifti_with_logging_cached(segm_lumen_in, verbose, quiet, write_log_file,
+                                                          output_folder)
+    if label_img_aorta_lumen is None:
         return False
+
+    # try:
+    #     label_img_aorta_raw = sitk.ReadImage(segm_in_name_hires)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_in_name_hires}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    # try:
+    #     label_img_aorta_lumen = sitk.ReadImage(segm_lumen_in)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_lumen_in}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     calc_stats = read_json_file(calcification_stats_file)
     if calc_stats:
@@ -1119,28 +1151,39 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, 
         f_p_out.close()
         return True
 
-    try:
-        label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_aorta = read_nifti_with_logging_cached(segm_name_aorta, verbose, quiet, write_log_file, output_folder)
+    if label_img_aorta is None:
         return False
-
-    try:
-        label_img_lv = sitk.ReadImage(segm_name_hc)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    
+    label_img_lv = read_nifti_with_logging_cached(segm_name_hc, verbose, quiet, write_log_file, output_folder)
+    if label_img_lv is None:
         f_p_out = open(ventricularoaortic_p_none_out_file, "w")
         f_p_out.write("no point")
-        f_p_out.close()
+        f_p_out.close()        
         return True
+    # 
+    # try:
+    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    # try:
+    #     label_img_lv = sitk.ReadImage(segm_name_hc)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     f_p_out = open(ventricularoaortic_p_none_out_file, "w")
+    #     f_p_out.write("no point")
+    #     f_p_out.close()
+    #     return True
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     label_img_lv_np = sitk.GetArrayFromImage(label_img_lv)
@@ -5815,15 +5858,8 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
     if success:
         success = extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
     if success:
-        success = extract_aortic_calcifications(
-        input_file,
-        params,
-        segm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder)
+        success = extract_aortic_calcifications(input_file, params, segm_folder, stats_folder, verbose, quiet,
+                                                write_log_file, output_folder)
     if success:
         success = check_for_aneurysm_sac(segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder)
 
@@ -5832,7 +5868,8 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
     # This typically happens if there are large sac-like aneurysms
 
     if success:
-        success = compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder)
+        success = compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, 
+                                                      output_folder)
     if success:
         success = combine_aorta_and_left_ventricle(
         input_file,

@@ -3,6 +3,7 @@ from skimage.measure import label
 from scipy.ndimage import measurements
 import edt
 import SimpleITK as sitk
+from aortaexplorer.io_utils import read_nifti_file_robustly
 
 
 def get_components_over_certain_size(segmentation, min_size=5000, max_number_of_components=2):
@@ -176,12 +177,16 @@ def compute_segmentation_volume(segmentation_file, segm_id):
 
 
 def read_nifti_itk_to_numpy(file_name):
-    try:
-        img = sitk.ReadImage(file_name)
-    except RuntimeError as e:
-        print(f"Got an exception {str(e)}")
-        print(f"Error reading {file_name}")
+    img, _ = read_nifti_file_robustly(file_name)
+    if img is None:
         return None, None, None
+    #
+    # try:
+    #     img = sitk.ReadImage(file_name)
+    # except RuntimeError as e:
+    #     print(f"Got an exception {str(e)}")
+    #     print(f"Error reading {file_name}")
+    #     return None, None, None
 
     i2 = sitk.GetArrayFromImage(img)
     spacing = img.GetSpacing()
