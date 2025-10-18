@@ -116,7 +116,8 @@ def compute_body_segmentation(input_file, segm_folder, verbose, quiet, write_log
     return True
 
 
-def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
+def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, params,
+                                                verbose, quiet, write_log_file, output_folder):
     """
     Use simple HU thresholding to compute the area of the scan that is marked as
     invalid values (very low HU). Also compute an SDF so it can be quickly determined
@@ -124,9 +125,10 @@ def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose
     """
     segm_out_name = f"{segm_folder}out_of_scan.nii.gz"
     sdf_out_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
+    low_thresh = params["out_of_reconstruction_value"]
 
     # ct_name = input_file
-    low_thresh = -2000
+    # low_thresh = -2000
     high_thresh = 16000
 
     if os.path.exists(segm_out_name) and os.path.exists(sdf_out_name):
@@ -153,7 +155,7 @@ def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose
 
     ct_np = sitk.GetArrayFromImage(ct_img)
 
-    combined_mask = (low_thresh > ct_np) | (ct_np > high_thresh)
+    combined_mask = (low_thresh >= ct_np) | (ct_np > high_thresh)
 
     # mark all the sides as well
     combined_mask[:, :, 0] = True
@@ -6036,7 +6038,7 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
     success = True
     success = compute_body_segmentation(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
     if success:
-        success = compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose, quiet, write_log_file, 
+        success = compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, params, verbose, quiet, write_log_file,
                                                               output_folder)
     if success:
         success = extract_pure_aorta_lumen_start_by_finding_parts( input_file, params, segm_folder, stats_folder,

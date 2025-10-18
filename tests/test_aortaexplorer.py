@@ -40,8 +40,13 @@ def test_aortaexplorer():
     #input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0004_ct.nii.gz"
 
     # TYpe 2 with major aneurysm and stents
-    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0045_ct.nii.gz"
-    params["compute_centerline_from_ts_segmentation"] = False
+    # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0045_ct.nii.gz"
+    # params["compute_centerline_from_ts_segmentation"] = False
+
+    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0114_ct.nii.gz"
+    # params["compute_centerline_from_ts_segmentation"] = False
+    # This is not very robust - since real anatomies might have that value
+    # params["out_of_reconstruction_value"] = -1024
 
     output_folder = "C:/data/AortaExplorer/testoutput/"
 

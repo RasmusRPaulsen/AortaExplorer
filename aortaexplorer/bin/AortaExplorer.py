@@ -106,6 +106,13 @@ def main():
         help="Write log file to output folder",
         default=True,
     )
+    parser.add_argument(
+        "-oh",
+        "--out_hu",
+        type=float,
+        help="Out-of-scan reconstruction HU value - what did the scanner software use outside the scan area?",
+        default=-2048,
+    )
 
     parser.add_argument(
         "-fmi",
@@ -184,6 +191,7 @@ def main():
     aorta_parms = get_default_parameters()
     aorta_parms["num_proc_total_segmentator"] = args.nr_ts
     aorta_parms["num_proc_general"] = args.nr_proc
+    aorta_parms["out_of_scan_hu_value"] = args.out_hu
     aorta_parms["forced_aorta_min_hu_value"] = args.forced_min_hu
     aorta_parms["forced_aorta_max_hu_value"] = args.forced_max_hu
     aorta_parms["aorta_min_hu_value"] = args.low_hu

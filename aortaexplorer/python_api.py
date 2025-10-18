@@ -12,6 +12,7 @@ def get_default_parameters():
     default_parms = {
         "num_proc_total_segmentator": 1,
         "num_proc_general": 8,
+        "out_of_reconstruction_value": -2048,
         "forced_aorta_min_hu_value": None,
         "forced_aorta_max_hu_value": None,
         "aorta_min_hu_value": 80,
