@@ -34,7 +34,8 @@ def test_aortaexplorer():
     # input_file = "/data/Data/RAPA/totalsegmentator_all_ct/s0016_ct.nii.gz"
     # output_folder = "/data/Data/RAPA/AortaExplorer/ts_train_output/"
 
-    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0001_ct.nii.gz"
+    # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0001_ct.nii.gz"
+    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0002_ct.nii.gz"
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
 

@@ -5,7 +5,7 @@ import SimpleITK as sitk
 from vtk.util.numpy_support import vtk_to_numpy
 from vtk.util.numpy_support import numpy_to_vtk
 import aortaexplorer.general_utils as gu
-
+from aortaexplorer.io_utils import read_nifti_file_robustly
 
 def sitk2vtk(img, flip_for_volume_rendering=False, debugOn=False):
     """Convert a SimpleITK image to a VTK image, via numpy."""
@@ -88,12 +88,17 @@ def sitk2vtk(img, flip_for_volume_rendering=False, debugOn=False):
 def filter_image_with_segmentation(img, mask_img_name, fill_val=-1000):
     i2 = sitk.GetArrayFromImage(img)
 
-    try:
-        mask = sitk.ReadImage(mask_img_name)
-    except RuntimeError as e:
-        print(f"Got an exception {str(e)}")
+    mask, _ = read_nifti_file_robustly(mask_img_name)
+    if mask is None:
         print(f"Error reading {mask_img_name}")
         return img
+
+    # try:
+    #     mask = sitk.ReadImage(mask_img_name)
+    # except RuntimeError as e:
+    #     print(f"Got an exception {str(e)}")
+    #     print(f"Error reading {mask_img_name}")
+    #     return img
 
     m_np = sitk.GetArrayFromImage(mask)
     m_mask = m_np > 0.5
@@ -105,12 +110,16 @@ def filter_image_with_segmentation(img, mask_img_name, fill_val=-1000):
 
 
 def read_nifti_itk_to_vtk(file_name, img_mask_name=None, flip_for_volume_rendering=None):
-    try:
-        img = sitk.ReadImage(file_name)
-    except RuntimeError as e:
-        print(f"Got an exception {str(e)}")
-        print(f"Error reading {file_name}")
+    img, _ = read_nifti_file_robustly(file_name)
+    if img is None:
         return None
+
+    # try:
+    #     img = sitk.ReadImage(file_name)
+    # except RuntimeError as e:
+    #     print(f"Got an exception {str(e)}")
+    #     print(f"Error reading {file_name}")
+    #     return None
 
     if img_mask_name is not None:
         img = filter_image_with_segmentation(img, img_mask_name)

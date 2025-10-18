@@ -125,27 +125,31 @@ def compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose
     segm_out_name = f"{segm_folder}out_of_scan.nii.gz"
     sdf_out_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
 
-    ct_name = input_file
+    # ct_name = input_file
     low_thresh = -2000
     high_thresh = 16000
 
     if os.path.exists(segm_out_name) and os.path.exists(sdf_out_name):
-        if not quiet:
+        if verbose:
             print(f"{segm_out_name} already exists - skipping")
         return True
 
     if verbose:
         print(f"Computing out-of-scan-field:{segm_out_name} and {sdf_out_name}")
 
-    try:
-        ct_img = sitk.ReadImage(ct_name)
-    except RuntimeError as e:
-        msg = f"Could not read {input_file} for body segmentation: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    ct_img = read_nifti_with_logging_cached(input_file, verbose, quiet, write_log_file, output_folder)
+    if ct_img is None:
         return False
+    #
+    # try:
+    #     ct_img = sitk.ReadImage(ct_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {input_file} for body segmentation: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     ct_np = sitk.GetArrayFromImage(ct_img)
 
@@ -519,7 +523,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     # debug = False
 
     if os.path.exists(segm_out_name):
-        if not quiet:
+        if verbose:
             print(f"{segm_out_name} already exists - skipping")
         return True
 
@@ -544,37 +548,49 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     if verbose:
         print(f"Computing {segm_out_name}")
 
-    try:
-        label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_aorta = read_nifti_with_logging_cached(segm_name_aorta, verbose, quiet, write_log_file, output_folder)
+    if label_img_aorta is None:
         return False
+
+    # try:
+    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     label_img_aorta_hires = None
     if os.path.exists(segm_name_aorta_hires):
-        try:
-            label_img_aorta_hires = sitk.ReadImage(segm_name_aorta_hires)
-        except RuntimeError as e:
-            msg = f"Could not read {segm_name_aorta_hires}: {str(e)} got an exception"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        label_img_aorta_hires = read_nifti_with_logging_cached(segm_name_aorta_hires, verbose, quiet, write_log_file,
+                                                               output_folder)
+        if label_img_aorta_hires is None:
             return False
+        # try:
+        #     label_img_aorta_hires = sitk.ReadImage(segm_name_aorta_hires)
+        # except RuntimeError as e:
+        #     msg = f"Could not read {segm_name_aorta_hires}: {str(e)} got an exception"
+        #     if not quiet:
+        #         print(msg)
+        #     if write_log_file:
+        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        #     return False
 
-    try:
-        ct_img = sitk.ReadImage(ct_name)
-    except RuntimeError as e:
-        msg = f"Could not read {input_file}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    ct_img = read_nifti_with_logging_cached(input_file, verbose, quiet, write_log_file, output_folder)
+    if ct_img is None:
         return False
+    #
+    # try:
+    #     ct_img = sitk.ReadImage(ct_name)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {input_file}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     ct_np = sitk.GetArrayFromImage(ct_img)
 
@@ -5791,17 +5807,11 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
     success = True
     success = compute_body_segmentation(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
     if success:
-        success = compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
+        success = compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose, quiet, write_log_file, 
+                                                              output_folder)
     if success:
-        success = extract_pure_aorta_lumen_start_by_finding_parts(
-        input_file,
-        params,
-        segm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder)
+        success = extract_pure_aorta_lumen_start_by_finding_parts( input_file, params, segm_folder, stats_folder,
+                                                                   verbose, quiet, write_log_file, output_folder)
     if success:
         success = extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
     if success:
