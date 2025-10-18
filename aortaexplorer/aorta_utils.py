@@ -1317,35 +1317,46 @@ def combine_aorta_and_left_ventricle(
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    try:
-        label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_aorta = read_nifti_with_logging_cached(segm_name_aorta, verbose, quiet, write_log_file, output_folder)
+    if label_img_aorta is None:
         return False
 
-    try:
-        ct_img = sitk.ReadImage(input_file)
-    except RuntimeError as e:
-        msg = f"Could not read {input_file} for combined aorta and left ventricle segmentation: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    ct_img = read_nifti_with_logging_cached(input_file, verbose, quiet, write_log_file, output_folder)
+    if ct_img is None:
         return False
 
-    try:
-        label_img_lv = sitk.ReadImage(segm_name_hc)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_lv = read_nifti_with_logging_cached(segm_name_hc, verbose, quiet, write_log_file, output_folder)
+    if label_img_lv is None:
         return False
+    # try:
+    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    # try:
+    #     ct_img = sitk.ReadImage(input_file)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {input_file} for combined aorta and left ventricle segmentation: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    # try:
+    #     label_img_lv = sitk.ReadImage(segm_name_hc)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     label_img_lv_np = sitk.GetArrayFromImage(label_img_lv)
 
@@ -1395,29 +1406,38 @@ def compute_aortic_arch_landmarks(segm_folder, lm_folder, verbose, quiet, write_
     ]
     segm_ids = [54, 58, 56]
 
-    try:
-        label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_aorta = read_nifti_with_logging_cached(segm_name_aorta, verbose, quiet, write_log_file,
+                                                     output_folder)
+    if label_img_aorta is None:
         return False
+    label_img_total = read_nifti_with_logging_cached(segm_name_total, verbose, quiet, write_log_file,
+                                                    output_folder)
+    if label_img_total is None:
+        return False
+
+    # try:
+    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
 
-    try:
-        label_img = sitk.ReadImage(segm_name_total)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_total}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        return False
-    label_img_np = sitk.GetArrayFromImage(label_img)
+    # try:
+    #     label_img = sitk.ReadImage(segm_name_total)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_total}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+    label_img_np = sitk.GetArrayFromImage(label_img_total)
 
     for idx in range(len(lm_names)):
         lm_name = lm_names[idx]
@@ -1442,7 +1462,7 @@ def compute_aortic_arch_landmarks(segm_folder, lm_folder, verbose, quiet, write_
                 mask_np_aorta,
                 current_segm,
                 radius,
-                label_img,
+                label_img_total,
                 segm_oname,
                 lm_out_name,
                 only_larges_components=True,
@@ -1498,25 +1518,35 @@ def compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder, verbose, q
             print(f"Could not find {segm_name_hc} can not compute diagphragm landmark")
         return True
 
-    try:
-        label_img_total = sitk.ReadImage(segm_name_total)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_total}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_total = read_nifti_with_logging_cached(segm_name_total, verbose, quiet, write_log_file,
+                                                    output_folder)
+    if label_img_total is None:
         return False
 
-    try:
-        label_img_rv = sitk.ReadImage(segm_name_hc)
-    except RuntimeError as e:
-        msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    label_img_rv = read_nifti_with_logging_cached(segm_name_hc, verbose, quiet, write_log_file,
+                                                    output_folder)
+    if label_img_rv is None:
         return False
+    #
+    # try:
+    #     label_img_total = sitk.ReadImage(segm_name_total)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_total}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+
+    # try:
+    #     label_img_rv = sitk.ReadImage(segm_name_hc)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     label_img_rv_np = sitk.GetArrayFromImage(label_img_rv)
     label_img_total_np = sitk.GetArrayFromImage(label_img_total)
@@ -2398,7 +2428,7 @@ def compute_centerline_landmarks_based_on_scan_type(
     if not quiet:
         print(msg)
     if write_log_file:
-        write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+        write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
     return False
 
 
@@ -5871,41 +5901,19 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         success = compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, 
                                                       output_folder)
     if success:
-        success = combine_aorta_and_left_ventricle(
-        input_file,
-        segm_folder,
-        lm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder,
-        use_ts_org_segmentations=False)
+        success = combine_aorta_and_left_ventricle(input_file, segm_folder, lm_folder, stats_folder, verbose, quiet,
+                                                   write_log_file, output_folder, use_ts_org_segmentations=False)
     if success:
-        success = combine_aorta_and_left_ventricle(
-        input_file,
-        segm_folder,
-        lm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder,
-        use_ts_org_segmentations=True)
+        success = combine_aorta_and_left_ventricle(input_file, segm_folder, lm_folder, stats_folder, verbose, quiet,
+                                                   write_log_file, output_folder, use_ts_org_segmentations=True)
     if success:
         success = compute_aortic_arch_landmarks(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder)
     if success:
-        success = compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder)
+        success = compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder, verbose, quiet, write_log_file,
+                                                            output_folder)
     if success:
-        success = compute_aorta_scan_type(
-        input_file,
-        segm_folder,
-        lm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder)
+        success = compute_aorta_scan_type(input_file, segm_folder, lm_folder, stats_folder, verbose, quiet,
+                                          write_log_file, output_folder)
     if success:
         success = compute_centerline_landmarks_based_on_scan_type(
         segm_folder,

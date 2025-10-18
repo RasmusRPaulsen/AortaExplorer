@@ -504,7 +504,12 @@ class RenderAortaData(RenderTotalSegmentatorData):
         # else:
         #     cl_length = 0
 
-        aorta_txt = f"\nAorta HU avg: {aorta_stats['avg_hu']:.0f} ({aorta_stats['cl_mean']:.0f})\nstd.dev: {aorta_stats['std_hu']:.0f} ({aorta_stats['cl_std']:.0f})\nmedian: {aorta_stats['med_hu']:.0f} ({aorta_stats['cl_med']:.0f})\n99%: {aorta_stats['q99_hu']:.0f} ({aorta_stats['cl_q99']:.0f})\n1%: {aorta_stats['q01_hu']:.0f} ({aorta_stats['cl_q01']:.0f})\nAorta vol: {aorta_stats['tot_vol'] / 1000.0:.0f} cm3\nscan type: {scan_type}"
+        aorta_txt = (f"\nAorta HU avg: {aorta_stats.get('avg_hu', 0):.0f} ({aorta_stats.get('cl_mean', 0):.0f})"
+                     f"\nstd.dev: {aorta_stats.get('std_hu', 0):.0f} ({aorta_stats.get('cl_std', 0):.0f})\n"
+                     f"median: {aorta_stats.get('med_hu', 0):.0f} ({aorta_stats.get('cl_med', 0):.0f})"
+                     f"\n99%: {aorta_stats.get('q99_hu', 0):.0f} ({aorta_stats.get('cl_q99', 0):.0f})"
+                     f"\n1%: {aorta_stats.get('q01_hu', 0):.0f} ({aorta_stats.get('cl_q01', 0):.0f})"
+                     f"\nAorta vol: {aorta_stats.get('tot_vol', 0) / 1000.0:.0f} cm3\nscan type: {scan_type}")
         if "surface_area" in aorta_stats:
             aorta_txt += f"\nAorta Surface area: {aorta_stats['surface_area'] / 100.0:.1f} cm2\n"
         # f'Centerline length: {cl_length / 10.0:.1f} cm\n' \
