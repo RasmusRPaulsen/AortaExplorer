@@ -38,9 +38,14 @@ def test_aortaexplorer():
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0002_ct.nii.gz"
     # Iliac arteries not found by ts in s0004
     #input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0004_ct.nii.gz"
-    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0045_ct.nii.gz"
+
+    # TYpe 2 with major aneurysm and stents
+    # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0045_ct.nii.gz"
+    # output_folder = "C:/data/AortaExplorer/testoutput/"
+    # params["compute_centerline_from_ts_segmentation"] = False
+
+    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0016_ct.nii.gz"
     output_folder = "C:/data/AortaExplorer/testoutput/"
-    params["compute_centerline_from_ts_segmentation"] = False
 
 
     device = "gpu"
