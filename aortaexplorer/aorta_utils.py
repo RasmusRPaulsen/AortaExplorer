@@ -6207,6 +6207,11 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
     # Also try to create visualization of the things we achieved even in erro
     success = aorta_visualization(input_file, cl_folder, segm_folder, stats_folder, vis_folder, verbose, params)
 
+    if verbose:
+        image_reader_cache_info = read_nifti_with_logging_cached.cache_info()
+        print(f"Image reader cache info: {image_reader_cache_info}")
+    read_nifti_with_logging_cached.cache_clear()
+
     return True
 
 

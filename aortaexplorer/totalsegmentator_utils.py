@@ -4,10 +4,8 @@ from pathlib import Path
 import time
 import multiprocessing as mp
 from aortaexplorer.general_utils import write_message_to_log_file
-from aortaexplorer.io_utils import read_nifti_with_logging_cached
 import SimpleITK as sitk
 import numpy as np
-
 
 def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, input_file):
     """
@@ -57,28 +55,36 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
     if not os.path.exists(total_out_name):
         # First the total task to get the main segmentation
         task = "total"
-        totalsegmentator(
-            input_file,
-            total_out_name,
-            multi_label,
-            nr_thr_resamp,
-            nr_thr_saving,
-            fast_model,
-            device=device,
-            nora_tag="None",
-            preview=False,
-            task=task,
-            roi_subset=None,
-            statistics=calc_statistics,
-            radiomics=calc_radiomics,
-            crop_path=None,
-            body_seg=body_seg,
-            force_split=force_split,
-            output_type="nifti",
-            quiet=run_quit,
-            verbose=verbose,
-            test=False,
-        )
+        try:
+            totalsegmentator(
+                input_file,
+                total_out_name,
+                multi_label,
+                nr_thr_resamp,
+                nr_thr_saving,
+                fast_model,
+                device=device,
+                nora_tag="None",
+                preview=False,
+                task=task,
+                roi_subset=None,
+                statistics=calc_statistics,
+                radiomics=calc_radiomics,
+                crop_path=None,
+                body_seg=body_seg,
+                force_split=force_split,
+                output_type="nifti",
+                quiet=run_quit,
+                verbose=verbose,
+                test=False,
+            )
+        except Exception as e:
+            msg = f"TotalSegmentator failed on {input_file} with exception: {str(e)}"
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            return False
     elif verbose:
         print(f"{total_out_name} already exists - skipping!")
 
@@ -97,7 +103,7 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
         volume_threshold = 1000
         heart_label = 51
 
-        label_img = read_nifti_with_logging_cached(total_out_name, verbose, quiet, write_log_file, output_folder)
+        label_img = read_nifti_with_logging(total_out_name, verbose, quiet, write_log_file, output_folder)
         if label_img is None:
             return False
 
