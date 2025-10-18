@@ -4,7 +4,8 @@ from pathlib import Path
 import time
 import multiprocessing as mp
 import aortaexplorer.surface_utils as surfutils
-from aortaexplorer.general_utils import write_message_to_log_file, read_json_file
+from aortaexplorer.general_utils import write_message_to_log_file, read_json_file, get_last_error_message
+from aortaexplorer.io_utils import read_nifti_with_logging_cached
 from aortaexplorer.surface_utils import (
     convert_label_map_to_surface,
     compute_min_and_max_z_landmark,
@@ -68,23 +69,28 @@ def compute_body_segmentation(input_file, segm_folder, verbose, quiet, write_log
     if verbose:
         print(f"Computing {segm_out_name}")
 
-    if not os.path.exists(input_file):
-        msg = f"Could not find {input_file} for extracting body segmentation"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    ct_img = read_nifti_with_logging_cached(input_file, verbose, quiet, write_log_file, output_folder)
+    if ct_img is None:
         return False
 
-    try:
-        ct_img = sitk.ReadImage(input_file)
-    except RuntimeError as e:
-        msg = f"Could not read {input_file} for body segmentation: {str(e)} got an exception"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        return False
+    #
+    # if not os.path.exists(input_file):
+    #     msg = f"Could not find {input_file} for extracting body segmentation"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
+    #
+    # try:
+    #     ct_img = sitk.ReadImage(input_file)
+    # except RuntimeError as e:
+    #     msg = f"Could not read {input_file} for body segmentation: {str(e)} got an exception"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+    #     return False
 
     ct_np = sitk.GetArrayFromImage(ct_img)
 
@@ -5535,6 +5541,13 @@ def compute_all_aorta_statistics(
     if verbose:
         print(f"Computing {stats_file}")
 
+    stats = {}
+    stats["scan_name"] = input_file
+
+    last_error_message = get_last_error_message()
+    if last_error_message:
+        stats["last_error_message"] = last_error_message
+
     n_aorta_parts = 1
     parts_stats = read_json_file(f"{stats_folder}/aorta_parts.json")
     if parts_stats:
@@ -5551,7 +5564,7 @@ def compute_all_aorta_statistics(
             print(msg)
         if write_log_file:
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        return False
+        # return False
 
     segm_data, _, _ = read_nifti_itk_to_numpy(segm_name)
     if segm_data is None:
@@ -5560,35 +5573,32 @@ def compute_all_aorta_statistics(
             print(msg)
         if write_log_file:
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        return False
+        # return False
+    else:
+        if segm_data.sum() == 0:
+            msg = f"No aorta voxels in {segm_name}"
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        else:
+            vol_dims = size
+            vox_volume = spacing[0] * spacing[1] * spacing[2]
+            hu_values = img_data[segm_data == aorta_segment_id]
 
-    if segm_data.sum() == 0:
-        msg = f"No aorta voxels in {segm_name}"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        return False
-
-    stats = {}
-    vol_dims = size
-    vox_volume = spacing[0] * spacing[1] * spacing[2]
-    hu_values = img_data[segm_data == aorta_segment_id]
-
-    stats["scan_name"] = input_file
-    stats["spacing"] = spacing
-    stats["volume_dims"] = vol_dims
-    stats["volume_size"] = [
-        vol_dims[0] * spacing[0],
-        vol_dims[1] * spacing[1],
-        vol_dims[2] * spacing[2],
-    ]
-    stats["avg_hu"] = np.average(hu_values)
-    stats["std_hu"] = np.std(hu_values)
-    stats["med_hu"] = np.median(hu_values)
-    stats["q99_hu"] = np.percentile(hu_values, 99)
-    stats["q01_hu"] = np.percentile(hu_values, 1)
-    stats["tot_vol"] = len(hu_values) * vox_volume
+            stats["spacing"] = spacing
+            stats["volume_dims"] = vol_dims
+            stats["volume_size"] = [
+                vol_dims[0] * spacing[0],
+                vol_dims[1] * spacing[1],
+                vol_dims[2] * spacing[2],
+            ]
+            stats["avg_hu"] = np.average(hu_values)
+            stats["std_hu"] = np.std(hu_values)
+            stats["med_hu"] = np.median(hu_values)
+            stats["q99_hu"] = np.percentile(hu_values, 99)
+            stats["q01_hu"] = np.percentile(hu_values, 1)
+            stats["tot_vol"] = len(hu_values) * vox_volume
 
     # Somewhat hacky to do this here:
     if n_aorta_parts == 2:
@@ -5601,6 +5611,7 @@ def compute_all_aorta_statistics(
             if write_log_file:
                 write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         else:
+            vox_volume = spacing[0] * spacing[1] * spacing[2]
             n_vox = np.sum(segm_data == aorta_segment_id)
             stats["vol_ascending_aorta"] = n_vox * vox_volume
 
@@ -5613,6 +5624,7 @@ def compute_all_aorta_statistics(
             if write_log_file:
                 write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         else:
+            vox_volume = spacing[0] * spacing[1] * spacing[2]
             n_vox = np.sum(segm_data == aorta_segment_id)
             stats["vol_descending_aorta"] = n_vox * vox_volume
 
@@ -5635,12 +5647,15 @@ def compute_all_aorta_statistics(
         write_log_file,
         output_folder,
     )
-    # https://stackoverflow.com/questions/38987/how-do-i-merge-two-dictionaries-in-a-single-expression-in-python
-    stats = {**stats, **cl_stats}
+    if cl_stats is not None:
+        # https://stackoverflow.com/questions/38987/how-do-i-merge-two-dictionaries-in-a-single-expression-in-python
+        stats = {**stats, **cl_stats}
 
     cut_stats = compile_aorta_cut_statistics(cl_folder, False)
-    stats = {**stats, **cut_stats}
+    if cut_stats is not None:
+        stats = {**stats, **cut_stats}
 
+    # TODO: Move out to main function
     ati_stats = clutils.compute_tortuosity_index_based_on_scan_type(
         cl_folder,
         lm_folder,
@@ -5652,12 +5667,12 @@ def compute_all_aorta_statistics(
     )
     if ati_stats is not None:
         stats = {**stats, **ati_stats}
-    else:
-        msg = "Could not compute aortic tortuosity index"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+    # else:
+    #     msg = "Could not compute aortic tortuosity index"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
 
     sac_stats = compile_aortic_aneurysm_sac_statistics(stats_folder)
     if sac_stats:
@@ -5773,11 +5788,12 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
-    if not compute_body_segmentation(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
-        return False
-    if not compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
-        return False
-    if not extract_pure_aorta_lumen_start_by_finding_parts(
+    success = True
+    success = compute_body_segmentation(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
+    if success:
+        success = compute_out_scan_field_segmentation_and_sdf(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
+    if success:
+        success = extract_pure_aorta_lumen_start_by_finding_parts(
         input_file,
         params,
         segm_folder,
@@ -5785,12 +5801,11 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder):
-        return False
-    if not extract_aortic_calcifications(
+        output_folder)
+    if success:
+        success = extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
+    if success:
+        success = extract_aortic_calcifications(
         input_file,
         params,
         segm_folder,
@@ -5798,19 +5813,18 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not check_for_aneurysm_sac(segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
-        return False
+        output_folder)
+    if success:
+        success = check_for_aneurysm_sac(segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder)
 
     # TODO: Issue warning if large difference between TotalSegmentator and lumen segmentations is found
     # and the centerline computation is based on TotalSegmentator segmentations
     # This typically happens if there are large sac-like aneurysms
 
-    if not compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
-        return False
-    if not combine_aorta_and_left_ventricle(
+    if success:
+        success = compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder)
+    if success:
+        success = combine_aorta_and_left_ventricle(
         input_file,
         segm_folder,
         lm_folder,
@@ -5819,10 +5833,9 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         quiet,
         write_log_file,
         output_folder,
-        use_ts_org_segmentations=False,
-    ):
-        return False
-    if not combine_aorta_and_left_ventricle(
+        use_ts_org_segmentations=False)
+    if success:
+        success = combine_aorta_and_left_ventricle(
         input_file,
         segm_folder,
         lm_folder,
@@ -5831,14 +5844,13 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         quiet,
         write_log_file,
         output_folder,
-        use_ts_org_segmentations=True,
-    ):
-        return False
-    if not compute_aortic_arch_landmarks(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
-        return False
-    if not compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
-        return False
-    if not compute_aorta_scan_type(
+        use_ts_org_segmentations=True)
+    if success:
+        success = compute_aortic_arch_landmarks(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder)
+    if success:
+        success = compute_diaphragm_landmarks_from_surfaces(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder)
+    if success:
+        success = compute_aorta_scan_type(
         input_file,
         segm_folder,
         lm_folder,
@@ -5846,10 +5858,9 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not compute_centerline_landmarks_based_on_scan_type(
+        output_folder)
+    if success:
+        success = compute_centerline_landmarks_based_on_scan_type(
         segm_folder,
         lm_folder,
         stats_folder,
@@ -5857,10 +5868,9 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         quiet,
         write_log_file,
         output_folder,
-        use_ts_org_segmentations=use_org_ts_segmentations,
-    ):
-        return False
-    if not extract_surfaces_for_centerlines(
+        use_ts_org_segmentations=use_org_ts_segmentations)
+    if success:
+        success = extract_surfaces_for_centerlines(
         segm_folder,
         stats_folder,
         surface_folder,
@@ -5868,10 +5878,9 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         quiet,
         write_log_file,
         output_folder,
-        use_ts_org_segmentations=use_org_ts_segmentations,
-    ):
-        return False
-    if not compute_center_line(
+        use_ts_org_segmentations=use_org_ts_segmentations)
+    if success:
+        success = compute_center_line(
         stats_folder,
         lm_folder,
         surface_folder,
@@ -5879,10 +5888,9 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not compute_infrarenal_section_using_kidney_to_kidney_line(
+        output_folder)
+    if success:
+        success = compute_infrarenal_section_using_kidney_to_kidney_line(
         segm_folder,
         stats_folder,
         lm_folder,
@@ -5890,45 +5898,38 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not compute_aortic_arch_landmarks_on_centerline(lm_folder, cl_folder, verbose, quiet, write_log_file, output_folder):
-        return False
-    if not compute_diaphragm_point_on_centerline(
+        output_folder)
+    if success:
+        success = compute_aortic_arch_landmarks_on_centerline(lm_folder, cl_folder, verbose, quiet, write_log_file, output_folder)
+    if success:
+        success = compute_diaphragm_point_on_centerline(
         lm_folder,
         cl_folder,
         stats_folder,
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not compute_ventricularoaortic_point_on_centerline(
+        output_folder)
+    if success:
+        success = compute_ventricularoaortic_point_on_centerline(
         lm_folder,
         cl_folder,
         stats_folder,
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if (
-        sample_aorta_center_line_hu_stats(
+        output_folder)
+    if success:
+        success = sample_aorta_center_line_hu_stats(
             input_file,
             cl_folder,
             stats_folder,
             verbose,
             quiet,
             write_log_file,
-            output_folder,
-        )
-        is None
-    ):
-        return False
-    if not compute_straightened_volume_using_cpr(
+            output_folder) is not None
+    if success:
+        success = compute_straightened_volume_using_cpr(
         input_file,
         segm_folder,
         cl_folder,
@@ -5937,43 +5938,39 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         quiet,
         write_log_file,
         output_folder,
-        use_raw_segmentations=False,
-    ):
-        return False
+        use_raw_segmentations=False)
     if compare_with_raw_ts_segmentations:
-        if not compute_straightened_volume_using_cpr(
-            input_file,
-            segm_folder,
-            cl_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-            use_raw_segmentations=True,
-        ):
-            return False
-    if not compute_cuts_along_straight_labelmaps(
+        if success:
+            success = compute_straightened_volume_using_cpr(
+                input_file,
+                segm_folder,
+                cl_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+                use_raw_segmentations=True)
+    if success:
+        success = compute_cuts_along_straight_labelmaps(
         segm_folder,
         cl_folder,
         stats_folder,
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_areas(
+        output_folder)
+    if success:
+        success = compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_areas(
         cl_folder,
         lm_folder,
         stats_folder,
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not identy_and_extract_samples_from_straight_volume(
+        output_folder)
+    if success:
+        success = identy_and_extract_samples_from_straight_volume(
         cl_folder,
         segm_folder,
         lm_folder,
@@ -5982,12 +5979,11 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         quiet,
         write_log_file,
         output_folder,
-        use_raw_segmentations=False,
-    ):
-        return False
-    if not combine_cross_section_images_into_one(cl_folder, verbose):
-        return False
-    if not create_longitudinal_figure_from_straight_volume(
+        use_raw_segmentations=False)
+    if success:
+        success = combine_cross_section_images_into_one(cl_folder, verbose)
+    if success:
+        success = create_longitudinal_figure_from_straight_volume(
         cl_folder,
         segm_folder,
         lm_folder,
@@ -5995,23 +5991,22 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         verbose,
         quiet,
         write_log_file,
-        output_folder,
-    ):
-        return False
-    if not compute_all_aorta_statistics(
-        input_file,
-        cl_folder,
-        segm_folder,
-        lm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder,
-    ):
-        return False
-    if not aorta_visualization(input_file, cl_folder, segm_folder, stats_folder, vis_folder, verbose, params):
-        return False
+        output_folder)
+
+    # Not matter the success, we still gather statistics. At least we will get the last error message
+    success = compute_all_aorta_statistics(
+    input_file,
+    cl_folder,
+    segm_folder,
+    lm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder)
+
+    # Also try to create visualization of the things we achieved even in erro
+    success = aorta_visualization(input_file, cl_folder, segm_folder, stats_folder, vis_folder, verbose, params)
 
     return True
 

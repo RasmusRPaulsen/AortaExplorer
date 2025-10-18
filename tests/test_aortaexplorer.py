@@ -4,7 +4,7 @@ from aortaexplorer.python_api import aortaexplorer, get_default_parameters
 def test_aortaexplorer():
     params = get_default_parameters()
 
-    input_file = "C:/data/AortaExplorer/input/"
+    # input_file = "C:/data/AortaExplorer/input/"
 
     # Type 5:
     # input_file = "C:/data/AortaExplorer/input/CFA-PILOT_0000_SERIES0010.nii.gz"
@@ -26,13 +26,16 @@ def test_aortaexplorer():
     # Very low contrast
     # input_file = "C:/data/AortaExplorer/input/DTU_085.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/"
-    output_folder = "C:/data/AortaExplorer/testoutput/"
+    # output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # input_file = "/storage/Data/DTU-CGPS-1/NIFTI/CGPS-1_10407_SERIES0019.nii.gz"
     # output_folder = "/data/Data/RAPA/AortaExplorer/output/"
 
-    input_file = "/data/Data/RAPA/totalsegmentator_all_ct/s0016_ct.nii.gz"
-    output_folder = "/data/Data/RAPA/AortaExplorer/ts_train_output/"
+    # input_file = "/data/Data/RAPA/totalsegmentator_all_ct/s0016_ct.nii.gz"
+    # output_folder = "/data/Data/RAPA/AortaExplorer/ts_train_output/"
+
+    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0001_ct.nii.gz"
+    output_folder = "C:/data/AortaExplorer/testoutput/"
 
 
     device = "gpu"

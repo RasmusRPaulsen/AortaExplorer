@@ -4,6 +4,7 @@ from pathlib import Path
 import time
 import multiprocessing as mp
 from aortaexplorer.general_utils import write_message_to_log_file
+from aortaexplorer.io_utils import read_nifti_with_logging_cached
 import SimpleITK as sitk
 import numpy as np
 
@@ -96,15 +97,19 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
         volume_threshold = 1000
         heart_label = 51
 
-        try:
-            label_img = sitk.ReadImage(total_out_name)
-        except RuntimeError as e:
-            msg = f"Could not red {total_out_name} after TotalSegmentator run. Exception {str(e)}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        label_img = read_nifti_with_logging_cached(total_out_name, verbose, quiet, write_log_file, output_folder)
+        if label_img is None:
             return False
+
+        # try:
+        #     label_img = sitk.ReadImage(total_out_name)
+        # except RuntimeError as e:
+        #     msg = f"Could not red {total_out_name} after TotalSegmentator run. Exception {str(e)}"
+        #     if not quiet:
+        #         print(msg)
+        #     if write_log_file:
+        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        #     return False
 
         spacing = label_img.GetSpacing()
         vox_size = spacing[0] * spacing[1] * spacing[2]
