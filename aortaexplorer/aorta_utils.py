@@ -1111,13 +1111,15 @@ def check_for_aneurysm_sac(segm_folder, stats_folder, verbose, quiet, write_log_
     return True
 
 
-def compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder):
+def compute_ventricularoaortic_landmark(segm_folder, lm_folder, stats_folder,
+                                        verbose, quiet, write_log_file, output_folder):
     """
     The ventricularoaortic landmark is between the end of the aorta and the start of the left ventricle
     """
     overlap_name = f"{segm_folder}aorta_lv_overlap.nii.gz"
     ventricularoaortic_p_out_file = f"{lm_folder}ventricularoaortic_point.txt"
     ventricularoaortic_p_none_out_file = f"{lm_folder}ventricularoaortic_no_point.txt"
+    stats_file = f"{stats_folder}/aorta_parts.json"
 
     segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
     segm_name_hc = f"{segm_folder}heartchambers_highres.nii.gz"
@@ -1151,6 +1153,11 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, 
         f_p_out.close()
         return True
 
+    n_aorta_parts = 1
+    parts_stats = read_json_file(stats_file)
+    if parts_stats:
+        n_aorta_parts = parts_stats["aorta_parts"]
+
     label_img_aorta = read_nifti_with_logging_cached(segm_name_aorta, verbose, quiet, write_log_file, output_folder)
     if label_img_aorta is None:
         return False
@@ -1159,9 +1166,9 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, 
     if label_img_lv is None:
         f_p_out = open(ventricularoaortic_p_none_out_file, "w")
         f_p_out.write("no point")
-        f_p_out.close()        
+        f_p_out.close()
         return True
-    # 
+    #
     # try:
     #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
     # except RuntimeError as e:
@@ -1186,10 +1193,25 @@ def compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, 
     #     return True
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
+    mask_np_aorta = label_img_aorta_np == aorta_segm_id
+
+    # Force it to have only the found components (since we can use the original ts segmentations with spurious parts)
+    min_comp_size = 5000
+    if verbose:
+        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+    components, _ = get_components_over_certain_size(mask_np_aorta, min_comp_size, n_aorta_parts)
+    if components is None:
+        msg = f"No aorta lumen found left after connected components {input_file}"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        return False
+    mask_np_aorta = components
+
     label_img_lv_np = sitk.GetArrayFromImage(label_img_lv)
     spacing = label_img_aorta.GetSpacing()
 
-    mask_np_aorta = label_img_aorta_np == aorta_segm_id
     mask_np_lv = label_img_lv_np == left_ventricle_id
 
     if verbose:
@@ -1936,6 +1958,20 @@ def compute_centerline_landmarks_for_aorta_type_2(
     #     return False
 
     label_img_np = sitk.GetArrayFromImage(label_img)
+
+    # Force it to one component
+    min_comp_size = 5000
+    if verbose:
+        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+    components, _ = get_components_over_certain_size(label_img_np, min_comp_size, 1)
+    if components is None:
+        msg = f"No aorta lumen found left after connected components {input_file}"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        return False
+    label_img_np = components
 
     spacing = label_img.GetSpacing()
     max_space = np.max(np.asarray(spacing))
@@ -6013,7 +6049,7 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
     # This typically happens if there are large sac-like aneurysms
 
     if success:
-        success = compute_ventricularoaortic_landmark(segm_folder, lm_folder, verbose, quiet, write_log_file, 
+        success = compute_ventricularoaortic_landmark(segm_folder, lm_folder, stats_folder, verbose, quiet, write_log_file,
                                                       output_folder)
     if success:
         success = combine_aorta_and_left_ventricle(input_file, segm_folder, lm_folder, stats_folder, verbose, quiet,
