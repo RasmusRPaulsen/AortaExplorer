@@ -2,7 +2,7 @@ import os.path
 from aortaexplorer.general_utils import write_message_to_log_file, read_json_file
 import shutil
 from pathlib import Path
-
+from datetime import datetime
 
 def flatten_json(y):
     out = {}
@@ -156,11 +156,21 @@ def process_measurements(
     in_files, output_folder, verbose=False, quiet=False, write_log_file=True
 ):
     measures_out = f"{output_folder}AortaExplorer_measurements.csv"
+    now_date = datetime.strftime(datetime.now(), "%d-%m-%Y-%H-%M-%S")
 
     if verbose:
         print(
             f"Gathering measurements from {len(in_files)} files. Output to {output_folder}"
         )
+
+    if os.path.exists(measures_out):
+        name_no_extension = os.path.splitext(measures_out)[0]
+        backup_name = f"{name_no_extension}_backup_{now_date}.csv"
+        if verbose:
+            print(
+                f"Measurement output file {measures_out} already exists. Backing up to {backup_name}"
+            )
+        shutil.move(measures_out, backup_name)
 
     all_column_names = gather_all_stat_columen_names(
         in_files, output_folder, verbose, quiet, write_log_file

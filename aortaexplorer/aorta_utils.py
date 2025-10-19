@@ -44,6 +44,7 @@ import imageio
 import skimage.io
 from skimage import color
 from skimage.util import img_as_ubyte
+import importlib.metadata
 
 
 def setup_vtk_error_handling(err_dir):
@@ -707,7 +708,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
 
         type_stats = {
             "scan_type": "unknown",
-            "scan_type_desc": "No aorta found in scan",
+            "scan_type_desc": "Unknown -No aorta found in scan",
         }
         try:
             with Path(stats_file_type).open("wt") as handle:
@@ -6492,6 +6493,10 @@ def compute_all_aorta_statistics(
         scan_id = os.path.splitext(scan_id)[0]
 
     stats = {"scan_name": input_file, "base_name": scan_id}
+
+    ao_version = importlib.metadata.version("AortaExplorer")
+    stats["aorta_explorer_version"] = ao_version
+
 
     last_error_message = get_last_error_message()
     if last_error_message:
