@@ -9,10 +9,10 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 
 - Based on the excellent work of the [TotalSegmentator](https://github.com/wasserth/TotalSegmentator) team.
 - Works for contrast enhanced CT scans with a variety of scan field-of-views.
-- Computes cross sectional lumen areas in aorta segments defined by the [European society of cardiology (ESC)](https://pubmed.ncbi.nlm.nih.gov/25173340/).
+- Computes [cross sectional lumen areas](MEASUREMENTS.md) in aorta segments defined by the [European society of cardiology (ESC)](https://pubmed.ncbi.nlm.nih.gov/25173340/).
 - Computes tortuosity.
 - Lumen areas have been validated against a large (10.000+) population with manual annotations.
-- Tortuosity measures on a large population (10.000+) are consistent with previously reported results.
+- [Tortuosity measures](MEASUREMENTS.md) on a large population (10.000+) are consistent with previously reported results.
 - Automatically determines [scan field-of-view (FOW)](SCANFOV.md)
 - Provides an experimental and non-validated calcification visualization.
 - Generates visualizations for easy validation of outputs.
@@ -84,7 +84,7 @@ If the input is a folder, it will process all `.nii.gz` and `.nii` files in that
 ## Outputs
 
 AortaExplorer main outputs are:
-- CSV file with the aortic measurements. It is called `AortaExplorer_measurements.csv` and will be placed in the specified output folder. One row per input file.
+- [CSV file with the aortic measurements](](MEASUREMENTS.md). It is called `AortaExplorer_measurements.csv` and will be placed in the specified output folder. One row per input file.
 - Visualizations of the results placed in a sub-folder called `all_visualizations`.
 - A log file with potential errors and warnings placed in the specified output folder.
 
