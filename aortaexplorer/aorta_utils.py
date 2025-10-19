@@ -4039,7 +4039,6 @@ def compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_area
     sinotubular_point = cl.GetPoint(cl_true_idx)
     f_p_out = open(sinotubular_point_out, "w")
     f_p_out.write(f"{sinotubular_point[0]} {sinotubular_point[1]} {sinotubular_point[2]}")
-    f_p_out.close
 
     sinotubular_stats = {
         "sinotubular_cl_dist": sinotubular_dist,
@@ -4483,17 +4482,8 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(
     return True
 
 
-def identy_and_extract_samples_from_straight_volume(
-    cl_folder,
-    segm_folder,
-    lm_folder,
-    stats_folder,
-    verbose,
-    quiet,
-    write_log_file,
-    output_folder,
-    use_raw_segmentations=False,
-):
+def identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                    write_log_file, output_folder, use_raw_segmentations=False):
     """
     Based on the sampled straight volume, we here extract maximum slices and extract their image
     """
@@ -4504,15 +4494,9 @@ def identy_and_extract_samples_from_straight_volume(
         n_aorta_parts = parts_stats["aorta_parts"]
 
     if n_aorta_parts == 2:
-        return identy_and_extract_samples_from_straight_volume_2_parts_aorta(
-            cl_folder,
-            segm_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-            use_raw_segmentations,
-        )
+        return identy_and_extract_samples_from_straight_volume_2_parts_aorta(cl_folder, segm_folder, verbose, quiet,
+                                                                             write_log_file, output_folder,
+                                                                             use_raw_segmentations)
 
     cl_sampling_in = f"{cl_folder}straight_labelmap_sampling.csv"
     cl_file = f"{cl_folder}aorta_centerline.vtp"
@@ -5355,16 +5339,8 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(cl_folder, 
     return True
 
 
-def create_longitudinal_figure_from_straight_volume(
-    cl_folder,
-    segm_folder,
-    lm_folder,
-    stats_folder,
-    verbose,
-    quiet,
-    write_log_file,
-    output_folder,
-):
+def create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                    write_log_file, output_folder):
     """
     Based on the sampled straight volume, we here extract the samples along the long axis
     """
@@ -5761,23 +5737,46 @@ def compile_aortic_calcification_statistics(stats_folder):
     return out_stats
 
 
-def compute_all_aorta_statistics(
-    input_file,
-    cl_folder,
-    segm_folder,
-    lm_folder,
-    stats_folder,
-    verbose,
-    quiet,
-    write_log_file,
-    output_folder,
-):
+def compute_aortic_tortuosity_statistics(input_file, cl_folder, lm_folder, stats_folder, verbose,
+    quiet, write_log_file, output_folder):
+    stats_file = f"{stats_folder}aorta_tortuosity_stats.json"
+
+    if os.path.exists(stats_file):
+        if verbose:
+            print(f"{stats_file} already exists - not recomputing")
+        return True
+    if verbose:
+        print(f"Computing {stats_file}")
+
+    ati_stats = clutils.compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_folder, verbose,
+        quiet, write_log_file, output_folder)
+
+    if ati_stats is None:
+        msg = f"Could not compute aortic tortuosity index for {input_file}"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+        return False
+
+    try:
+        with Path(stats_file).open("wt") as handle:
+            json.dump(ati_stats, handle, indent=4, sort_keys=False)
+    except IOError as e:
+        print(f"I/O error({e.errno}): {e.strerror}: {stats_file}")
+    return True
+
+
+def compute_all_aorta_statistics(input_file, cl_folder, segm_folder, stats_folder, verbose, quiet, write_log_file,
+                                 output_folder):
     """
     Compute aorta statistics from scan.
     including HU distributions, volume and surface
     """
     stats_file = f"{stats_folder}/aorta_statistics.json"
     scan_type_file = f"{stats_folder}/aorta_scan_type.json"
+    ati_stats_file = f"{stats_folder}aorta_tortuosity_stats.json"
+
     gather_wh_stats = True
 
     if os.path.exists(stats_file):
@@ -5788,8 +5787,13 @@ def compute_all_aorta_statistics(
     if verbose:
         print(f"Computing {stats_file}")
 
-    stats = {}
-    stats["scan_name"] = input_file
+    # Get pure name of input file without path and extension
+    scan_id = os.path.basename(input_file)
+    scan_id = os.path.splitext(scan_id)[0]
+    if scan_id.endswith(".nii"):
+        scan_id = os.path.splitext(scan_id)[0]
+
+    stats = {"scan_name": input_file, "base_name": scan_id}
 
     last_error_message = get_last_error_message()
     if last_error_message:
@@ -5813,6 +5817,16 @@ def compute_all_aorta_statistics(
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         # return False
 
+    vol_dims = size
+    vox_volume = spacing[0] * spacing[1] * spacing[2]
+
+    stats["spacing"] = spacing
+    stats["volume_dims"] = vol_dims
+    stats["volume_size"] = [
+        vol_dims[0] * spacing[0],
+        vol_dims[1] * spacing[1],
+        vol_dims[2] * spacing[2]]
+
     segm_data, _, _ = read_nifti_itk_to_numpy(segm_name)
     if segm_data is None:
         msg = f"Cannot read {segm_name}"
@@ -5829,17 +5843,7 @@ def compute_all_aorta_statistics(
             if write_log_file:
                 write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         else:
-            vol_dims = size
-            vox_volume = spacing[0] * spacing[1] * spacing[2]
             hu_values = img_data[segm_data == aorta_segment_id]
-
-            stats["spacing"] = spacing
-            stats["volume_dims"] = vol_dims
-            stats["volume_size"] = [
-                vol_dims[0] * spacing[0],
-                vol_dims[1] * spacing[1],
-                vol_dims[2] * spacing[2],
-            ]
             stats["avg_hu"] = np.average(hu_values)
             stats["std_hu"] = np.std(hu_values)
             stats["med_hu"] = np.median(hu_values)
@@ -5902,24 +5906,9 @@ def compute_all_aorta_statistics(
     if cut_stats is not None:
         stats = {**stats, **cut_stats}
 
-    # TODO: Move out to main function
-    ati_stats = clutils.compute_tortuosity_index_based_on_scan_type(
-        cl_folder,
-        lm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder,
-    )
+    ati_stats = read_json_file(ati_stats_file)
     if ati_stats is not None:
         stats = {**stats, **ati_stats}
-    # else:
-    #     msg = "Could not compute aortic tortuosity index"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
 
     sac_stats = compile_aortic_aneurysm_sac_statistics(stats_folder)
     if sac_stats:
@@ -6171,40 +6160,21 @@ def do_aorta_analysis(verbose, quiet, write_log_file, params, output_folder, inp
         write_log_file,
         output_folder)
     if success:
-        success = identy_and_extract_samples_from_straight_volume(
-        cl_folder,
-        segm_folder,
-        lm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder,
-        use_raw_segmentations=False)
+        success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                                  write_log_file, output_folder,
+                                                                  use_raw_segmentations=False)
     if success:
         success = combine_cross_section_images_into_one(cl_folder, verbose)
     if success:
-        success = create_longitudinal_figure_from_straight_volume(
-        cl_folder,
-        segm_folder,
-        lm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder)
+        success = create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                                  write_log_file, output_folder)
+    if success:
+        success = compute_aortic_tortuosity_statistics(input_file, cl_folder, lm_folder, stats_folder, verbose,
+                                                      quiet, write_log_file, output_folder)
 
     # Not matter the success, we still gather statistics. At least we will get the last error message
-    success = compute_all_aorta_statistics(
-    input_file,
-    cl_folder,
-    segm_folder,
-    lm_folder,
-    stats_folder,
-    verbose,
-    quiet,
-    write_log_file,
-    output_folder)
+    success = compute_all_aorta_statistics(input_file, cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                           write_log_file, output_folder)
 
     # Also try to create visualization of the things we achieved even in erro
     success = aorta_visualization(input_file, cl_folder, segm_folder, stats_folder, vis_folder, verbose, params)
