@@ -81,7 +81,9 @@ class RenderTotalSegmentatorData:
         # print(f"Viewport size {size}")
         # pos = (5, viewport_size[1] - 50)
         pos = (5, 5)
-        self.add_text_to_render(self.ren_text, self.message_text, color=(1.0, 1.0, 1.0), position=pos)
+        self.add_text_to_render(
+            self.ren_text, self.message_text, color=(1.0, 1.0, 1.0), position=pos
+        )
         self.add_text_to_render(
             self.ren_patient_text,
             self.patient_text,
@@ -111,7 +113,9 @@ class RenderTotalSegmentatorData:
         Add a simple ITK image to the renderer using a volume renderer.
         If a mask is provided, the volume data is first masked. This can for example remove scanner beds etc.
         """
-        self.vtk_image = read_nifti_itk_to_vtk(input_file, img_mask, flip_for_volume_rendering=True)
+        self.vtk_image = read_nifti_itk_to_vtk(
+            input_file, img_mask, flip_for_volume_rendering=True
+        )
         if self.vtk_image is None:
             return
 
@@ -184,14 +188,18 @@ class RenderTotalSegmentatorData:
         view_offsets[1] *= dir_val
         self.ren_volume.GetActiveCamera().SetParallelProjection(1)
         self.ren_volume.GetActiveCamera().SetViewUp(0, 0, 1)
-        self.ren_volume.GetActiveCamera().SetPosition(c[0] + view_offsets[0], c[1] + view_offsets[1], c[2] + view_offsets[2])
+        self.ren_volume.GetActiveCamera().SetPosition(
+            c[0] + view_offsets[0], c[1] + view_offsets[1], c[2] + view_offsets[2]
+        )
         self.ren_volume.GetActiveCamera().SetFocalPoint(c[0], c[1], c[2])
         # ren_volume.ResetCamera()
         self.ren_volume.ResetCameraScreenSpace()
         self.ren_volume.GetActiveCamera().Zoom(1.2)
 
     @staticmethod
-    def add_text_to_render(ren, message, color=(1, 1, 1), position=(5, 5), font_size=10):
+    def add_text_to_render(
+        ren, message, color=(1, 1, 1), position=(5, 5), font_size=10
+    ):
         if ren is None or message == "":
             return
         txt = vtk.vtkTextActor()
@@ -218,7 +226,9 @@ class RenderTotalSegmentatorData:
         ren.AddActor(txt)
 
     @staticmethod
-    def generate_actor_from_surface(surface, color=np.array([1, 0, 0]), opacity=1.0, smooth="heavy"):
+    def generate_actor_from_surface(
+        surface, color=np.array([1, 0, 0]), opacity=1.0, smooth="heavy"
+    ):
         n_points = surface.GetNumberOfPoints()
         if n_points < 2:
             print("Not enough points in surface")
@@ -266,7 +276,9 @@ class RenderTotalSegmentatorData:
 
         return actor
 
-    def generate_actors_from_segment_file_name(self, segm_name, color_name, opacity, smooth="heavy"):
+    def generate_actors_from_segment_file_name(
+        self, segm_name, color_name, opacity, smooth="heavy"
+    ):
         if not os.path.exists(segm_name):
             # print(f"No {segm_name}")
             return
@@ -274,7 +286,9 @@ class RenderTotalSegmentatorData:
         if surface is not None:
             rgba = [0.0, 0.0, 0.0, 0.0]
             vtk.vtkNamedColors().GetColor(color_name, rgba)
-            actor = self.generate_actor_from_surface(surface, rgba, opacity, smooth=smooth)
+            actor = self.generate_actor_from_surface(
+                surface, rgba, opacity, smooth=smooth
+            )
             if actor is not None:
                 self.actors.append(actor)
 
@@ -343,15 +357,21 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
         segm_name_calc = f"{segm_folder}aorta_calcification_raw.nii.gz"
         # surf_name_calc = f"{surf_output_dir}aorta_calcification.vtk"
-        self.generate_actors_from_segment_file_name(segm_name_calc, "Ivory", 1.0, smooth="light")
+        self.generate_actors_from_segment_file_name(
+            segm_name_calc, "Ivory", 1.0, smooth="light"
+        )
 
         segm_name = f"{segm_folder}iliac_artery_left_top.nii.gz"
         # surf_name = f"{surf_output_dir}computed_iliac_artery_left_top.vtk"
-        self.generate_actors_from_segment_file_name(segm_name, "DarkSalmon", 1.0, smooth="heavy")
+        self.generate_actors_from_segment_file_name(
+            segm_name, "DarkSalmon", 1.0, smooth="heavy"
+        )
 
         segm_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
         # surf_name = f"{surf_output_dir}computed_iliac_artery_right_top.vtk"
-        self.generate_actors_from_segment_file_name(segm_name, "PaleVioletRed", 1.0, smooth="heavy")
+        self.generate_actors_from_segment_file_name(
+            segm_name, "PaleVioletRed", 1.0, smooth="heavy"
+        )
 
         # TODO: THis is hacky and should be updated
         if n_aorta_parts == 1:
@@ -363,7 +383,9 @@ class RenderAortaData(RenderTotalSegmentatorData):
                 if aneurysm_sac_ratio > 1.18 and q95_dists > 2.5:
                     # Show original total segmentations since they include the sac
                     segm_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-                    self.generate_actors_from_segment_file_name(segm_name, "OldLace", 0.6, smooth="heavy")
+                    self.generate_actors_from_segment_file_name(
+                        segm_name, "OldLace", 0.6, smooth="heavy"
+                    )
         if n_aorta_parts == 1:
             self.centerlines.append(
                 {
@@ -485,8 +507,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
         last_error = aorta_stats.get("last_error_message", "")
         if last_error != "":
-            self.message_text += (f"\nError Encountered!"
-                                  f"\nCheck log file")
+            self.message_text += f"\nError Encountered!" f"\nCheck log file"
 
         scan_type_stats = read_json_file(scan_type_file)
         if scan_type_stats is None:
@@ -504,14 +525,18 @@ class RenderAortaData(RenderTotalSegmentatorData):
         # else:
         #     cl_length = 0
 
-        aorta_txt = (f"\nAorta HU avg: {aorta_stats.get('avg_hu', 0):.0f} ({aorta_stats.get('cl_mean', 0):.0f})"
-                     f"\nstd.dev: {aorta_stats.get('std_hu', 0):.0f} ({aorta_stats.get('cl_std', 0):.0f})\n"
-                     f"median: {aorta_stats.get('med_hu', 0):.0f} ({aorta_stats.get('cl_med', 0):.0f})"
-                     f"\n99%: {aorta_stats.get('q99_hu', 0):.0f} ({aorta_stats.get('cl_q99', 0):.0f})"
-                     f"\n1%: {aorta_stats.get('q01_hu', 0):.0f} ({aorta_stats.get('cl_q01', 0):.0f})"
-                     f"\nAorta vol: {aorta_stats.get('tot_vol', 0) / 1000.0:.0f} cm3\nscan type: {scan_type}")
+        aorta_txt = (
+            f"\nAorta HU avg: {aorta_stats.get('avg_hu', 0):.0f} ({aorta_stats.get('cl_mean', 0):.0f})"
+            f"\nstd.dev: {aorta_stats.get('std_hu', 0):.0f} ({aorta_stats.get('cl_std', 0):.0f})\n"
+            f"median: {aorta_stats.get('med_hu', 0):.0f} ({aorta_stats.get('cl_med', 0):.0f})"
+            f"\n99%: {aorta_stats.get('q99_hu', 0):.0f} ({aorta_stats.get('cl_q99', 0):.0f})"
+            f"\n1%: {aorta_stats.get('q01_hu', 0):.0f} ({aorta_stats.get('cl_q01', 0):.0f})"
+            f"\nAorta vol: {aorta_stats.get('tot_vol', 0) / 1000.0:.0f} cm3\nscan type: {scan_type}"
+        )
         if "surface_area" in aorta_stats:
-            aorta_txt += f"\nAorta Surface area: {aorta_stats['surface_area'] / 100.0:.1f} cm2\n"
+            aorta_txt += (
+                f"\nAorta Surface area: {aorta_stats['surface_area'] / 100.0:.1f} cm2\n"
+            )
         # f'Centerline length: {cl_length / 10.0:.1f} cm\n' \
 
         self.message_text += aorta_txt
@@ -626,7 +651,9 @@ class RenderAortaData(RenderTotalSegmentatorData):
                 plot_idx += 1
 
         xyplot.GetPositionCoordinate().SetValue(0.05, 0.05, 0.0)
-        xyplot.GetPosition2Coordinate().SetValue(0.95, 0.95, 0.0)  # relative to Position
+        xyplot.GetPosition2Coordinate().SetValue(
+            0.95, 0.95, 0.0
+        )  # relative to Position
         xyplot.SetXValuesToValue()
         xyplot.SetYLabelFormat("%-#6.0f")
         xyplot.SetNumberOfXLabels(6)
@@ -708,7 +735,9 @@ class RenderAortaData(RenderTotalSegmentatorData):
                 radius = max_diam / 2 * 1.10
                 rgb = max_rgb[idx]
 
-                actor_cut = self.create_cylinder_actor(pos, normal, radius=radius, height=1.5, rgba=rgb, opacity=1.0)
+                actor_cut = self.create_cylinder_actor(
+                    pos, normal, radius=radius, height=1.5, rgba=rgb, opacity=1.0
+                )
 
                 self.ren_3d_1.AddActor(actor_cut)
                 self.ren_3d_2.AddActor(actor_cut)
@@ -782,10 +811,9 @@ class RenderAortaData(RenderTotalSegmentatorData):
             if stats:
                 any_stats = True
                 cut_area = stats["area"]
-                local_msg  += f"{name}: {cut_area} mm2\n"
+                local_msg += f"{name}: {cut_area} mm2\n"
         if any_stats:
             self.message_text += local_msg
-
 
     def set_aortic_tortuosity_index_statistics(self, stats_folder):
         stats_file = f"{stats_folder}/aorta_statistics.json"
@@ -862,7 +890,9 @@ class RenderAortaData(RenderTotalSegmentatorData):
             if ratio > 1.18 and q95_dists > 2.5:
                 self.message_text += f"Indication of aneurysm sac!\n"
         else:
-            print(f"Can not set aortic aneurysm sac statistics for scan type: {scan_type}")
+            print(
+                f"Can not set aortic aneurysm sac statistics for scan type: {scan_type}"
+            )
 
     def set_aortic_calcification_statistics(self, stats_folder):
         type_file = f"{stats_folder}aorta_scan_type.json"
@@ -894,8 +924,12 @@ class RenderAortaData(RenderTotalSegmentatorData):
             # total_volume = aorta_stats["tot_vol"]
 
             self.message_text += "\nCalcification info:\n"
-            self.message_text += f"Calcified volume: {calcification_volume / 1000.0:.1f} cm3\n"
-            self.message_text += f"Lumen volume: {aorta_lumen_volume / 1000.0:.1f} cm3\n"
+            self.message_text += (
+                f"Calcified volume: {calcification_volume / 1000.0:.1f} cm3\n"
+            )
+            self.message_text += (
+                f"Lumen volume: {aorta_lumen_volume / 1000.0:.1f} cm3\n"
+            )
             if aorta_lumen_volume > 0:
                 ratio = calcification_volume / aorta_lumen_volume * 100
                 self.message_text += f"Percent of total: {ratio:.2f}%\n"

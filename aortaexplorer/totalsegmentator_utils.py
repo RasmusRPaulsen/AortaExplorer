@@ -8,7 +8,10 @@ from aortaexplorer.io_utils import read_nifti_with_logging
 import SimpleITK as sitk
 import numpy as np
 
-def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, input_file):
+
+def do_totalsegmentator(
+    device, verbose, quiet, write_log_file, output_folder, input_file
+):
     """
     Use TotalSegmentator to compute segmentations
     input_file: full path to input file
@@ -18,7 +21,9 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
         return False
 
     # Get pure name of input file without path and extension
@@ -77,14 +82,16 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
                 output_type="nifti",
                 quiet=run_quit,
                 verbose=verbose,
-                test=False
+                test=False,
             )
         except Exception as e:
             msg = f"TotalSegmentator failed on {input_file} with exception: {str(e)}"
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             return False
     elif verbose:
         print(f"{total_out_name} already exists - skipping!")
@@ -95,7 +102,9 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
         return False
 
     if not os.path.exists(hc_out_name):
@@ -104,7 +113,9 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
         volume_threshold = 1000
         heart_label = 51
 
-        label_img = read_nifti_with_logging(total_out_name, verbose, quiet, write_log_file, output_folder)
+        label_img = read_nifti_with_logging(
+            total_out_name, verbose, quiet, write_log_file, output_folder
+        )
         if label_img is None:
             return False
 
@@ -152,7 +163,7 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
             output_type="nifti",
             quiet=run_quit,
             verbose=verbose,
-            test=False
+            test=False,
         )
 
         if not os.path.exists(hc_out_name):
@@ -160,26 +171,36 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="warning"
+                )
     elif verbose:
         print(f"{hc_out_name} already exists - skipping!")
 
     return True
 
 
-def computer_process(device, verbose, quiet, write_log_file, output_folder, process_queue, process_id):
+def computer_process(
+    device, verbose, quiet, write_log_file, output_folder, process_queue, process_id
+):
     while not process_queue.empty():
         q_size = process_queue.qsize()
         input_file = process_queue.get()
         if verbose:
-            print(f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left")
+            print(
+                f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left"
+            )
         local_start_time = time.time()
-        do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, input_file)
+        do_totalsegmentator(
+            device, verbose, quiet, write_log_file, output_folder, input_file
+        )
         elapsed_time = time.time() - local_start_time
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
         if verbose:
-            print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
+            print(
+                f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s"
+            )
 
 
 def compute_totalsegmentator_segmentations(
@@ -189,9 +210,12 @@ def compute_totalsegmentator_segmentations(
     device="gpu",
     verbose=False,
     quiet=False,
-    write_log_file=True):
+    write_log_file=True,
+):
     if verbose:
-        print(f"Computing TotalSegmentator segmentations with max {nr_ts} processes on device {device} on {len(in_files)} files. Output to {output_folder}")
+        print(
+            f"Computing TotalSegmentator segmentations with max {nr_ts} processes on device {device} on {len(in_files)} files. Output to {output_folder}"
+        )
 
     num_processes = nr_ts
     # no need to spawn more processes than files
@@ -203,7 +227,9 @@ def compute_totalsegmentator_segmentations(
         if verbose:
             print(f"Running TotalSegmentator on: {input_file}")
         local_start_time = time.time()
-        do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, input_file)
+        do_totalsegmentator(
+            device, verbose, quiet, write_log_file, output_folder, input_file
+        )
         elapsed_time = time.time() - local_start_time
         if verbose:
             print(f"Done with {input_file} - took {elapsed_time:.1f} s.")

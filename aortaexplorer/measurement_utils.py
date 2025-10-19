@@ -7,14 +7,14 @@ from pathlib import Path
 def flatten_json(y):
     out = {}
 
-    def flatten(x, name=''):
+    def flatten(x, name=""):
         if type(x) is dict:
             for a in x:
-                flatten(x[a], name + a + '_')
+                flatten(x[a], name + a + "_")
         elif type(x) is list:
             i = 0
             for a in x:
-                flatten(a, name + str(i) + '_')
+                flatten(a, name + str(i) + "_")
                 i += 1
         else:
             out[str(name[:-1])] = str(x)
@@ -22,7 +22,10 @@ def flatten_json(y):
     flatten(y)
     return out
 
-def gather_all_stat_columen_names(in_files, output_folder, verbose=False, quiet=False, write_log_file=True):
+
+def gather_all_stat_columen_names(
+    in_files, output_folder, verbose=False, quiet=False, write_log_file=True
+):
     all_column_names_set = set()
     all_column_names = []
     for in_file in in_files:
@@ -43,7 +46,11 @@ def gather_all_stat_columen_names(in_files, output_folder, verbose=False, quiet=
             if not quiet:
                 print(f"Error reading {stats_file}")
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=f"Error reading {stats_file}", level="error")
+                write_message_to_log_file(
+                    base_dir=output_folder,
+                    message=f"Error reading {stats_file}",
+                    level="error",
+                )
             continue
         flat_json = flatten_json(json_stuff)
         columns = flat_json.keys()
@@ -55,7 +62,15 @@ def gather_all_stat_columen_names(in_files, output_folder, verbose=False, quiet=
 
     return list(all_column_names)
 
-def gather_measurements_from_file(in_file, all_column_names, output_folder, verbose=False, quiet=False, write_log_file=True):
+
+def gather_measurements_from_file(
+    in_file,
+    all_column_names,
+    output_folder,
+    verbose=False,
+    quiet=False,
+    write_log_file=True,
+):
     # Get pure name of input file without path and extension
     scan_id = os.path.basename(in_file)
     scan_id = os.path.splitext(scan_id)[0]
@@ -73,7 +88,11 @@ def gather_measurements_from_file(in_file, all_column_names, output_folder, verb
         if not quiet:
             print(f"Error reading {stats_file}")
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=f"Error reading {stats_file}", level="error")
+            write_message_to_log_file(
+                base_dir=output_folder,
+                message=f"Error reading {stats_file}",
+                level="error",
+            )
         return None
     flat_json = flatten_json(json_stuff)
     columns = flat_json.keys()
@@ -86,12 +105,22 @@ def gather_measurements_from_file(in_file, all_column_names, output_folder, verb
 
     return values
 
-def get_all_measurement(in_files, all_column_names, output_folder, verbose=False, quiet=False, write_log_file=True):
+
+def get_all_measurement(
+    in_files,
+    all_column_names,
+    output_folder,
+    verbose=False,
+    quiet=False,
+    write_log_file=True,
+):
     measures_out = f"{output_folder}AortaExplorer_measurements.csv"
 
     f = open(measures_out, "a")
     for in_file in in_files:
-        values = gather_measurements_from_file(in_file, all_column_names, output_folder, verbose, quiet, write_log_file)
+        values = gather_measurements_from_file(
+            in_file, all_column_names, output_folder, verbose, quiet, write_log_file
+        )
         if values is not None:
             for c in all_column_names:
                 f.write(f"{values[c]},")
@@ -99,10 +128,11 @@ def get_all_measurement(in_files, all_column_names, output_folder, verbose=False
     f.close()
 
 
-def copy_all_visualization(in_files, output_folder, verbose=False, quiet=False, write_log_file=True):
+def copy_all_visualization(
+    in_files, output_folder, verbose=False, quiet=False, write_log_file=True
+):
     out_vis_folder = f"{output_folder}all_visualizations/"
     Path(out_vis_folder).mkdir(parents=True, exist_ok=True)
-
 
     for in_file in in_files:
         # Get pure name of input file without path and extension
@@ -122,20 +152,27 @@ def copy_all_visualization(in_files, output_folder, verbose=False, quiet=False, 
     return True
 
 
-
-def process_measurements(in_files, output_folder, verbose=False, quiet=False, write_log_file=True):
+def process_measurements(
+    in_files, output_folder, verbose=False, quiet=False, write_log_file=True
+):
     measures_out = f"{output_folder}AortaExplorer_measurements.csv"
 
     if verbose:
-        print(f"Gathering measurements from {len(in_files)} files. Output to {output_folder}")
+        print(
+            f"Gathering measurements from {len(in_files)} files. Output to {output_folder}"
+        )
 
-    all_column_names = gather_all_stat_columen_names(in_files, output_folder, verbose, quiet, write_log_file)
+    all_column_names = gather_all_stat_columen_names(
+        in_files, output_folder, verbose, quiet, write_log_file
+    )
     if len(all_column_names) < 1:
         msg = f"No measurement files found in {output_folder}"
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
         return False
 
     if verbose:
@@ -148,13 +185,17 @@ def process_measurements(in_files, output_folder, verbose=False, quiet=False, wr
         f.write("\n")
         f.close()
 
-        get_all_measurement(in_files, all_column_names, output_folder, verbose, quiet, write_log_file)
+        get_all_measurement(
+            in_files, all_column_names, output_folder, verbose, quiet, write_log_file
+        )
     except Exception as e:
         msg = f"Error writing to {measures_out}: {str(e)}"
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
 
     copy_all_visualization(in_files, output_folder, verbose, quiet, write_log_file)
 

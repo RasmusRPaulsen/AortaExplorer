@@ -6,7 +6,9 @@ import SimpleITK as sitk
 from aortaexplorer.io_utils import read_nifti_file_robustly
 
 
-def get_components_over_certain_size(segmentation, min_size=5000, max_number_of_components=2):
+def get_components_over_certain_size(
+    segmentation, min_size=5000, max_number_of_components=2
+):
     debug = False
     labels = label(segmentation)
     bin_c = np.bincount(labels.flat, weights=segmentation.flat)
@@ -29,7 +31,9 @@ def get_components_over_certain_size(segmentation, min_size=5000, max_number_of_
     return largest_cc, len(comp_ids)
 
 
-def get_components_over_certain_size_as_individual_volumes(segmentation, min_size=5000, max_number_of_components=2):
+def get_components_over_certain_size_as_individual_volumes(
+    segmentation, min_size=5000, max_number_of_components=2
+):
     labels = label(segmentation)
     bin_c = np.bincount(labels.flat, weights=segmentation.flat)
     debug = False
@@ -73,29 +77,41 @@ def close_cavities_in_segmentations(segmentation):
 
 
 def edt_based_opening(segmentation, spacing, radius):
-    sdf_mask = -edt.sdf(segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+    sdf_mask = -edt.sdf(
+        segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+    )
     eroded_mask = sdf_mask < -radius
-    sdf_mask = -edt.sdf(eroded_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+    sdf_mask = -edt.sdf(
+        eroded_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+    )
     opened_mask = sdf_mask <= radius
     return opened_mask
 
 
 def edt_based_closing(segmentation, spacing, radius):
-    sdf_mask = -edt.sdf(segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+    sdf_mask = -edt.sdf(
+        segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+    )
     dilated_mask = sdf_mask <= radius
-    sdf_mask = -edt.sdf(dilated_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+    sdf_mask = -edt.sdf(
+        dilated_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+    )
     closed_mask = sdf_mask < -radius
     return closed_mask
 
 
 def edt_based_dilation(segmentation, spacing, radius):
-    sdf_mask = -edt.sdf(segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+    sdf_mask = -edt.sdf(
+        segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+    )
     dilated_mask = sdf_mask <= radius
     return dilated_mask
 
 
 def edt_based_erosion(segmentation, spacing, radius):
-    sdf_mask = -edt.sdf(segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+    sdf_mask = -edt.sdf(
+        segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+    )
     eroded_mask = sdf_mask < -radius
     return eroded_mask
 
@@ -104,8 +120,12 @@ def edt_based_overlap(segmentation_1, segmentation_2, spacing, radius):
     """
     Compute the overlap between two segmentations using the Euclidean distance transform
     """
-    sdf_mask_1 = -edt.sdf(segmentation_1, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
-    sdf_mask_2 = -edt.sdf(segmentation_2, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+    sdf_mask_1 = -edt.sdf(
+        segmentation_1, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+    )
+    sdf_mask_2 = -edt.sdf(
+        segmentation_2, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+    )
     overlap_mask = (sdf_mask_1 < radius) & (sdf_mask_2 < radius)
 
     # overlap_mask = np.bitwise_and(sdf_mask_1 < radius, sdf_mask_2 < radius)
@@ -143,7 +163,9 @@ def edt_based_compute_landmark_from_segmentation_overlap(
     com_np = measurements.center_of_mass(overlap_mask)
     com_np = [com_np[2], com_np[1], com_np[0]]
 
-    com_phys = segm_sitk_img.TransformIndexToPhysicalPoint([int(com_np[0]), int(com_np[1]), int(com_np[2])])
+    com_phys = segm_sitk_img.TransformIndexToPhysicalPoint(
+        [int(com_np[0]), int(com_np[1]), int(com_np[2])]
+    )
     if debug:
         img_o = sitk.GetImageFromArray(overlap_mask.astype(int))
         img_o.CopyInformation(segm_sitk_img)

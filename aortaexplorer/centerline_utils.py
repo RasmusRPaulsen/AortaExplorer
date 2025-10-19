@@ -15,7 +15,6 @@ from skimage.util import img_as_ubyte
 from skimage.exposure import rescale_intensity
 from skimage.draw import line
 
-
 # VMTK only works with a very specific environment
 try:
     from vmtk import vmtkscripts
@@ -133,7 +132,9 @@ def add_start_and_end_point_to_centerline(in_center, start_point, end_point):
     return pd
 
 
-def compute_spline_from_path(cl_in, cl_out_file, spline_smoothing_factor=20, sample_spacing=0.25):
+def compute_spline_from_path(
+    cl_in, cl_out_file, spline_smoothing_factor=20, sample_spacing=0.25
+):
     sum_dist = 0
     n_points = cl_in.GetNumberOfPoints()
 
@@ -285,7 +286,9 @@ def compute_single_center_line(surface_name, cl_name, start_p_name, end_p_name):
     # Adding start and end points did not work very well. Too many errors at the ends
     # cl_added = add_start_and_end_point_to_centerline(centerlinePolyData.Centerlines, end_point, start_point)
     # cl_dists = add_distances_from_landmark_to_centerline(cl_added, start_point)
-    cl_dists = add_distances_from_landmark_to_centerline(centerlinePolyData.Centerlines, start_point)
+    cl_dists = add_distances_from_landmark_to_centerline(
+        centerlinePolyData.Centerlines, start_point
+    )
 
     # saves the centerlines in new vtk file
     writer = vtk.vtkXMLPolyDataWriter()
@@ -293,7 +296,9 @@ def compute_single_center_line(surface_name, cl_name, start_p_name, end_p_name):
     writer.SetFileName(cl_org_name)
     writer.Write()
 
-    cl_added = add_start_and_end_point_to_centerline(centerlinePolyData.Centerlines, end_point, start_point)
+    cl_added = add_start_and_end_point_to_centerline(
+        centerlinePolyData.Centerlines, end_point, start_point
+    )
     compute_spline_from_path(cl_added, cl_spline_name)
 
     return True
@@ -359,7 +364,9 @@ def find_position_on_centerline_based_on_scalar(cl, value):
         return cl.GetNumberOfPoints() - 1, cl_val_2
 
 
-def compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_straight_name, label_straight_name, verbose=False):
+def compute_single_straightened_volume_using_cpr(
+    cl, ct_img, label_img, img_straight_name, label_straight_name, verbose=False
+):
     """ """
     # slice_resolution = [1.0, 1.0, 1.0]
     slice_resolution = [0.5, 0.5, 0.5]
@@ -371,9 +378,13 @@ def compute_single_straightened_volume_using_cpr(cl, ct_img, label_img, img_stra
     convert_system = False
 
     if verbose:
-        print(f"Computing straightened volume with spacing {slice_resolution} and size {slice_size_mm} mm and output spacing {outputSpacingMm} mm")
+        print(
+            f"Computing straightened volume with spacing {slice_resolution} and size {slice_size_mm} mm and output spacing {outputSpacingMm} mm"
+        )
     cpr = CurvedPlanarReformat(slice_resolution, slice_size_mm, convert_system)
-    transform = cpr.compute_straightening_transform(cl, slice_size_mm, outputSpacingMm, convert_system)
+    transform = cpr.compute_straightening_transform(
+        cl, slice_size_mm, outputSpacingMm, convert_system
+    )
 
     if verbose:
         print("Performing straightening")
@@ -474,7 +485,9 @@ def sample_along_single_straight_labelmap(
             out_of_scan_area = np.sum(out_of_scan_region)
             out_of_scan_percent = out_of_scan_area / (dims[0] * dims[1]) * 100.0
 
-            cl_sampling_out_file.write(f"{cl_dist}, {cut_area}, {out_of_scan_percent}\n")
+            cl_sampling_out_file.write(
+                f"{cl_dist}, {cut_area}, {out_of_scan_percent}\n"
+            )
 
     cl_sampling_out_file.close()
     return True
@@ -552,7 +565,9 @@ def set_window_and_level_on_single_slice(img_in, img_window, img_level):
     # in_max = 800
 
     # https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.rescale_intensity
-    out_img = rescale_intensity(img_in, in_range=(in_min, in_max), out_range=(out_min, out_max))
+    out_img = rescale_intensity(
+        img_in, in_range=(in_min, in_max), out_range=(out_min, out_max)
+    )
 
     return out_img
 
@@ -571,14 +586,19 @@ def extract_max_cut_in_defined_section(
     spacing,
     dims,
     find_minimum=False,
-    verbose=False
+    verbose=False,
 ):
     max_slice_out_rgb = f"{cl_dir}{segment_name}_max_slice_rgb.png"
     max_slice_out_rgb_crop = f"{cl_dir}{segment_name}_max_slice_rgb_crop.png"
     max_slice_out_info = f"{cl_dir}{segment_name}_max_slice_info.json"
     debug = False
 
-    if start_cl_dist == np.inf or start_cl_dist == -np.inf or end_cl_dist == np.inf or end_cl_dist == -np.inf:
+    if (
+        start_cl_dist == np.inf
+        or start_cl_dist == -np.inf
+        or end_cl_dist == np.inf
+        or end_cl_dist == -np.inf
+    ):
         if verbose:
             print(f"Can not compute {segment_name} since distances are not defined.")
         return True, ""
@@ -618,7 +638,9 @@ def extract_max_cut_in_defined_section(
         return False, msg
     else:
         if debug:
-            print(f"Found max {segment_name} area {max_a} at idx {max_idx} dist {max_dist}")
+            print(
+                f"Found max {segment_name} area {max_a} at idx {max_idx} dist {max_dist}"
+            )
 
     # Extract single slice
     single_slice_np = label_img_np[:, :, max_idx]
@@ -667,7 +689,9 @@ def extract_max_cut_in_defined_section(
 
     if segment_name not in no_check:
         if diam_stats["min_diameter"] == 0:
-            msg = f"Minimum diameter for cut for {segment_name} is 0 - something is wrong"
+            msg = (
+                f"Minimum diameter for cut for {segment_name} is 0 - something is wrong"
+            )
             max_slice_info["diameter_ratio"] = 0
             return False, msg
         else:
@@ -681,7 +705,9 @@ def extract_max_cut_in_defined_section(
     # skimage.io.imsave(max_slice_boundary_out, boundary)
     single_slice_np_img = straight_img_np[:, :, max_idx]
 
-    single_slice_np_img = set_window_and_level_on_single_slice(single_slice_np_img, img_window, img_level)
+    single_slice_np_img = set_window_and_level_on_single_slice(
+        single_slice_np_img, img_window, img_level
+    )
     scaled_ubyte = img_as_ubyte(single_slice_np_img)
     # skimage.io.imsave(max_slice_out, scaled_ubyte)
 
@@ -740,7 +766,9 @@ def extract_max_cut_in_defined_section(
     return True, ""
 
 
-def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
+def compute_tortuosity_index_based_on_scan_type(
+    cl_folder, lm_folder, stats_folder, verbose, quiet, write_log_file, output_folder
+):
     """
     Compute tortuosity index based on scan type, where the type is defined here:
     https://github.com/RasmusRPaulsen/AortaExplorer
@@ -763,7 +791,9 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
         return None
 
     scan_type_stats = read_json_file(stats_file)
@@ -772,7 +802,9 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
         return None
 
     scan_type = scan_type_stats["scan_type"]
@@ -788,7 +820,9 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             return None
 
         pd = vtk.vtkXMLPolyDataReader()
@@ -800,7 +834,9 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             return None
 
         # The start point of the centerline
@@ -817,7 +853,9 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             return ati_stats
 
         ventri_cl_dist = ventri["ventri_cl_dist"]
@@ -839,11 +877,15 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             return None
         ascending_cl_dist = arch["max_cl_dist"]
         ascending_pos = arch["max_cl_pos"]
-        geometric_length = np.linalg.norm(np.array(ascending_pos) - np.array(ventri_pos))
+        geometric_length = np.linalg.norm(
+            np.array(ascending_pos) - np.array(ventri_pos)
+        )
         aortic_length = ventri_cl_dist - ascending_cl_dist
 
         if geometric_length > 0 and aortic_length > 0:
@@ -858,14 +900,20 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         if infrarenal:
             infrarenal_cl_dist = infrarenal["distance"]
             infrarenal_pos = infrarenal["cl_pos"]
-            geometric_length = np.linalg.norm(np.array(start_p) - np.array(infrarenal_pos))
+            geometric_length = np.linalg.norm(
+                np.array(start_p) - np.array(infrarenal_pos)
+            )
             # We add the start of the centerline to the true start point of the aorta
             aortic_length = infrarenal_cl_dist + add_distance_start
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}")
-                ati_stats["infrarenal_aortic_tortuosity_index"] = aortic_tortuosity_index
+                    print(
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                    )
+                ati_stats["infrarenal_aortic_tortuosity_index"] = (
+                    aortic_tortuosity_index
+                )
                 ati_stats["infrarenal_aortic_length"] = aortic_length
                 ati_stats["infrarenal_geometric_length"] = geometric_length
 
@@ -874,13 +922,17 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         if diaphragm:
             diaphragm_cl_dist = diaphragm["diaphragm_cl_dist"]
             diaphragm_pos = diaphragm["diaphragm_cl_pos"]
-            geometric_length = np.linalg.norm(np.array(start_p) - np.array(diaphragm_pos))
+            geometric_length = np.linalg.norm(
+                np.array(start_p) - np.array(diaphragm_pos)
+            )
             # We add the start of the centerline to the true start point of the aorta
             aortic_length = diaphragm_cl_dist + add_distance_start
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed abdominal tortuosity index: {aortic_tortuosity_index}")
+                    print(
+                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index}"
+                    )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
                 ati_stats["abdominal_geometric_length"] = geometric_length
@@ -888,25 +940,35 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             # Descending from diaphragm to subclavian artery (arch min dist)
             arch_min_cl_dist = arch["min_cl_dist"]
             arch_min_pos = arch["min_cl_pos"]
-            geometric_length = np.linalg.norm(np.array(diaphragm_pos) - np.array(arch_min_pos))
+            geometric_length = np.linalg.norm(
+                np.array(diaphragm_pos) - np.array(arch_min_pos)
+            )
             aortic_length = arch_min_cl_dist - diaphragm_cl_dist
 
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed descending tortuosity index: {aortic_tortuosity_index}")
-                ati_stats["descending_aortic_tortuosity_index"] = aortic_tortuosity_index
+                    print(
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                    )
+                ati_stats["descending_aortic_tortuosity_index"] = (
+                    aortic_tortuosity_index
+                )
                 ati_stats["descending_aortic_length"] = aortic_length
                 ati_stats["descending_geometric_length"] = geometric_length
 
             # IB-ARCH from iliac bifurcation to subclavian artery (arch min dist)
-            geometric_length = np.linalg.norm(np.array(start_p) - np.array(arch_min_pos))
+            geometric_length = np.linalg.norm(
+                np.array(start_p) - np.array(arch_min_pos)
+            )
             aortic_length = arch_min_cl_dist + add_distance_start
 
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed iliac bifucation to arch tortuosity index: {aortic_tortuosity_index}")
+                    print(
+                        f"Computed iliac bifucation to arch tortuosity index: {aortic_tortuosity_index}"
+                    )
                 ati_stats["ib_arch_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["ib_arch_aortic_length"] = aortic_length
                 ati_stats["ib_arch_geometric_length"] = geometric_length
@@ -919,7 +981,9 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             return None
 
         pd = vtk.vtkXMLPolyDataReader()
@@ -931,7 +995,9 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             return None
 
         # The start point of the centerline
@@ -950,14 +1016,20 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         if infrarenal:
             infrarenal_cl_dist = infrarenal["distance"]
             infrarenal_pos = infrarenal["cl_pos"]
-            geometric_length = np.linalg.norm(np.array(start_p) - np.array(infrarenal_pos))
+            geometric_length = np.linalg.norm(
+                np.array(start_p) - np.array(infrarenal_pos)
+            )
             # We add the start of the centerline to the true start point of the aorta
             aortic_length = infrarenal_cl_dist + add_distance_start
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}")
-                ati_stats["infrarenal_aortic_tortuosity_index"] = aortic_tortuosity_index
+                    print(
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                    )
+                ati_stats["infrarenal_aortic_tortuosity_index"] = (
+                    aortic_tortuosity_index
+                )
                 ati_stats["infrarenal_aortic_length"] = aortic_length
                 ati_stats["infrarenal_geometric_length"] = geometric_length
 
@@ -966,23 +1038,33 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         if diaphragm:
             diaphragm_cl_dist = diaphragm["diaphragm_cl_dist"]
             diaphragm_pos = diaphragm["diaphragm_cl_pos"]
-            geometric_length = np.linalg.norm(np.array(start_p) - np.array(diaphragm_pos))
+            geometric_length = np.linalg.norm(
+                np.array(start_p) - np.array(diaphragm_pos)
+            )
             # We add the start of the centerline to the true start point of the aorta
             aortic_length = diaphragm_cl_dist + add_distance_start
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed abdominal tortuosity index: {aortic_tortuosity_index}")
+                    print(
+                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index}"
+                    )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
                 ati_stats["abdominal_geometric_length"] = geometric_length
         else:
-            aortic_length = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + add_distance_start + add_distance_end
+            aortic_length = (
+                cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1)
+                + add_distance_start
+                + add_distance_end
+            )
             geometric_length = np.linalg.norm(np.array(start_p) - np.array(end_p))
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed abdominal tortuosity index (no diaphragm): {aortic_tortuosity_index}")
+                    print(
+                        f"Computed abdominal tortuosity index (no diaphragm): {aortic_tortuosity_index}"
+                    )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
                 ati_stats["abdominal_geometric_length"] = geometric_length
@@ -1065,23 +1147,39 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             diaphragm_cl_dist = diaphragm["diaphragm_cl_dist"]
             diaphragm_pos = diaphragm["diaphragm_cl_pos"]
             geometric_length = np.linalg.norm(np.array(end_p) - np.array(diaphragm_pos))
-            aortic_length = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + add_distance_end - diaphragm_cl_dist
+            aortic_length = (
+                cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1)
+                + add_distance_end
+                - diaphragm_cl_dist
+            )
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed descending tortuosity index: {aortic_tortuosity_index}")
-                ati_stats["descending_aortic_tortuosity_index"] = aortic_tortuosity_index
+                    print(
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                    )
+                ati_stats["descending_aortic_tortuosity_index"] = (
+                    aortic_tortuosity_index
+                )
                 ati_stats["descending_aortic_length"] = aortic_length
                 ati_stats["descending_geometric_length"] = geometric_length
         else:
             geometric_length = np.linalg.norm(np.array(start_p) - np.array(end_p))
-            aortic_length = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + add_distance_start + add_distance_end
+            aortic_length = (
+                cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1)
+                + add_distance_start
+                + add_distance_end
+            )
 
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed descending tortuosity index: {aortic_tortuosity_index}")
-                ati_stats["descending_aortic_tortuosity_index"] = aortic_tortuosity_index
+                    print(
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                    )
+                ati_stats["descending_aortic_tortuosity_index"] = (
+                    aortic_tortuosity_index
+                )
                 ati_stats["descending_aortic_length"] = aortic_length
                 ati_stats["descending_geometric_length"] = geometric_length
     # Two parts (cardiac) but also bottom of aorta
@@ -1170,14 +1268,20 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         if infrarenal:
             infrarenal_cl_dist = infrarenal["distance"]
             infrarenal_pos = infrarenal["cl_pos"]
-            geometric_length = np.linalg.norm(np.array(start_p) - np.array(infrarenal_pos))
+            geometric_length = np.linalg.norm(
+                np.array(start_p) - np.array(infrarenal_pos)
+            )
             # We add the start of the centerline to the true start point of the aorta
             aortic_length = infrarenal_cl_dist + add_distance_start
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}")
-                ati_stats["infrarenal_aortic_tortuosity_index"] = aortic_tortuosity_index
+                    print(
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                    )
+                ati_stats["infrarenal_aortic_tortuosity_index"] = (
+                    aortic_tortuosity_index
+                )
                 ati_stats["infrarenal_aortic_length"] = aortic_length
                 ati_stats["infrarenal_geometric_length"] = geometric_length
 
@@ -1185,13 +1289,17 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
         if diaphragm:
             diaphragm_cl_dist = diaphragm["diaphragm_cl_dist"]
             diaphragm_pos = diaphragm["diaphragm_cl_pos"]
-            geometric_length = np.linalg.norm(np.array(start_p) - np.array(diaphragm_pos))
+            geometric_length = np.linalg.norm(
+                np.array(start_p) - np.array(diaphragm_pos)
+            )
             # We add the start of the centerline to the true start point of the aorta
             aortic_length = diaphragm_cl_dist + add_distance_start
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
-                    print(f"Computed diaphragm tortuosity index: {aortic_tortuosity_index}")
+                    print(
+                        f"Computed diaphragm tortuosity index: {aortic_tortuosity_index}"
+                    )
                 ati_stats["diaphragm_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["diaphragm_aortic_length"] = aortic_length
                 ati_stats["diaphragm_geometric_length"] = geometric_length
@@ -1208,21 +1316,33 @@ def compute_tortuosity_index_based_on_scan_type(cl_folder, lm_folder, stats_fold
             #     ati_stats["descending_geometric_length"] = geometric_length
 
             # Descending from diaphragm to top of scan
-            top_cl_dist = cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1) + add_distance_start + add_distance_end
+            top_cl_dist = (
+                cl.GetPointData().GetScalars().GetValue(cl.GetNumberOfPoints() - 1)
+                + add_distance_start
+                + add_distance_end
+            )
             top_pos = end_p
             # arch_min_cl_dist = arch["min_cl_dist"]
             # arch_min_pos = arch["min_cl_pos"]
-            geometric_length = np.linalg.norm(np.array(diaphragm_pos) - np.array(top_pos))
+            geometric_length = np.linalg.norm(
+                np.array(diaphragm_pos) - np.array(top_pos)
+            )
             aortic_length = top_cl_dist - diaphragm_cl_dist
 
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
-                print(f"Computed descending tortuosity index: {aortic_tortuosity_index}")
-                ati_stats["descending_aortic_tortuosity_index"] = aortic_tortuosity_index
+                print(
+                    f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                )
+                ati_stats["descending_aortic_tortuosity_index"] = (
+                    aortic_tortuosity_index
+                )
                 ati_stats["descending_aortic_length"] = aortic_length
                 ati_stats["descending_geometric_length"] = geometric_length
     else:
-        print(f"Scan type {scan_type}: {scan_type_desc} not supported for tortuosity index")
+        print(
+            f"Scan type {scan_type}: {scan_type_desc} not supported for tortuosity index"
+        )
         return ati_stats
 
     return ati_stats

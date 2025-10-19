@@ -7,6 +7,7 @@ import json
 
 last_error_message = ""
 
+
 def write_message_to_log_file(base_dir, message, level="warning"):
     global last_error_message
     if level == "error":
@@ -24,9 +25,11 @@ def write_message_to_log_file(base_dir, message, level="warning"):
     with open(log_file, "a") as file:
         file.write(f"{now_date}: {message}\n")
 
+
 def get_last_error_message():
     global last_error_message
     return last_error_message
+
 
 def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str], str]:
     """

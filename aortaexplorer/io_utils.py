@@ -6,6 +6,7 @@ from aortaexplorer.general_utils import write_message_to_log_file
 from functools import cache
 import os
 
+
 def read_nifti_file_robustly(image_file: str):
     """
     Reads a NIfTI file robustly using SimpleITK. If SimpleITK fails to read the file,
@@ -43,6 +44,7 @@ def read_nifti_file_robustly(image_file: str):
             image = None
     return image, message
 
+
 def read_nifti_with_logging(image_file, verbose, quiet, write_log_file, output_folder):
     """
     Reads a NIfTI file with logging options.
@@ -52,18 +54,25 @@ def read_nifti_with_logging(image_file, verbose, quiet, write_log_file, output_f
         if not quiet:
             print(message)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=message, level="error")
+            write_message_to_log_file(
+                base_dir=output_folder, message=message, level="error"
+            )
         return None
 
     if message != "":
         if verbose and not quiet:
             print(message)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=message, level="warning")
+            write_message_to_log_file(
+                base_dir=output_folder, message=message, level="warning"
+            )
     return image
 
+
 @cache
-def read_nifti_with_logging_cached(image_file, verbose, quiet, write_log_file, output_folder):
+def read_nifti_with_logging_cached(
+    image_file, verbose, quiet, write_log_file, output_folder
+):
     """
     Reads a NIfTI file with logging options.
     Caches the result to avoid redundant reads.
@@ -75,12 +84,16 @@ def read_nifti_with_logging_cached(image_file, verbose, quiet, write_log_file, o
         if not quiet:
             print(message)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=message, level="error")
+            write_message_to_log_file(
+                base_dir=output_folder, message=message, level="error"
+            )
         return None
 
     if message != "":
         if verbose and not quiet:
             print(message)
         if write_log_file:
-            write_message_to_log_file(base_dir=output_folder, message=message, level="warning")
+            write_message_to_log_file(
+                base_dir=output_folder, message=message, level="warning"
+            )
     return image

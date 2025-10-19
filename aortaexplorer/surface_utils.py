@@ -7,6 +7,7 @@ from vtk.util.numpy_support import numpy_to_vtk
 import aortaexplorer.general_utils as gu
 from aortaexplorer.io_utils import read_nifti_file_robustly
 
+
 def sitk2vtk(img, flip_for_volume_rendering=False, debugOn=False):
     """Convert a SimpleITK image to a VTK image, via numpy."""
 
@@ -109,7 +110,9 @@ def filter_image_with_segmentation(img, mask_img_name, fill_val=-1000):
     return img_o
 
 
-def read_nifti_itk_to_vtk(file_name, img_mask_name=None, flip_for_volume_rendering=None):
+def read_nifti_itk_to_vtk(
+    file_name, img_mask_name=None, flip_for_volume_rendering=None
+):
     img, _ = read_nifti_file_robustly(file_name)
     if img is None:
         return None
@@ -128,7 +131,9 @@ def read_nifti_itk_to_vtk(file_name, img_mask_name=None, flip_for_volume_renderi
     return vtk_image
 
 
-def convert_label_map_to_surface(label_name, reset_direction_matrix=False, segment_id=1, only_largest_component=False):
+def convert_label_map_to_surface(
+    label_name, reset_direction_matrix=False, segment_id=1, only_largest_component=False
+):
     debug = False
     vtk_img = read_nifti_itk_to_vtk(label_name)
     if vtk_img is None:
@@ -221,7 +226,9 @@ def compute_min_and_max_z_landmark(surface):
     return min_p, max_p
 
 
-def find_closests_points_on_two_surfaces_with_start_point(surface_1, surface_2, start_point_surface_1):
+def find_closests_points_on_two_surfaces_with_start_point(
+    surface_1, surface_2, start_point_surface_1
+):
     """
     Find the two points that are closest on each other on the two surfaces
     """
@@ -302,7 +309,9 @@ def preprocess_surface_for_centerline_extraction(vtk_in):
     return normals.GetOutput()
 
 
-def aorta_volume_properties(segm_folder, stats_folder, quiet, write_log_file, output_folder, stats):
+def aorta_volume_properties(
+    segm_folder, stats_folder, quiet, write_log_file, output_folder, stats
+):
     """
     Compute volume properties of aorta including volume and surface area
     """
@@ -322,7 +331,9 @@ def aorta_volume_properties(segm_folder, stats_folder, quiet, write_log_file, ou
         if aorta_surface is None:
             msg = f"Could not extract aorta surface from {aorta_segm_file}"
             if write_log_file:
-                gu.write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                gu.write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             if not quiet:
                 print(msg)
             return False
@@ -344,7 +355,9 @@ def aorta_volume_properties(segm_folder, stats_folder, quiet, write_log_file, ou
         if aorta_surface is None:
             msg = f"Could not extract aorta surface from {aorta_segm_file}"
             if write_log_file:
-                gu.write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                gu.write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             if not quiet:
                 print(msg)
             return False
@@ -366,7 +379,9 @@ def aorta_volume_properties(segm_folder, stats_folder, quiet, write_log_file, ou
         if aorta_surface is None:
             msg = f"Could not extract aorta surface from {aorta_segm_file}"
             if write_log_file:
-                gu.write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+                gu.write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
             if not quiet:
                 print(msg)
             return False

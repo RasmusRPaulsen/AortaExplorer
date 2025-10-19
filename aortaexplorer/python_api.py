@@ -8,6 +8,7 @@ from aortaexplorer.totalsegmentator_utils import compute_totalsegmentator_segmen
 from aortaexplorer.aorta_utils import aorta_analysis
 from aortaexplorer.measurement_utils import process_measurements
 
+
 def get_default_parameters():
     default_parms = {
         "num_proc_total_segmentator": 1,
@@ -82,5 +83,7 @@ def aortaexplorer(
         write_log_file=write_log_file,
     )
 
-    process_measurements(in_files=in_files, output_folder=output, verbose=verbose, quiet=quiet)
+    process_measurements(
+        in_files=in_files, output_folder=output, verbose=verbose, quiet=quiet
+    )
     return True

@@ -83,3 +83,8 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.black]
+skip_magic_trailing_comma = true
+line-length = 88
+target-version = ['py39']

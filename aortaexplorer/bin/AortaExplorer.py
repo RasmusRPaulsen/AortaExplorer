@@ -3,10 +3,8 @@ import argparse
 import importlib.metadata
 from pathlib import Path
 import re
-from aortaexplorer.python_api import (
-    aortaexplorer,
-    get_default_parameters,
-)
+from aortaexplorer.python_api import aortaexplorer, get_default_parameters
+
 
 def validate_device_type_api(value):
     valid_strings = ["gpu", "cpu", "mps"]
@@ -21,14 +19,17 @@ def validate_device_type_api(value):
         return value
 
     raise ValueError(
-        f"Invalid device type: '{value}'. Must be 'gpu', 'cpu', 'mps', or 'gpu:X' where X is an integer representing the GPU device ID.")
+        f"Invalid device type: '{value}'. Must be 'gpu', 'cpu', 'mps', or 'gpu:X' where X is an integer representing the GPU device ID."
+    )
 
 
 def validate_device_type(value):
     try:
         return validate_device_type_api(value)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"Invalid device type: '{value}'. Must be 'gpu', 'cpu', 'mps', or 'gpu:X' where X is an integer representing the GPU device ID.")
+        raise argparse.ArgumentTypeError(
+            f"Invalid device type: '{value}'. Must be 'gpu', 'cpu', 'mps', or 'gpu:X' where X is an integer representing the GPU device ID."
+        )
 
 
 # TODO: Update AortaExplorer article
