@@ -4,7 +4,8 @@ from aortaexplorer.python_api import aortaexplorer, get_default_parameters
 def test_aortaexplorer():
     params = get_default_parameters()
 
-    # input_file = "C:/data/AortaExplorer/input/"
+    params["num_proc_general"] = 2
+    input_file = "C:/data/AortaExplorer/input/"
 
     # Type 5:
     # input_file = "C:/data/AortaExplorer/input/CFA-PILOT_0000_SERIES0010.nii.gz"
@@ -48,8 +49,8 @@ def test_aortaexplorer():
     # This is not very robust - since real anatomies might have that value
     # params["out_of_reconstruction_value"] = -1024
 
-    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0109_ct.nii.gz"
-    params["out_of_reconstruction_value"] = -1000
+    # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0109_ct.nii.gz"
+    # params["out_of_reconstruction_value"] = -1000
 
     output_folder = "C:/data/AortaExplorer/testoutput/"
 

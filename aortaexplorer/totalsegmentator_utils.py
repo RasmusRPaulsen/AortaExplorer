@@ -77,7 +77,7 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
                 output_type="nifti",
                 quiet=run_quit,
                 verbose=verbose,
-                test=False,
+                test=False
             )
         except Exception as e:
             msg = f"TotalSegmentator failed on {input_file} with exception: {str(e)}"
@@ -127,8 +127,8 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
             msg = f"Heart segmentation volume {sum_pix * vox_size:.1f} mm3 is below threshold {volume_threshold} mm3 for {input_file} - skipping high-res heart segmentation!"
             if not quiet:
                 print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="info")
+            # if write_log_file:
+            #     write_message_to_log_file(base_dir=output_folder, message=msg, level="info")
             return True
 
         task = "heartchambers_highres"
@@ -152,7 +152,7 @@ def do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, i
             output_type="nifti",
             quiet=run_quit,
             verbose=verbose,
-            test=False,
+            test=False
         )
 
         if not os.path.exists(hc_out_name):

@@ -520,6 +520,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     segm_in_name_descending = f"{segm_folder}aorta_lumen_descending.nii.gz"
     segm_total_out = f"{segm_folder}aorta_lumen.nii.gz"
     stats_file = f"{stats_folder}/aorta_parts.json"
+    stats_file_type = f"{stats_folder}/aorta_scan_type.json"
     segm_name_aorta = f"{segm_folder}total.nii.gz"
     segm_name_aorta_hires = f"{segm_folder}heartchambers_highres.nii.gz"
     aorta_segm_id = 52
@@ -642,6 +643,13 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
             print(msg)
         if write_log_file:
             write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
+
+        type_stats = {"scan_type": "unknown", "scan_type_desc": "No aorta found in scan"}
+        try:
+            with Path(stats_file_type).open("wt") as handle:
+                json.dump(type_stats, handle, indent=4, sort_keys=False)
+        except IOError as e:
+            print(f"I/O error({e.errno}): {e.strerror}: {stats_file}")
         return False
 
     n_components = len(components)
@@ -2656,7 +2664,7 @@ def extract_surfaces_for_centerlines(
             writer.Write()
         return True
 
-    msg = f"Can not compute extract surface for centerline for scan type {scan_type}"
+    msg = f"Can not compute extract surface for centerline for scan type {scan_type} for {segm_folder}"
     if not quiet:
         print(msg)
     if write_log_file:
@@ -3363,8 +3371,8 @@ def compute_ventricularoaortic_point_on_centerline(lm_folder, cl_folder, stats_f
             msg = f"Missing {f_r} for ventricularoaortic computation for {cl_file}"
             if verbose:
                 print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+            # if write_log_file:
+            #     write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
             return True
 
     pd = vtk.vtkXMLPolyDataReader()
