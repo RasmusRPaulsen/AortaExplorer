@@ -84,7 +84,7 @@ If the input is a folder, it will process all `.nii.gz` and `.nii` files in that
 ## Outputs
 
 AortaExplorer main outputs are:
-- [CSV file with the aortic measurements](](MEASUREMENTS.md). It is called `AortaExplorer_measurements.csv` and will be placed in the specified output folder. One row per input file.
+- [CSV file with the aortic measurements](MEASUREMENTS.md). It is called `AortaExplorer_measurements.csv` and will be placed in the specified output folder. One row per input file.
 - Visualizations of the results placed in a sub-folder called `all_visualizations`.
 - A log file with potential errors and warnings placed in the specified output folder.
 
