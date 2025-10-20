@@ -3071,7 +3071,7 @@ def extract_surfaces_for_centerlines(
     if not quiet:
         print(msg)
     if write_log_file:
-        write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+        write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
     return False
 
 
