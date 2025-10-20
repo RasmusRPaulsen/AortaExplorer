@@ -3,7 +3,7 @@ from totalsegmentator.python_api import totalsegmentator
 from pathlib import Path
 import time
 import multiprocessing as mp
-from aortaexplorer.general_utils import write_message_to_log_file
+from aortaexplorer.general_utils import write_message_to_log_file, clear_last_error_message
 from aortaexplorer.io_utils import read_nifti_with_logging
 import SimpleITK as sitk
 import numpy as np
@@ -16,6 +16,9 @@ def do_totalsegmentator(
     Use TotalSegmentator to compute segmentations
     input_file: full path to input file
     """
+    # Do not inherit any previous error message
+    clear_last_error_message()
+
     if not os.path.exists(input_file):
         msg = f"Could not find {input_file} for TotalSegmentator"
         if not quiet:

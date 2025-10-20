@@ -5,7 +5,7 @@ def test_aortaexplorer():
     params = get_default_parameters()
 
     params["num_proc_general"] = 2
-    input_file = "C:/data/AortaExplorer/input/"
+    # input_file = "C:/data/AortaExplorer/input/"
 
     # Type 5:
     # input_file = "C:/data/AortaExplorer/input/CFA-PILOT_0000_SERIES0010.nii.gz"
@@ -56,6 +56,7 @@ def test_aortaexplorer():
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0864_ct.nii.gz"
+    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s1390_ct.nii.gz"
     # output_folder = "C:/data/AortaExplorer/testoutput/"
 
     device = "gpu"

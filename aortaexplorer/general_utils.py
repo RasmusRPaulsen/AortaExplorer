@@ -7,6 +7,10 @@ import json
 
 last_error_message = ""
 
+def clear_last_error_message():
+    global last_error_message
+    last_error_message = ""
+
 
 def write_message_to_log_file(base_dir, message, level="warning"):
     global last_error_message
@@ -23,7 +27,7 @@ def write_message_to_log_file(base_dir, message, level="warning"):
 
     now_date = datetime.strftime(datetime.now(), "%d-%m-%Y-%H-%M-%S")
     with open(log_file, "a") as file:
-        file.write(f"{now_date}: {message}\n")
+        file.write(f"{now_date}: {level} : {message}\n")
 
 
 def get_last_error_message():

@@ -6726,6 +6726,8 @@ def do_aorta_analysis(
     Path(cl_folder).mkdir(parents=True, exist_ok=True)
     Path(vis_folder).mkdir(parents=True, exist_ok=True)
 
+    # Do not inherit any previous error message
+    clear_last_error_message()
     setup_vtk_error_handling(output_folder)
 
     if not os.path.exists(input_file):
