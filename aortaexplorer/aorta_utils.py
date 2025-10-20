@@ -8,6 +8,7 @@ from aortaexplorer.general_utils import (
     write_message_to_log_file,
     read_json_file,
     get_last_error_message,
+    clear_last_error_message,
 )
 from aortaexplorer.io_utils import read_nifti_with_logging_cached
 from aortaexplorer.surface_utils import (
