@@ -6678,8 +6678,15 @@ def aorta_visualization(
     if verbose:
         print(f"Creating aorta visualization {vis_file}")
 
+    # Get pure name of input file without path and extension
+    scan_id = os.path.basename(input_file)
+    scan_id = os.path.splitext(scan_id)[0]
+    if scan_id.endswith(".nii"):
+        scan_id = os.path.splitext(scan_id)[0]
+
+
     render_aorta_data = RenderAortaData(
-        win_size, save_to_file, stats_folder, segm_folder, cl_folder
+        win_size, scan_id, save_to_file, stats_folder, segm_folder, cl_folder
     )
 
     segm_name = None

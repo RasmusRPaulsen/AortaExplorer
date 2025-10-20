@@ -100,13 +100,15 @@ def main():
         default=False,
     )
 
+    # By default we write log file, so default False here
     parser.add_argument(
-        "-l",
-        "--logfile",
+        "--no-logfile",
         action="store_true",
-        help="Write log file to output folder",
-        default=True,
+        dest="logfile",
+        help="Do not write log file to output folder",
+        default=False,
     )
+
     parser.add_argument(
         "-oh",
         "--out_hu",
@@ -157,12 +159,14 @@ def main():
         help="The maximum HU value for calcification segmentation",
         default=1500,
     )
+
+    # Default False means that by default we do compute centerline from TS segmentation
     parser.add_argument(
-        "-ts",
-        "--ts_centerline",
+        "-nts",
+        "--no_ts_centerline",
         action="store_true",
-        help="Compute centerline from TotalSegmentator segmentation",
-        default=True,
+        help="Do not compute centerline from TotalSegmentator segmentation",
+        default=False,
     )
     parser.add_argument(
         "-ix",
@@ -199,7 +203,7 @@ def main():
     aorta_parms["aorta_min_max_hu_value"] = args.max_hu
     aorta_parms["aorta_calcification_min_hu_value"] = args.calc_low_hu
     aorta_parms["aorta_calcification_max_hu_value"] = args.calc_max_hu
-    aorta_parms["compute_centerline_from_ts_segmentation"] = args.ts_centerline
+    aorta_parms["compute_centerline_from_ts_segmentation"] = not args.no_ts_centerline
     aorta_parms["rendering_window_size"] = [args.image_x_size, args.image_y_size]
 
     aortaexplorer(
@@ -209,7 +213,7 @@ def main():
         device=args.device,
         verbose=args.verbose,
         quiet=args.quiet,
-        write_log_file=args.logfile,
+        write_log_file=not args.logfile,
     )
 
 

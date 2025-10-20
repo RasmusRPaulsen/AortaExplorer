@@ -5,7 +5,7 @@ import csv
 from aortaexplorer.general_utils import read_json_file
 import aortaexplorer.surface_utils as surfutils
 from aortaexplorer.surface_utils import read_nifti_itk_to_vtk
-
+import importlib.metadata
 
 class RenderTotalSegmentatorData:
     """
@@ -334,9 +334,15 @@ class RenderTotalSegmentatorData:
 
 
 class RenderAortaData(RenderTotalSegmentatorData):
-    def __init__(self, win_size, render_to_file, stats_folder, segm_folder, cl_folder):
+    def __init__(self, win_size, base_name, render_to_file, stats_folder, segm_folder, cl_folder):
         super().__init__(win_size, render_to_file)
         # print(f"Initialising aorta renderer")
+
+        self.message_text += f"Scan: {base_name}\n"
+
+        ao_version = importlib.metadata.version("AortaExplorer")
+        if ao_version is not None and ao_version != "":
+            self.message_text += f"AortaExplorer version: {ao_version}\n"
 
         n_aorta_parts = 1
         parts_stats = read_json_file(f"{stats_folder}aorta_parts.json")
