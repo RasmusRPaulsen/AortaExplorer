@@ -374,10 +374,10 @@ def refine_single_aorta_part(
     low_thresh = max(low_thresh, params["aorta_min_hu_value"])
     high_thresh = max(high_thresh, params["aorta_min_max_hu_value"])
     if forced_min_hu_value is not None and forced_min_hu_value > 0:
-        low_thresh = min(low_thresh, forced_min_hu_value)
+        low_thresh = forced_min_hu_value
         stats["forced_min_hu_value"] = forced_min_hu_value
     if forced_max_hu_value is not None and forced_max_hu_value > 0:
-        high_thresh = max(high_thresh, forced_max_hu_value)
+        high_thresh = forced_max_hu_value
         stats["forced_max_hu_value"] = forced_max_hu_value
 
     stats["low_thresh"] = low_thresh
