@@ -56,7 +56,13 @@ def test_aortaexplorer():
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0864_ct.nii.gz"
-    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s1390_ct.nii.gz"
+    # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s1390_ct.nii.gz"
+    input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0161_ct.nii.gz"
+    # params["forced_aorta_min_hu_value"] = 40
+    # params["forced_aorta_max_hu_value"] = 300
+    params["aorta_min_hu_value"] = 40
+    params["aorta_min_max_hu_value"] = 300
+    params["out_of_reconstruction_value"] = -1000
     # output_folder = "C:/data/AortaExplorer/testoutput/"
 
     device = "gpu"

@@ -335,14 +335,14 @@ def refine_single_aorta_part(
     stats = {}
     avg_hu = np.average(hu_values)
     q01_hu = np.percentile(hu_values, 1)
-    stats["avg_hu"] = avg_hu
-    stats["std_hu"] = np.std(hu_values)
-    stats["med_hu"] = np.median(hu_values)
-    stats["q99_hu"] = np.percentile(hu_values, 99)
-    stats["q01_hu"] = q01_hu
+    stats["skeleton_avg_hu"] = avg_hu
+    stats["skeleton_std_hu"] = np.std(hu_values)
+    stats["skeleton_med_hu"] = np.median(hu_values)
+    stats["skeleton_q99_hu"] = np.percentile(hu_values, 99)
+    stats["skeleton_q01_hu"] = q01_hu
     # print(stats)
 
-    hu_stdev = stats["std_hu"]
+    hu_stdev = stats["skeleton_std_hu"]
     low_thresh = avg_hu - 5 * hu_stdev
     high_thresh = avg_hu + 3 * hu_stdev
 
@@ -785,7 +785,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
 
         # make a combined segmentation
         label_img_annulus = read_nifti_with_logging_cached(
-            segm_in_name_annulus, verbose, quiet, write_log_file
+            segm_in_name_annulus, verbose, quiet, write_log_file, output_folder
         )
         if label_img_annulus is None:
             return False
@@ -801,7 +801,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         #     return False
 
         label_img_descending = read_nifti_with_logging_cached(
-            segm_in_name_descending, verbose, quiet, write_log_file
+            segm_in_name_descending, verbose, quiet, write_log_file, output_folder
         )
         if label_img_descending is None:
             return False
@@ -6326,7 +6326,8 @@ def gather_whole_heart_volumes(segm_folder, stats):
         segm_id = segment_ids[i]
         segm_name = segments[i]
         n_vox = np.sum(segm_data == segm_id)
-        stats[f"vol_{segm_name}"] = n_vox * vox_volume
+        if n_vox > 0:
+            stats[f"vol_{segm_name}"] = n_vox * vox_volume
 
     return True
 
@@ -6476,6 +6477,9 @@ def compute_all_aorta_statistics(
     stats_file = f"{stats_folder}/aorta_statistics.json"
     scan_type_file = f"{stats_folder}/aorta_scan_type.json"
     ati_stats_file = f"{stats_folder}aorta_tortuosity_stats.json"
+    skeleton_stats_file = f"{stats_folder}aorta_skeleton_hu_stats.json"
+    skeleton_stats_file_a = f"{stats_folder}aorta_skeleton_annulus_hu_stats.json"
+    skeleton_stats_file_d = f"{stats_folder}aorta_skeleton_descending_hu_stats.json"
 
     gather_wh_stats = True
 
@@ -6498,7 +6502,6 @@ def compute_all_aorta_statistics(
     ao_version = importlib.metadata.version("AortaExplorer")
     stats["aorta_explorer_version"] = ao_version
 
-
     last_error_message = get_last_error_message()
     if last_error_message:
         stats["last_error_message"] = last_error_message
@@ -6507,6 +6510,8 @@ def compute_all_aorta_statistics(
     parts_stats = read_json_file(f"{stats_folder}/aorta_parts.json")
     if parts_stats:
         n_aorta_parts = parts_stats["aorta_parts"]
+        stats["n_aorta_parts"] = n_aorta_parts
+
 
     segm_name = f"{segm_folder}aorta_lumen.nii.gz"
     aorta_segment_id = 1
@@ -6593,6 +6598,12 @@ def compute_all_aorta_statistics(
             vox_volume = spacing[0] * spacing[1] * spacing[2]
             n_vox = np.sum(segm_data == aorta_segment_id)
             stats["vol_descending_aorta"] = n_vox * vox_volume
+
+    skeleton_hu_files = [skeleton_stats_file, skeleton_stats_file_a, skeleton_stats_file_d]
+    for sh_file in skeleton_hu_files:
+        sh_stats = read_json_file(sh_file)
+        if sh_stats is not None:
+            stats = {**stats, **sh_stats}
 
     if gather_wh_stats:
         gather_whole_heart_volumes(segm_folder, stats)

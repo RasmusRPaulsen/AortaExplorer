@@ -110,11 +110,12 @@ def get_all_measurement(
     in_files,
     all_column_names,
     output_folder,
+    measures_out,
     verbose=False,
     quiet=False,
     write_log_file=True,
 ):
-    measures_out = f"{output_folder}AortaExplorer_measurements.csv"
+    # measures_out = f"{output_folder}AortaExplorer_measurements.csv"
 
     f = open(measures_out, "a")
     for in_file in in_files:
@@ -170,7 +171,17 @@ def process_measurements(
             print(
                 f"Measurement output file {measures_out} already exists. Backing up to {backup_name}"
             )
-        shutil.move(measures_out, backup_name)
+        try:
+            shutil.move(measures_out, backup_name)
+        except Exception as e:
+            # probably permission error since file is open in excel
+            msg = f"Could not back up existing measurement file {measures_out} to {backup_name}: {str(e)}"
+            if not quiet:
+                print(msg)
+            name_no_extension = os.path.splitext(measures_out)[0]
+            measures_out = f"{name_no_extension}_new_{now_date}.csv"
+            if not quiet:
+                print(f"Writing new measurement file to {measures_out} instead")
 
     all_column_names = gather_all_stat_columen_names(
         in_files, output_folder, verbose, quiet, write_log_file
@@ -196,7 +207,7 @@ def process_measurements(
         f.close()
 
         get_all_measurement(
-            in_files, all_column_names, output_folder, verbose, quiet, write_log_file
+            in_files, all_column_names, output_folder, measures_out, verbose, quiet, write_log_file
         )
     except Exception as e:
         msg = f"Error writing to {measures_out}: {str(e)}"
