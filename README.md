@@ -8,12 +8,14 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 **Highlights:**
 
 - Based on the excellent work of the [TotalSegmentator](https://github.com/wasserth/TotalSegmentator) team.
-- Works for contrast enhanced CT scans with a variety of scan field-of-views.
-- Computes [cross sectional lumen areas](MEASUREMENTS.md) in aorta segments defined by the [European society of cardiology (ESC)](https://pubmed.ncbi.nlm.nih.gov/25173340/).
-- Computes tortuosity.
-- Lumen areas have been validated against a large (10.000+) population with manual annotations.
-- [Tortuosity measures](MEASUREMENTS.md) on a large population (10.000+) are consistent with previously reported results.
-- Automatically determines [scan field-of-view (FOW)](SCANFOV.md)
+- Supports contrast-enhanced CT scans with a variety of scan field-of-views (FOV).
+- Automatically computes the following [measurements](MEASUREMENTS.md) of the aorta:
+  - Cross sectional lumen areas in aorta segments defined by the [European society of cardiology (ESC)](https://pubmed.ncbi.nlm.nih.gov/25173340/).
+  - Vessel tortuosity of the different aorta segments
+  - Diameter measurements
+- Aorta diameters have been validated against a large (10.000+) population with manual annotations.
+- Tortuosity measures on a large population (10.000+) are consistent with previously reported results.
+- Automatically determines [scan field-of-view (FOV)](SCANFOV.md)
 - Provides an experimental and non-validated calcification visualization.
 - Generates visualizations for easy validation of outputs.
 - Designed as a research tool for population studies.
@@ -134,7 +136,7 @@ AortaExplorer computes aortic segments based on the ESC standard. This is illust
 
 ![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortic_sections.png)
 
-From these, the following cross sectional areas are computed:
+From these, the following cross sectional areas and diameters are computed:
 
 ![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortic_measurements.png)
 
