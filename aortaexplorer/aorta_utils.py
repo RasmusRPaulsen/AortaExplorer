@@ -30,6 +30,7 @@ from aortaexplorer.segmentation_utils import (
     read_nifti_itk_to_numpy,
     check_if_segmentation_hit_sides_of_scan,
 )
+from aortaexplorer.aorta_centerline_utils import AortaCenterliner
 import aortaexplorer.centerline_utils as clutils
 from aortaexplorer.visualization_utils import RenderAortaData
 import SimpleITK as sitk
@@ -1402,7 +1403,7 @@ def compute_ventricularoaortic_landmark(
     return True
 
 
-def combine_aorta_and_left_ventricle(
+def combine_aorta_and_left_ventricle_and_iliac_arteries(
     input_file,
     segm_folder,
     lm_folder,
@@ -1414,31 +1415,34 @@ def combine_aorta_and_left_ventricle(
     use_ts_org_segmentations=False,
 ):
     """
-    Combine aorta and left ventricle since this is beneficial for computing the centerline.
+    Combine aorta, left ventricle and iliac arteries since this is beneficial for computing the centerline.
     It is ignored if no LV is present and just the aorta is returned
     """
     ventricularoaortic_p_in_file = f"{lm_folder}ventricularoaortic_point.txt"
     stats_file = f"{stats_folder}/aorta_parts.json"
     aorta_segm_id = 1
     left_ventricle_id = 3
+    iliac_left_id = 65
+    iliac_right_id = 66
 
     debug = False
     segm_name_hc = f"{segm_folder}heartchambers_highres.nii.gz"
+    total_in_name = f"{segm_folder}total.nii.gz"
 
     # Heart might not be present and that is fine
-    if not os.path.exists(segm_name_hc):
-        if verbose:
-            print(
-                f"Could not find {segm_name_hc} can not compute combined lv and aorta"
-            )
-        return True
+    # if not os.path.exists(segm_name_hc):
+    #     if verbose:
+    #         print(
+    #             f"Could not find {segm_name_hc} can not compute combined lv and aorta"
+    #         )
+    #     return True
 
-    if not os.path.exists(ventricularoaortic_p_in_file):
-        if verbose:
-            print(
-                f"Could not find {ventricularoaortic_p_in_file} can not compute combined lv and aorta"
-            )
-        return True
+    # if not os.path.exists(ventricularoaortic_p_in_file):
+    #     if verbose:
+    #         print(
+    #             f"Could not find {ventricularoaortic_p_in_file} can not compute combined lv and aorta"
+    #         )
+    #     return True
 
     n_aorta_parts = 1
     parts_stats = read_json_file(stats_file)
@@ -1448,17 +1452,17 @@ def combine_aorta_and_left_ventricle(
     if n_aorta_parts == 1:
         if use_ts_org_segmentations:
             segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
     elif n_aorta_parts == 2:
         if use_ts_org_segmentations:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus_raw.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
     else:
         msg = f"Can not handle more than 2 parts. Found {n_aorta_parts}"
         if not quiet:
@@ -1501,44 +1505,27 @@ def combine_aorta_and_left_ventricle(
     label_img_lv = read_nifti_with_logging_cached(
         segm_name_hc, verbose, quiet, write_log_file, output_folder
     )
-    if label_img_lv is None:
+    # if label_img_lv is None:
+    #     return False
+
+    label_img_total = read_nifti_with_logging_cached(
+        total_in_name, verbose, quiet, write_log_file, output_folder
+    )
+    if label_img_total is None:
         return False
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    # try:
-    #     ct_img = sitk.ReadImage(input_file)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file} for combined aorta and left ventricle segmentation: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    # try:
-    #     label_img_lv = sitk.ReadImage(segm_name_hc)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    label_img_lv_np = sitk.GetArrayFromImage(label_img_lv)
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
+    label_img_total_np = sitk.GetArrayFromImage(label_img_total)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
-    mask_np_lv = label_img_lv_np == left_ventricle_id
-    combined_mask = np.bitwise_or(mask_np_aorta, mask_np_lv)
+    mask_np_iliac_left = label_img_total_np == iliac_left_id
+    mask_np_iliac_right = label_img_total_np == iliac_right_id
+    combined_mask = np.bitwise_or(mask_np_aorta, mask_np_iliac_left)
+    combined_mask = np.bitwise_or(combined_mask, mask_np_iliac_right)
+
+    if label_img_lv:
+        label_img_lv_np = sitk.GetArrayFromImage(label_img_lv)
+        mask_np_lv = label_img_lv_np == left_ventricle_id
+        combined_mask = np.bitwise_or(combined_mask, mask_np_lv)
 
     spc = label_img_aorta.GetSpacing()
     # Make the spacing fit the numpy array
@@ -1554,7 +1541,7 @@ def combine_aorta_and_left_ventricle(
 
     ct_np = sitk.GetArrayFromImage(ct_img)
     # Remove invalid out-of-scan voxels (typically values -2048)
-    large_components = (-2000 < ct_np) & large_components
+    large_components = (-200 < ct_np) & large_components
 
     img_o = sitk.GetImageFromArray(large_components.astype(int))
     img_o.CopyInformation(label_img_aorta)
@@ -2395,9 +2382,9 @@ def compute_centerline_landmarks_for_aorta_type_1(
     """
     start_p_out_file = f"{lm_folder}aorta_start_point.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point.txt"
-    aorta_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+    aorta_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+        aorta_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
 
     # debug = False
     if os.path.exists(start_p_out_file) and os.path.exists(end_p_out_file):
@@ -2483,10 +2470,10 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(
     start_p_out_file = f"{lm_folder}aorta_start_point_annulus.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point_annulus.txt"
     sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
-    aorta_lv_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
-    overlap_name_1 = f"{segm_folder}aorta_left_ventricle_side_region.nii.gz"
+    aorta_lv_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
+    overlap_name_1 = f"{segm_folder}aorta_lumen_extended_side_region.nii.gz"
     if use_ts_org_segmentations:
-        aorta_lv_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+        aorta_lv_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
 
     debug = False
 
@@ -2927,9 +2914,9 @@ def extract_surfaces_for_centerlines(
             aorta_segm_in = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
 
         if scan_type in ["1", "1b", "1c", "1d"]:
-            aorta_segm_in = f"{segm_folder}aorta_left_ventricle.nii.gz"
+            aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
             if use_ts_org_segmentations:
-                aorta_segm_in = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+                aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
 
         aorta_surface_out = f"{surface_folder}aorta_surface_raw.vtp"
         aorta_surface_cl_out = f"{surface_folder}aorta_surface_for_centerline.vtp"
@@ -2974,9 +2961,9 @@ def extract_surfaces_for_centerlines(
         return True
 
     if scan_type == "5":
-        aorta_segm_in = f"{segm_folder}aorta_left_ventricle.nii.gz"
+        aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
         if use_ts_org_segmentations:
-            aorta_segm_in = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+            aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
 
         aorta_surface_out = f"{surface_folder}aorta_annulus_surface_raw.vtp"
         aorta_surface_cl_out = (
@@ -3158,17 +3145,13 @@ def compute_center_line(
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
             return False
 
         if verbose:
             print(f"Computing centerline from {aorta_surf_name}")
 
-        if not clutils.compute_single_center_line(
-            aorta_surf_name, cl_name, start_p_file, end_p_file
-        ):
+        if not clutils.compute_single_center_line(aorta_surf_name, cl_name, start_p_file, end_p_file):
             msg = f"Failed to compute centerline from {aorta_surf_name}"
             if not quiet:
                 print(msg)
@@ -3224,6 +3207,91 @@ def compute_center_line(
         print(msg)
     if write_log_file:
         write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
+    return False
+
+
+def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder, verbose, quiet,
+                                       write_log_file, output_folder, use_ts_org_segmentations=True):
+    stats_file = f"{stats_folder}aorta_scan_type.json"
+
+    scan_type_stats = read_json_file(stats_file)
+    if not scan_type_stats:
+        msg = f"Could not read {stats_file} can not compute centerline landmarks"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    scan_type = scan_type_stats["scan_type"]
+
+    if scan_type in ["2"]:
+        aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
+        if use_ts_org_segmentations:
+            aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+
+        skeleton_pd_name = f"{surface_folder}aorta_skeleton.vtp"
+        pruned_skeleton_pd_name = f"{surface_folder}aorta_pruned_skeleton.vtp"
+        cl_name = f"{cl_folder}aorta_centerline.vtp"
+        cl_name_fail = f"{cl_folder}aorta_centerline_failed.txt"
+        start_p_file = f"{lm_folder}aorta_start_point.txt"
+        end_p_file = f"{lm_folder}aorta_end_point.txt"
+
+        # if os.path.exists(cl_name):
+        #     if verbose:
+        #         print(f"{cl_name} already exists - skipping")
+        #     return True
+        #
+        # if os.path.exists(cl_name_fail):
+        #     msg = f"Centerline failed before on {aorta_segm_in}"
+        #     if not quiet:
+        #         print(msg)
+        #     if write_log_file:
+        #         write_message_to_log_file(
+        #             base_dir=output_folder, message=msg, level="error"
+        #         )
+        #     return False
+
+        if verbose:
+            print(f"Computing centerline from {aorta_segm_in}")
+
+        label_map = read_nifti_with_logging_cached(
+            aorta_segm_in, verbose, quiet, write_log_file, output_folder)
+        if label_map is None:
+            return False
+
+        start_point = clutils.read_landmarks(start_p_file)
+        end_point = clutils.read_landmarks(end_p_file)
+        if start_point is None or end_point is None:
+            print(f"Could not read landmarks {start_p_name} or {end_p_name}")
+            return False
+
+        aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point,
+                                      output_folder, verbose, quiet, write_log_file)
+        if not aorta_centerline.compute_centerline():
+            msg = f"Failed to compute centerline from {aorta_segm_in}"
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
+            with open(cl_name_fail, "w") as f:
+                f.write(f"Failed to compute centerline from {aorta_segm_in}")
+            return False
+
+        writer = vtk.vtkXMLPolyDataWriter()
+        writer.SetFileName(skeleton_pd_name)
+        writer.SetInputData(aorta_centerline.skeleton_polydata)
+        writer.Write()
+
+        writer.SetFileName(pruned_skeleton_pd_name)
+        writer.SetInputData(aorta_centerline.pruned_skeleton)
+        writer.Write()
+
+        return True
     return False
 
 
@@ -4146,10 +4214,10 @@ def compute_straightened_volume_using_cpr(
                 label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
         else:
             if use_raw_segmentations:
-                label_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+                label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
             else:
-                label_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+                label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
 
         label_img = read_nifti_with_logging_cached(
@@ -4197,14 +4265,14 @@ def compute_straightened_volume_using_cpr(
             if use_raw_segmentations:
                 label_name = f"{segm_folder}aorta_lumen_{part}_raw.nii.gz"
                 if part == "annulus":
-                    label_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+                    label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
                 label_straight_name = (
                     f"{segm_folder}straight_aorta_{part}_label_ts_org.nii.gz"
                 )
             else:
                 label_name = f"{segm_folder}aorta_lumen_{part}.nii.gz"
                 if part == "annulus":
-                    label_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+                    label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_{part}_label.nii.gz"
 
             label_img = read_nifti_with_logging_cached(
@@ -6831,7 +6899,7 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = combine_aorta_and_left_ventricle(
+        success = combine_aorta_and_left_ventricle_and_iliac_arteries(
             input_file,
             segm_folder,
             lm_folder,
@@ -6843,7 +6911,7 @@ def do_aorta_analysis(
             use_ts_org_segmentations=False,
         )
     if success:
-        success = combine_aorta_and_left_ventricle(
+        success = combine_aorta_and_left_ventricle_and_iliac_arteries(
             input_file,
             segm_folder,
             lm_folder,
@@ -6895,6 +6963,9 @@ def do_aorta_analysis(
             output_folder,
             use_ts_org_segmentations=use_org_ts_segmentations,
         )
+    if success:
+        success = compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder,
+                                                     verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True)
     if success:
         success = compute_center_line(
             stats_folder,
