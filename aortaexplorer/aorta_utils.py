@@ -1102,7 +1102,7 @@ def check_for_aneurysm_sac(
     segm_lumen_in = f"{segm_folder}aorta_lumen.nii.gz"
 
     if os.path.exists(aneurysm_sac_stats_file):
-        if not quiet:
+        if verbose:
             print(f"{aneurysm_sac_stats_file} already exists - skipping")
         return True
     if verbose:
