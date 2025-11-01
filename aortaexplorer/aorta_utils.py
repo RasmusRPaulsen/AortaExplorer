@@ -3227,7 +3227,7 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
 
     scan_type = scan_type_stats["scan_type"]
 
-    if scan_type in ["2"]:
+    if scan_type in ["1", "1b", "1c", "1d", "2"]:
         aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
         if use_ts_org_segmentations:
             aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"

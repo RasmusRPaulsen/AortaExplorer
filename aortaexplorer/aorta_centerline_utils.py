@@ -61,9 +61,6 @@ class AortaCenterliner:
     def compute_centerline(self):
         """
         Computes the centerline
-        Args:
-        Sets:
-
         """
         if self.label_map is None:
             report_error(f"No label map provided for centerline computation.")

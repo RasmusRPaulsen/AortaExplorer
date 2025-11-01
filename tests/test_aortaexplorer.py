@@ -53,7 +53,9 @@ def test_aortaexplorer():
     # params["out_of_reconstruction_value"] = -1000
 
     # Type 2: problems computing CL from TS segmentation
-    input_file = "C:/data/AortaExplorer/input/CGPS-1_4281_SERIES0012.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_4281_SERIES0012.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_6954_SERIES0009.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/CGPS-1_7246_SERIES0009.nii.gz"
 
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
