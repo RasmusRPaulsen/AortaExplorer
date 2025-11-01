@@ -3234,6 +3234,7 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
 
         skeleton_pd_name = f"{surface_folder}aorta_skeleton.vtp"
         pruned_skeleton_pd_name = f"{surface_folder}aorta_pruned_skeleton.vtp"
+        dijkstra_path_name = f"{surface_folder}aorta_dijkstra_path.vtp"
         cl_name = f"{cl_folder}aorta_centerline.vtp"
         cl_name_fail = f"{cl_folder}aorta_centerline_failed.txt"
         start_p_file = f"{lm_folder}aorta_start_point.txt"
@@ -3289,6 +3290,15 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
 
         writer.SetFileName(pruned_skeleton_pd_name)
         writer.SetInputData(aorta_centerline.pruned_skeleton)
+        writer.Write()
+
+        writer.SetFileName(dijkstra_path_name)
+        writer.SetInputData(aorta_centerline.dijkstra_path)
+        writer.Write()
+
+        cl_out = aorta_centerline.get_centerline_as_polydata(sample_spacing=0.25)
+        writer.SetFileName(cl_name)
+        writer.SetInputData(cl_out)
         writer.Write()
 
         return True

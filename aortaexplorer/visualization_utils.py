@@ -340,7 +340,10 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
         self.message_text += f"Scan: {base_name}\n"
 
-        ao_version = importlib.metadata.version("AortaExplorer")
+        try:
+            ao_version = importlib.metadata.version("AortaExplorer")
+        except importlib.metadata.PackageNotFoundError:
+            ao_version = None
         if ao_version is not None and ao_version != "":
             self.message_text += f"AortaExplorer version: {ao_version}\n"
 

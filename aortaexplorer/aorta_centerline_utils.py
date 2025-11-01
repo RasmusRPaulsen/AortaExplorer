@@ -44,7 +44,10 @@ class AortaCenterliner:
         self.spacing = None
         self.skeleton_polydata = None
         self.pruned_skeleton = None
-
+        self.dijkstra_map = None
+        self.dijkstra_path = None
+        self.spline_parameters = None
+        self.cl_polydata = None
 
     def report_error(self, message: str, level: str = "error"):
         """
@@ -65,13 +68,14 @@ class AortaCenterliner:
         if self.label_map is None:
             report_error(f"No label map provided for centerline computation.")
             return False
-
         if not self.compute_skeleton_and_vtk_from_segmentation():
             return False
-
         if not self.iterative_pruning():
             return False
-
+        if not self.dijkstra_on_skeleton():
+            return False
+        if not self.compute_spline_from_dijkstra_path():
+            return False
         return True
 
 
@@ -420,3 +424,131 @@ class AortaCenterliner:
             if it > 5:
                 stop = True
         return True
+
+
+    def dijkstra_on_skeleton(self):
+        self.dijkstra_map = vtk.vtkPolyData()
+        self.dijkstra_map.DeepCopy(self.pruned_skeleton)
+
+        # Find the closest point in the skeleton to the start landmark using a vtkPointLocator
+        point_locator = vtk.vtkPointLocator()
+        point_locator.SetDataSet(self.dijkstra_map)
+        point_locator.BuildLocator()
+        start_point_id = point_locator.FindClosestPoint(self.start_point)
+        #print(f"Start point ID in skeleton: {start_point_id}")
+        end_point_id = point_locator.FindClosestPoint(self.end_point)
+        # print(f"End point ID in skeleton: {end_point_id}")
+        dijkstra = vtk.vtkDijkstraGraphGeodesicPath()
+        dijkstra.SetInputData(self.dijkstra_map)
+        dijkstra.SetStartVertex(start_point_id)
+        dijkstra.Update()
+        weights = vtk.vtkDoubleArray()
+        dijkstra.GetCumulativeWeights(weights)
+
+        self.dijkstra_map.GetPointData().SetScalars(weights)
+
+        dijkstra.SetEndVertex(end_point_id)
+        dijkstra.Update()
+
+        self.dijkstra_path = vtk.vtkPolyData()
+        self.dijkstra_path.DeepCopy(dijkstra.GetOutput())
+        return True
+
+
+    def compute_spline_from_dijkstra_path(self, spline_smoothing_factor=20, sample_spacing=0.25):
+        cl_in = self.dijkstra_path
+        spline_smoothing_factor = 50
+
+        sum_dist = 0
+        n_points = cl_in.GetNumberOfPoints()
+
+        x = []
+        y_1 = []
+        y_2 = []
+        y_3 = []
+        p = cl_in.GetPoint(n_points - 1)
+        p_old = p
+        # Compute the three individual components of the path
+        # it is parameterised using the length along the path
+
+        for idx in range(n_points):
+            # We go backwards to fix a reverse distance problem
+            p = cl_in.GetPoint(n_points - idx - 1)
+            d = np.linalg.norm(np.array(p) - np.array(p_old))
+            sum_dist += d
+            p_old = p
+            x.append(sum_dist)
+            y_1.append(p[0])
+            y_2.append(p[1])
+            y_3.append(p[2])
+
+        min_x = 0
+        max_x = sum_dist
+
+        spl_1 = UnivariateSpline(x, y_1)
+        spl_2 = UnivariateSpline(x, y_2)
+        spl_3 = UnivariateSpline(x, y_3)
+        spl_1.set_smoothing_factor(spline_smoothing_factor)
+        spl_2.set_smoothing_factor(spline_smoothing_factor)
+        spl_3.set_smoothing_factor(spline_smoothing_factor)
+
+        self.spline_parameters = {
+            "min_x": min_x,
+            "max_x": max_x,
+            "spl_1": spl_1,
+            "spl_2": spl_2,
+            "spl_3": spl_3
+        }
+        return True
+
+
+    def get_centerline_as_polydata(self, sample_spacing=0.25):
+        min_x = self.spline_parameters["min_x"]
+        max_x = self.spline_parameters["max_x"]
+        spl_1 = self.spline_parameters["spl_1"]
+        spl_2 = self.spline_parameters["spl_2"]
+        spl_3 = self.spline_parameters["spl_3"]
+
+        samp_space = sample_spacing
+        spline_n_points = int(max_x / samp_space)
+        if self.verbose:
+            print(f"Computing sampled spline path with length {max_x:.1f} and sample spacing {samp_space} "
+                 f"resulting in {spline_n_points} samples for smoothing")
+
+        # Compute a polydata object with the spline points
+        xs = np.linspace(min_x, max_x, spline_n_points)
+
+        points = vtk.vtkPoints()
+        lines = vtk.vtkCellArray()
+        scalars = vtk.vtkDoubleArray()
+        scalars.SetNumberOfComponents(1)
+
+        current_idx = 0
+        sum_dist = 0
+        sp = [spl_1(xs[current_idx]), spl_2(xs[current_idx]), spl_3(xs[current_idx])]
+        pid = points.InsertNextPoint(sp)
+        scalars.InsertNextValue(sum_dist)
+        current_idx += 1
+
+        while current_idx < spline_n_points:
+            p_1 = [spl_1(xs[current_idx]), spl_2(xs[current_idx]), spl_3(xs[current_idx])]
+            sum_dist += np.linalg.norm(np.array(p_1) - np.array(sp))
+            lines.InsertNextCell(2)
+            pid_2 = points.InsertNextPoint(p_1)
+            scalars.InsertNextValue(sum_dist)
+            lines.InsertCellPoint(pid)
+            lines.InsertCellPoint(pid_2)
+            pid = pid_2
+            sp = p_1
+            current_idx += 1
+
+        self.cl_polydata = vtk.vtkPolyData()
+        self.cl_polydata.SetPoints(points)
+        del points
+        self.cl_polydata.SetLines(lines)
+        del lines
+        self.cl_polydata.GetPointData().SetScalars(scalars)
+        del scalars
+
+        return self.cl_polydata
+
