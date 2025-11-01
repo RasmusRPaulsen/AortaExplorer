@@ -3240,20 +3240,20 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
         start_p_file = f"{lm_folder}aorta_start_point.txt"
         end_p_file = f"{lm_folder}aorta_end_point.txt"
 
-        # if os.path.exists(cl_name):
-        #     if verbose:
-        #         print(f"{cl_name} already exists - skipping")
-        #     return True
-        #
-        # if os.path.exists(cl_name_fail):
-        #     msg = f"Centerline failed before on {aorta_segm_in}"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(
-        #             base_dir=output_folder, message=msg, level="error"
-        #         )
-        #     return False
+        if os.path.exists(cl_name):
+            if verbose:
+                print(f"{cl_name} already exists - skipping")
+            return True
+
+        if os.path.exists(cl_name_fail):
+            msg = f"Centerline failed before on {aorta_segm_in}"
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
+            return False
 
         if verbose:
             print(f"Computing centerline from {aorta_segm_in}")
@@ -4214,21 +4214,28 @@ def compute_straightened_volume_using_cpr(
         cl_in.Update()
         cl = cl_in.GetOutput()
 
-        # For scan type 2, the aorta is not coupled with LV
-        if scan_type == "2":
-            if use_raw_segmentations:
-                label_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
-            else:
-                label_name = f"{segm_folder}aorta_lumen.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
+        if use_raw_segmentations:
+            label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+            label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
         else:
-            if use_raw_segmentations:
-                label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
-            else:
-                label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
+            label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
+            label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
+        #
+        # # For scan type 2, the aorta is not coupled with LV
+        # if scan_type == "2":
+        #     if use_raw_segmentations:
+        #         label_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+        #         label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
+        #     else:
+        #         label_name = f"{segm_folder}aorta_lumen.nii.gz"
+        #         label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
+        # else:
+        #     if use_raw_segmentations:
+        #         label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+        #         label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
+        #     else:
+        #         label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
+        #         label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
 
         label_img = read_nifti_with_logging_cached(
             label_name, verbose, quiet, write_log_file, output_folder
@@ -6577,7 +6584,10 @@ def compute_all_aorta_statistics(
 
     stats = {"scan_name": input_file, "base_name": scan_id}
 
-    ao_version = importlib.metadata.version("AortaExplorer")
+    try:
+        ao_version = importlib.metadata.version("AortaExplorer")
+    except importlib.metadata.PackageNotFoundError:
+        ao_version = "unknown"
     stats["aorta_explorer_version"] = ao_version
 
     last_error_message = get_last_error_message()
@@ -6976,17 +6986,17 @@ def do_aorta_analysis(
     if success:
         success = compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder,
                                                      verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True)
-    if success:
-        success = compute_center_line(
-            stats_folder,
-            lm_folder,
-            surface_folder,
-            cl_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
+    # if success:
+    #     success = compute_center_line(
+    #         stats_folder,
+    #         lm_folder,
+    #         surface_folder,
+    #         cl_folder,
+    #         verbose,
+    #         quiet,
+    #         write_log_file,
+    #         output_folder,
+    #     )
     if success:
         success = compute_infrarenal_section_using_kidney_to_kidney_line(
             segm_folder,
