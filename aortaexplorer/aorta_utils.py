@@ -12,6 +12,7 @@ from aortaexplorer.general_utils import (
 )
 from aortaexplorer.io_utils import read_nifti_with_logging_cached
 from aortaexplorer.surface_utils import (
+    convert_sitk_image_to_surface,
     convert_label_map_to_surface,
     compute_min_and_max_z_landmark,
     find_closests_points_on_two_surfaces_with_start_point,
@@ -230,7 +231,7 @@ def refine_single_aorta_part(
     the lumen. It does this by computing HU statistics from a skeleton
     of the aorta and then thresholds the aorta based on these statistics.
     """
-    segm_in_name = f"{segm_folder}aorta_lumen{part}_raw.nii.gz"
+    segm_in_name = f"{segm_folder}aorta_lumen{part}_ts_org.nii.gz"
     segm_out_name = f"{segm_folder}aorta_lumen{part}.nii.gz"
     segm_skeleton_out_name = f"{segm_folder}aorta_lumen{part}_skeleton.nii.gz"
     segm_out_thres_name = f"{segm_folder}aorta_lumen{part}_thresholded.nii.gz"
@@ -320,6 +321,7 @@ def refine_single_aorta_part(
     hu_values = ct_np[dilated_mask > 0]
 
     # Check for out of scanfield values
+    # TODO: Update with out-of-scan values from settings
     hu_in_mask = hu_values > -2000
     hu_values = hu_values[hu_in_mask]
 
@@ -460,11 +462,13 @@ def refine_single_aorta_part(
 
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(label_img_aorta)
-    sitk.WriteImage(img_o, segm_no_holes_name)
+    if debug:
+        sitk.WriteImage(img_o, segm_no_holes_name)
 
-    aorta_surface = convert_label_map_to_surface(
-        segm_no_holes_name, only_largest_component=False
-    )
+    aorta_surface = convert_sitk_image_to_surface(img_o)
+    # aorta_surface = convert_label_map_to_surface(
+    #     segm_no_holes_name, only_largest_component=False
+    # )
     if aorta_surface is None:
         msg = f"Could not compute surface area of {segm_in_name}. Something wrong with refinement."
         if not quiet:
@@ -562,13 +566,13 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     """
     Take the original aorta segmentation and keep only the lumen
     """
-    store_raw_hires_aorta = True
-    store_raw_aorta = False
-    segm_out_name = f"{segm_folder}aorta_lumen_raw.nii.gz"
-    segm_out_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-    segm_out_name_raw = f"{segm_folder}aorta_ts_original.nii.gz"
-    segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_raw.nii.gz"
-    segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
+    store_ts_org_hires_aorta = True
+    store_ts_org_aorta = False
+    # segm_out_name = f"{segm_folder}aorta_lumen_raw.nii.gz"
+    segm_out_name_hires = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+    segm_out_name_total = f"{segm_folder}aorta_total_ts_org.nii.gz"
+    segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_ts_org.nii.gz"
+    segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_ts_org.nii.gz"
     segm_in_name_annulus = f"{segm_folder}aorta_lumen_annulus.nii.gz"
     segm_in_name_descending = f"{segm_folder}aorta_lumen_descending.nii.gz"
     segm_total_out = f"{segm_folder}aorta_lumen.nii.gz"
@@ -582,13 +586,13 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     # ct_name = input_file
     # debug = False
 
-    if os.path.exists(segm_out_name):
+    if os.path.exists(segm_total_out):
         if verbose:
-            print(f"{segm_out_name} already exists - skipping")
+            print(f"{segm_total_out} already exists - skipping")
         return True
 
     if verbose:
-        print(f"Computing pure aorta lumen segmentation to {segm_out_name}")
+        print(f"Computing pure aorta lumen segmentation to {segm_total_out}")
 
     if not os.path.exists(segm_name_aorta):
         msg = f"TotalSegmentator aorta segmentation {segm_name_aorta} not found. Can not extract aorta lumen."
@@ -606,9 +610,6 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
             print(f"Found high-res heart segmentation {segm_name_aorta_hires}")
         else:
             print(f"Did not find high-res heart segmentation {segm_name_aorta_hires}")
-
-    if verbose:
-        print(f"Computing {segm_out_name}")
 
     label_img_aorta = read_nifti_with_logging_cached(
         segm_name_aorta, verbose, quiet, write_log_file, output_folder
@@ -670,10 +671,10 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
 
-    if store_raw_aorta:
+    if store_ts_org_aorta:
         img_o = sitk.GetImageFromArray(mask_np_aorta.astype(int))
         img_o.CopyInformation(label_img_aorta)
-        sitk.WriteImage(img_o, segm_out_name_raw)
+        sitk.WriteImage(img_o, segm_out_name_total)
 
     if label_img_aorta_hires:
         # print("Adding hires aorta to baseline segmentation")
@@ -681,7 +682,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         mask_np_aorta_hires = label_img_aorta_hires_np == aorta_hires_segm_id
         mask_np_aorta = np.bitwise_or(mask_np_aorta, mask_np_aorta_hires)
 
-    if store_raw_hires_aorta:
+    if store_ts_org_hires_aorta:
         img_o = sitk.GetImageFromArray(mask_np_aorta.astype(int))
         img_o.CopyInformation(label_img_aorta)
         sitk.WriteImage(img_o, segm_out_name_hires)
@@ -755,7 +756,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         img_o.CopyInformation(label_img_aorta)
 
         # print(f"saving {segm_out_name}")
-        sitk.WriteImage(img_o, segm_out_name)
+        # sitk.WriteImage(img_o, segm_out_name)
 
         if not refine_single_aorta_part(
             input_file,
@@ -829,7 +830,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         img_o.CopyInformation(label_img_aorta)
 
         # print(f"saving {segm_out_name}")
-        sitk.WriteImage(img_o, segm_out_name)
+        # sitk.WriteImage(img_o, segm_out_name)
         if not refine_single_aorta_part(
             input_file,
             params,
@@ -967,7 +968,7 @@ def extract_aortic_calcifications(
     hu_stats_file_2 = f"{stats_folder}/aorta_skeleton_descending_hu_stats.json"
     calcification_stats_file = f"{stats_folder}/aorta_calcification_stats.json"
 
-    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
 
     segm_out_name = f"{segm_folder}aorta_calcification.nii.gz"
     segm_dilated_out_name = f"{segm_folder}aorta_lumen_dilated.nii.gz"
@@ -1099,7 +1100,7 @@ def check_for_aneurysm_sac(
     """
     aneurysm_sac_stats_file = f"{stats_folder}aorta_aneurysm_sac_stats.json"
     calcification_stats_file = f"{stats_folder}aorta_calcification_stats.json"
-    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
     segm_lumen_in = f"{segm_folder}aorta_lumen.nii.gz"
 
     if os.path.exists(aneurysm_sac_stats_file):
@@ -1241,7 +1242,7 @@ def compute_ventricularoaortic_landmark(
     ventricularoaortic_p_none_out_file = f"{lm_folder}ventricularoaortic_no_point.txt"
     stats_file = f"{stats_folder}/aorta_parts.json"
 
-    segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_name_aorta = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
     segm_name_hc = f"{segm_folder}heartchambers_highres.nii.gz"
     aorta_segm_id = 1
     left_ventricle_id = 3
@@ -1451,14 +1452,14 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
 
     if n_aorta_parts == 1:
         if use_ts_org_segmentations:
-            segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+            segm_name_aorta = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
             segm_out_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen.nii.gz"
             segm_out_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
     elif n_aorta_parts == 2:
         if use_ts_org_segmentations:
-            segm_name_aorta = f"{segm_folder}aorta_lumen_annulus_raw.nii.gz"
+            segm_name_aorta = f"{segm_folder}aorta_lumen_annulus_ts_org.nii.gz"
             segm_out_name = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus.nii.gz"
@@ -1561,7 +1562,7 @@ def compute_aortic_arch_landmarks(
     brachiocephalic trunk, left common carotid artery and left subclavian artery
     """
     debug = False
-    segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_name_aorta = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
     segm_name_total = f"{segm_folder}total.nii.gz"
     aorta_segm_id = 1
 
@@ -2095,7 +2096,7 @@ def compute_aorta_iliac_artery_landmark(
     segm_r_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
     segm_aorta_name = f"{segm_folder}aorta_lumen.nii.gz"
     if use_ts_org_segmentations:
-        segm_aorta_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+        segm_aorta_name = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
 
     label_img_l = read_nifti_with_logging_cached(
         segm_l_name, False, quiet, write_log_file, output_folder
@@ -2203,7 +2204,7 @@ def compute_centerline_landmarks_for_aorta_type_2(
     sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
     aorta_name = f"{segm_folder}aorta_lumen.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+        aorta_name = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
     overlap_name_1 = f"{segm_folder}aorta_side_region.nii.gz"
     debug = False
 
@@ -2640,7 +2641,7 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
     sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
     aorta_name = f"{segm_folder}aorta_lumen_descending.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
+        aorta_name = f"{segm_folder}aorta_lumen_descending_ts_org.nii.gz"
 
     overlap_name_1 = f"{segm_folder}aorta_descending_side_regions.nii.gz"
     debug = False
@@ -2935,22 +2936,20 @@ def extract_surfaces_for_centerlines(
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(
-                base_dir=output_folder, message=msg, level="error"
-            )
+            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
     scan_type = scan_type_stats["scan_type"]
 
     if scan_type in ["1", "1b", "1c", "1d", "2"]:
-        aorta_segm_in = f"{segm_folder}aorta_lumen.nii.gz"
+        # aorta_segm_in = f"{segm_folder}aorta_lumen.nii.gz"
+        # if use_ts_org_segmentations:
+        #     aorta_segm_in = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+        #
+        # if scan_type in ["1", "1b", "1c", "1d"]:
+        aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
         if use_ts_org_segmentations:
-            aorta_segm_in = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-
-        if scan_type in ["1", "1b", "1c", "1d"]:
-            aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
-            if use_ts_org_segmentations:
-                aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+            aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
 
         aorta_surface_out = f"{surface_folder}aorta_surface_raw.vtp"
         aorta_surface_cl_out = f"{surface_folder}aorta_surface_for_centerline.vtp"
@@ -2995,97 +2994,55 @@ def extract_surfaces_for_centerlines(
         return True
 
     if scan_type == "5":
-        aorta_segm_in = f"{segm_folder}aorta_lumen_annulus_extended.nii.gz"
-        if use_ts_org_segmentations:
-            aorta_segm_in = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
+        for part in ["annulus", "descending"]:
+            aorta_segm_in = f"{segm_folder}aorta_lumen_{part}.nii.gz"
+            if use_ts_org_segmentations:
+                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_ts_org.nii.gz"
 
-        aorta_surface_out = f"{surface_folder}aorta_annulus_surface_raw.vtp"
-        aorta_surface_cl_out = (
-            f"{surface_folder}aorta_annulus_surface_for_centerline.vtp"
-        )
-        if os.path.exists(aorta_surface_cl_out):
-            if verbose:
-                print(f"{aorta_surface_cl_out} already exists - skipping")
-        else:
-            if verbose:
-                print(f"Extracting {aorta_surface_out}")
-            aorta_surface = convert_label_map_to_surface(
-                aorta_segm_in, segment_id=1, only_largest_component=True
-            )
-            if aorta_surface is None:
-                msg = f"Could not compute aorta surface from {aorta_segm_in}"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(
-                        base_dir=output_folder, message=msg, level="error"
-                    )
-                return False
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(aorta_surface_out)
-            writer.SetInputData(aorta_surface)
-            writer.Write()
+            if part == "annulus":
+                aorta_segm_in = f"{segm_folder}aorta_lumen_annulus_extended.nii.gz"
+                if use_ts_org_segmentations:
+                    aorta_segm_in = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
 
-            surface_cl = preprocess_surface_for_centerline_extraction(aorta_surface)
-            if surface_cl is None:
-                msg = f"Could not preprocess aorta surface from {aorta_segm_in} for centerline computation"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(
-                        base_dir=output_folder, message=msg, level="error"
-                    )
-                return False
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(aorta_surface_cl_out)
-            writer.SetInputData(surface_cl)
-            writer.Write()
+            aorta_surface_out = f"{surface_folder}aorta_{part}_surface_raw.vtp"
+            aorta_surface_cl_out = f"{surface_folder}aorta_{part}_surface_for_centerline.vtp"
+            if os.path.exists(aorta_surface_cl_out):
+                if verbose:
+                    print(f"{aorta_surface_cl_out} already exists - skipping")
+            else:
+                if verbose:
+                    print(f"Extracting {aorta_surface_out}")
+                aorta_surface = convert_label_map_to_surface(
+                    aorta_segm_in, segment_id=1, only_largest_component=True
+                )
+                if aorta_surface is None:
+                    msg = f"Could not compute aorta surface from {aorta_segm_in}"
+                    if not quiet:
+                        print(msg)
+                    if write_log_file:
+                        write_message_to_log_file(
+                            base_dir=output_folder, message=msg, level="error"
+                        )
+                    return False
+                writer = vtk.vtkXMLPolyDataWriter()
+                writer.SetFileName(aorta_surface_out)
+                writer.SetInputData(aorta_surface)
+                writer.Write()
 
-        aorta_segm_in = f"{segm_folder}aorta_lumen_descending.nii.gz"
-        if use_ts_org_segmentations:
-            aorta_segm_in = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
-
-        aorta_surface_out = f"{surface_folder}aorta_descending_surface_raw.vtp"
-        aorta_surface_cl_out = (
-            f"{surface_folder}aorta_descending_surface_for_centerline.vtp"
-        )
-        if os.path.exists(aorta_surface_cl_out):
-            if verbose:
-                print(f"{aorta_surface_cl_out} already exists - skipping")
-        else:
-            if verbose:
-                print(f"Extracting {aorta_surface_out}")
-            aorta_surface = convert_label_map_to_surface(
-                aorta_segm_in, segment_id=1, only_largest_component=True
-            )
-            if aorta_surface is None:
-                msg = f"Could not compute aorta surface from {aorta_segm_in}"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(
-                        base_dir=output_folder, message=msg, level="error"
-                    )
-                return False
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(aorta_surface_out)
-            writer.SetInputData(aorta_surface)
-            writer.Write()
-
-            surface_cl = preprocess_surface_for_centerline_extraction(aorta_surface)
-            if surface_cl is None:
-                msg = f"Could not preprocess aorta surface from {aorta_segm_in} for centerline computation"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(
-                        base_dir=output_folder, message=msg, level="error"
-                    )
-                return False
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(aorta_surface_cl_out)
-            writer.SetInputData(surface_cl)
-            writer.Write()
+                surface_cl = preprocess_surface_for_centerline_extraction(aorta_surface)
+                if surface_cl is None:
+                    msg = f"Could not preprocess aorta surface from {aorta_segm_in} for centerline computation"
+                    if not quiet:
+                        print(msg)
+                    if write_log_file:
+                        write_message_to_log_file(
+                            base_dir=output_folder, message=msg, level="error"
+                        )
+                    return False
+                writer = vtk.vtkXMLPolyDataWriter()
+                writer.SetFileName(aorta_surface_cl_out)
+                writer.SetInputData(surface_cl)
+                writer.Write()
         return True
 
     msg = f"Can not compute extract surface for centerline for scan type {scan_type} for {segm_folder}"
@@ -3341,8 +3298,8 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
             skeleton_pd_name = f"{surface_folder}aorta_{part}_skeleton.vtp"
             pruned_skeleton_pd_name = f"{surface_folder}aorta_{part}_pruned_skeleton.vtp"
             dijkstra_path_name = f"{surface_folder}aorta_{part}_dijkstra_path.vtp"
-            cl_name = f"{cl_folder}aorta_{part}_centerline.vtp"
-            cl_name_fail = f"{cl_folder}aorta_{part}_centerline_failed.txt"
+            cl_name = f"{cl_folder}aorta_centerline_{part}.vtp"
+            cl_name_fail = f"{cl_folder}aorta_centerline_{part}_failed.txt"
             start_p_file = f"{lm_folder}aorta_start_point_{part}.txt"
             end_p_file = f"{lm_folder}aorta_end_point_{part}.txt"
 
@@ -4385,16 +4342,16 @@ def compute_straightened_volume_using_cpr(
             cl = cl_in.GetOutput()
 
             if use_raw_segmentations:
-                label_name = f"{segm_folder}aorta_lumen_{part}_raw.nii.gz"
+                label_name = f"{segm_folder}aorta_lumen_{part}_ts_org.nii.gz"
                 if part == "annulus":
-                    label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+                    label_name = f"{segm_folder}aorta_lumen_{part}_extended_ts_org.nii.gz"
                 label_straight_name = (
                     f"{segm_folder}straight_aorta_{part}_label_ts_org.nii.gz"
                 )
             else:
                 label_name = f"{segm_folder}aorta_lumen_{part}.nii.gz"
                 if part == "annulus":
-                    label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
+                    label_name = f"{segm_folder}aorta_lumen_{part}_extended.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_{part}_label.nii.gz"
 
             label_img = read_nifti_with_logging_cached(
@@ -4806,7 +4763,7 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(
     """
     ext = ""
     if use_raw_segmentations:
-        ext = "_ts_original"
+        ext = "_ts_org"
 
     cl_sampling_in_annulus = f"{cl_folder}straight_labelmap_sampling_annulus.csv"
     cl_file_annulus = f"{cl_folder}aorta_centerline_annulus.vtp"
@@ -5303,7 +5260,7 @@ def identy_and_extract_samples_from_straight_volume(
 
     ext = ""
     if use_raw_segmentations:
-        ext = "_ts_original"
+        ext = "_ts_org"
 
     straight_vol_in = f"{segm_folder}straight_aorta_img.nii.gz"
     straight_label_in = f"{segm_folder}straight_aorta_label{ext}.nii.gz"
@@ -6526,7 +6483,7 @@ def compile_aorta_cut_statistics(cl_folder, compare_with_raw_segmentations=False
     cl_dir = cl_folder
     ext = ""
     if compare_with_raw_segmentations:
-        ext = "_ts_original"
+        ext = "_ts_org"
 
     # currently we do not use the colors
     cut_infos = [

@@ -409,6 +409,8 @@ class AortaCenterliner:
         min_endpoints = 3
         if self.aorta_type == "2":
             min_endpoints = 3  # Top of the aorta + two iliac arteries
+        if self.aorta_type == "5":
+            min_endpoints = 2  # Just the aorta in the ascending and descending parts
 
         self.pruned_skeleton = vtk.vtkPolyData()
         self.pruned_skeleton.DeepCopy(self.skeleton_polydata)
