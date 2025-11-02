@@ -179,9 +179,9 @@ class AortaCenterliner:
         if self.verbose:
             print(f"Resampling took {elapsed_time:.2f} seconds")
 
-        if self.aorta_type == "2":
+        if self.aorta_type in ["2", "5"]:
             if self.verbose:
-                print(f"Extending axial slices by copying for type 2 aorta")
+                print(f"Extending axial slices by copying for type {self.aorta_type} aorta")
             start_time = time.time()
             image_res = self.extend_axial_with_copy(image_res, extension_cm=3.0)
             elapsed_time = time.time() - start_time

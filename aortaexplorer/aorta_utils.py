@@ -851,38 +851,26 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     return True
 
 
-def inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder):
+def inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder,
+                                  use_ts_org_segmentations=True):
     """
     Sometime the scanner does not cover the full body - in that case we need to
     inpaint missing segmentations based on nearby slices.
     """
-    # store_ts_org_hires_aorta = True
-    # store_ts_org_aorta = False
-    # # segm_out_name = f"{segm_folder}aorta_lumen_raw.nii.gz"
-    # segm_out_name_hires = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
-    # segm_out_name_total = f"{segm_folder}aorta_total_ts_org.nii.gz"
-    # segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_ts_org.nii.gz"
-    # segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_ts_org.nii.gz"
-    # segm_in_name_annulus = f"{segm_folder}aorta_lumen_annulus.nii.gz"
-    # segm_in_name_descending = f"{segm_folder}aorta_lumen_descending.nii.gz"
-    # segm_total_out = f"{segm_folder}aorta_lumen.nii.gz"
-    # stats_file = f"{stats_folder}/aorta_parts.json"
-    # stats_file_type = f"{stats_folder}/aorta_scan_type.json"
-    # segm_name_aorta = f"{segm_folder}total.nii.gz"
-    # segm_name_aorta_hires = f"{segm_folder}heartchambers_highres.nii.gz"
-    # aorta_segm_id = 52
-    # aorta_hires_segm_id = 6
+    ext = "_ts_org" if use_ts_org_segmentations else ""
 
-    # segm_in_name_annulus = f"{segm_folder}aorta_lumen_annulus_ts_org.nii.gz"
-    # segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_inpaint_ts_org.nii.gz"
-    segm_in_name_annulus = f"{segm_folder}aorta_lumen_descending_ts_org.nii.gz"
-    segm_out_name_annulus = f"{segm_folder}aorta_lumen_descending_inpaint_ts_org.nii.gz"
+    segm_in_name_annulus = f"{segm_folder}aorta_lumen_annulus_extended{ext}.nii.gz"
+    segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_extended_inpaint{ext}.nii.gz"
+    segm_in_name_descending = f"{segm_folder}aorta_lumen_descending{ext}.nii.gz"
+    segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_inpaint{ext}.nii.gz"
 
-    # segm_out_name = f"{segm_folder}out_of_scan.nii.gz"
-    # sdf_out_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
+    segm_in_names = [segm_in_name_annulus, segm_in_name_descending]
+    segm_out_names = [segm_out_name_annulus, segm_out_name_descending]
+
     low_thresh = params["out_of_reconstruction_value"]
     high_thresh = 16000
 
+    # TODO: better check
     if os.path.exists(segm_out_name_annulus):
         if verbose:
             print(f"{segm_out_name_annulus} already exists - skipping")
@@ -919,37 +907,41 @@ def inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
     # Get indices of nearest valid voxels
     distance, indices = distance_transform_edt(combined_mask == True, return_indices=True)
 
-    # Read label map
-    label_map = read_nifti_with_logging_cached(segm_in_name_annulus, verbose, quiet, write_log_file, output_folder)
-    if label_map is None:
-        return False
-    label_map_np = sitk.GetArrayFromImage(label_map)
+    for i in range(len(segm_in_names)):
+        segm_in_name = segm_in_names[i]
+        segm_out_name = segm_out_names[i]
 
-    if verbose:
-        print(f"Dilating segmentation for inpainting")
-    # Dilate the segmentation to be sure it hits the border of the missing parts
-    footprint = ball(radius=3)
-    dilated_segm = binary_dilation(label_map_np, footprint)
+        # Read label map
+        label_map = read_nifti_with_logging_cached(segm_in_name, verbose, quiet, write_log_file, output_folder)
+        if label_map is None:
+            continue
+        label_map_np = sitk.GetArrayFromImage(label_map)
 
-    if verbose:
-        print(f"Filling missing segmentation voxels by inpainting")
-    # Fill border voxels
-    # label_map_np[combined_mask] = label_map_np[tuple(ind[combined_mask] for ind in indices)]
-    label_map_np[combined_mask] = dilated_segm[tuple(ind[combined_mask] for ind in indices)]
+        if verbose:
+            print(f"Dilating segmentation for inpainting {segm_in_name}")
+        # Dilate the segmentation to be sure it hits the border of the missing parts
+        footprint = ball(radius=3)
+        dilated_segm = binary_dilation(label_map_np, footprint)
 
-    # Do closing to avoid gaps around border
-    if verbose:
-        print(f"Closing segmentation after inpainting")
-    footprint = ball(radius=3)
-    label_map_np = binary_closing(label_map_np, footprint)
+        if verbose:
+            print(f"Filling missing segmentation voxels by inpainting")
+        # Fill border voxels
+        # label_map_np[combined_mask] = label_map_np[tuple(ind[combined_mask] for ind in indices)]
+        label_map_np[combined_mask] = dilated_segm[tuple(ind[combined_mask] for ind in indices)]
+
+        # Do closing to avoid gaps around border
+        if verbose:
+            print(f"Closing segmentation after inpainting")
+        footprint = ball(radius=3)
+        label_map_np = binary_closing(label_map_np, footprint)
 
 
-    if verbose:
-        print(f"Saving inpainted segmentation to {segm_out_name_annulus}")
-    # write inpainted label map
-    img_o = sitk.GetImageFromArray(label_map_np.astype(int))
-    img_o.CopyInformation(label_map)
-    sitk.WriteImage(img_o, segm_out_name_annulus)
+        if verbose:
+            print(f"Saving inpainted segmentation to {segm_out_name}")
+        # write inpainted label map
+        img_o = sitk.GetImageFromArray(label_map_np.astype(int))
+        img_o.CopyInformation(label_map)
+        sitk.WriteImage(img_o, segm_out_name)
 
     return True
 
@@ -3392,13 +3384,13 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
     if scan_type == "5":
         for part in ["annulus", "descending"]:
             if part == "annulus":
-                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_extended.nii.gz"
+                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_extended_inpaint.nii.gz"
                 if use_ts_org_segmentations:
-                    aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_extended_ts_org.nii.gz"
+                    aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_extended_inpaint_ts_org.nii.gz"
             else:
-                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}.nii.gz"
+                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_inpaint.nii.gz"
                 if use_ts_org_segmentations:
-                    aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_ts_org.nii.gz"
+                    aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_inpaint_ts_org.nii.gz"
 
             skeleton_pd_name = f"{surface_folder}aorta_{part}_skeleton.vtp"
             pruned_skeleton_pd_name = f"{surface_folder}aorta_{part}_pruned_skeleton.vtp"
@@ -7053,7 +7045,8 @@ def do_aorta_analysis(
         )
     if success:
         success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
-                                                verbose, quiet, write_log_file, output_folder)
+                                                verbose, quiet, write_log_file, output_folder,
+                                                use_ts_org_segmentations=use_org_ts_segmentations)
     if success:
         success = extract_top_of_iliac_arteries(
             input_file, segm_folder, verbose, quiet, write_log_file, output_folder
