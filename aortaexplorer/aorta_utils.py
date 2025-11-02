@@ -563,7 +563,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     Take the original aorta segmentation and keep only the lumen
     """
     store_raw_hires_aorta = True
-    store_raw_aorta = True
+    store_raw_aorta = False
     segm_out_name = f"{segm_folder}aorta_lumen_raw.nii.gz"
     segm_out_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
     segm_out_name_raw = f"{segm_folder}aorta_ts_original.nii.gz"
@@ -1459,10 +1459,10 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
     elif n_aorta_parts == 2:
         if use_ts_org_segmentations:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus_raw.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_annulus_extended.nii.gz"
     else:
         msg = f"Can not handle more than 2 parts. Found {n_aorta_parts}"
         if not quiet:
@@ -2470,10 +2470,10 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(
     start_p_out_file = f"{lm_folder}aorta_start_point_annulus.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point_annulus.txt"
     sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
-    aorta_lv_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
-    overlap_name_1 = f"{segm_folder}aorta_lumen_extended_side_region.nii.gz"
+    aorta_lv_name = f"{segm_folder}aorta_lumen_annulus_extended.nii.gz"
+    overlap_name_1 = f"{segm_folder}aorta_lumen_annulus_extended_side_region.nii.gz"
     if use_ts_org_segmentations:
-        aorta_lv_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+        aorta_lv_name = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
 
     debug = False
 
@@ -2767,22 +2767,32 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
         p_1_name = end_p_out_file
         p_2_name = start_p_out_file
 
-    # TODO: Check that the landmark is actually at the top of the scan and bottom of the scan
-    # compute physical coordinates of min and max z in the label image
-    slack = 10.0  # mm
+    # Make sure that the landmark is not touching the side of the scan
+    # Get min and max x and y in physical coordinates
     size = label_img.GetSize()
-    min_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
-    max_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, size[2] - 1])[2]
-
-    dist_1 = min(abs(max_z_phys - com_phys_1[2]), abs(min_z_phys - com_phys_1[2]))
-    dist_2 = min(abs(max_z_phys - com_phys_2[2]), abs(min_z_phys - com_phys_2[2]))
+    min_x_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[0]
+    max_x_phys = label_img.TransformIndexToPhysicalPoint([size[0] - 1, 0, 0])[0]
+    min_y_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[1]
+    max_y_phys = label_img.TransformIndexToPhysicalPoint([0, size[1] - 1, 0])[1]
+    slack = 10.0  # mm
+    dist_1 = min(
+        abs(max_x_phys - com_phys_1[0]),
+        abs(min_x_phys - com_phys_1[0]),
+        abs(max_y_phys - com_phys_1[1]),
+        abs(min_y_phys - com_phys_1[1]),
+    )
+    dist_2 = min(
+        abs(max_x_phys - com_phys_2[0]),
+        abs(min_x_phys - com_phys_2[0]),
+        abs(max_y_phys - com_phys_2[1]),
+        abs(min_y_phys - com_phys_2[1]),
+    )
     if verbose:
         print(
-            f"Type 5 descending aorta landmark distances to top/bottom of scan: {dist_1:.1f} mm and {dist_2:.1f} mm"
+            f"Type 5 descending aorta landmark distances to side of scan: {dist_1:.1f} mm and {dist_2:.1f} mm"
         )
-
-    if dist_1 > slack or dist_2 > slack:
-        msg = f"A landmark is not at the top or bottom of the scan - and it should for type 5. Distances to borders: {dist_1:.1f} mm and {dist_2:.1f} mm. For {aorta_name}"
+    if dist_1 < slack or dist_2 < slack:
+        msg = f"A landmark is too close to the side of the scan - and it should not for type 5. Distances to borders: {dist_1:.1f} mm and {dist_2:.1f} mm. For {aorta_name}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -2790,6 +2800,30 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
                 base_dir=output_folder, message=msg, level="error"
             )
         return False
+    #
+    # # TODO: Check that the landmark is actually at the top of the scan and bottom of the scan
+    # # compute physical coordinates of min and max z in the label image
+    # slack = 10.0  # mm
+    # size = label_img.GetSize()
+    # min_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
+    # max_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, size[2] - 1])[2]
+    #
+    # dist_1 = min(abs(max_z_phys - com_phys_1[2]), abs(min_z_phys - com_phys_1[2]))
+    # dist_2 = min(abs(max_z_phys - com_phys_2[2]), abs(min_z_phys - com_phys_2[2]))
+    # if verbose:
+    #     print(
+    #         f"Type 5 descending aorta landmark distances to top/bottom of scan: {dist_1:.1f} mm and {dist_2:.1f} mm"
+    #     )
+    #
+    # if dist_1 > slack or dist_2 > slack:
+    #     msg = f"A landmark is not at the top or bottom of the scan - and it should for type 5. Distances to borders: {dist_1:.1f} mm and {dist_2:.1f} mm. For {aorta_name}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(
+    #             base_dir=output_folder, message=msg, level="error"
+    #         )
+    #     return False
 
     f_p_out = open(p_1_name, "w")
     f_p_out.write(f"{com_phys_1[0]} {com_phys_1[1]} {com_phys_1[2]}")
@@ -2961,9 +2995,9 @@ def extract_surfaces_for_centerlines(
         return True
 
     if scan_type == "5":
-        aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
+        aorta_segm_in = f"{segm_folder}aorta_lumen_annulus_extended.nii.gz"
         if use_ts_org_segmentations:
-            aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+            aorta_segm_in = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
 
         aorta_surface_out = f"{surface_folder}aorta_annulus_surface_raw.vtp"
         aorta_surface_cl_out = (
@@ -3220,9 +3254,7 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(
-                base_dir=output_folder, message=msg, level="error"
-            )
+            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
     scan_type = scan_type_stats["scan_type"]
@@ -3250,16 +3282,13 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
             return False
 
         if verbose:
             print(f"Computing centerline from {aorta_segm_in}")
 
-        label_map = read_nifti_with_logging_cached(
-            aorta_segm_in, verbose, quiet, write_log_file, output_folder)
+        label_map = read_nifti_with_logging_cached(aorta_segm_in, verbose, quiet, write_log_file, output_folder)
         if label_map is None:
             return False
 
@@ -3269,16 +3298,13 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
             print(f"Could not read landmarks {start_p_name} or {end_p_name}")
             return False
 
-        aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point,
-                                      output_folder, verbose, quiet, write_log_file)
+        aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point, output_folder, verbose, quiet, write_log_file)
         if not aorta_centerline.compute_centerline():
             msg = f"Failed to compute centerline from {aorta_segm_in}"
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
             with open(cl_name_fail, "w") as f:
                 f.write(f"Failed to compute centerline from {aorta_segm_in}")
             return False
@@ -3300,8 +3326,87 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
         writer.SetFileName(cl_name)
         writer.SetInputData(cl_out)
         writer.Write()
-
         return True
+    if scan_type == "5":
+        for part in ["annulus", "descending"]:
+            if part == "annulus":
+                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_extended.nii.gz"
+                if use_ts_org_segmentations:
+                    aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_extended_ts_org.nii.gz"
+            else:
+                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}.nii.gz"
+                if use_ts_org_segmentations:
+                    aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_ts_org.nii.gz"
+
+            skeleton_pd_name = f"{surface_folder}aorta_{part}_skeleton.vtp"
+            pruned_skeleton_pd_name = f"{surface_folder}aorta_{part}_pruned_skeleton.vtp"
+            dijkstra_path_name = f"{surface_folder}aorta_{part}_dijkstra_path.vtp"
+            cl_name = f"{cl_folder}aorta_{part}_centerline.vtp"
+            cl_name_fail = f"{cl_folder}aorta_{part}_centerline_failed.txt"
+            start_p_file = f"{lm_folder}aorta_start_point_{part}.txt"
+            end_p_file = f"{lm_folder}aorta_end_point_{part}.txt"
+
+            if os.path.exists(cl_name):
+                if verbose:
+                    print(f"{cl_name} already exists - skipping")
+                continue
+            if os.path.exists(cl_name_fail):
+                msg = f"Centerline failed before on {aorta_segm_in}"
+                if not quiet:
+                    print(msg)
+                if write_log_file:
+                    write_message_to_log_file(
+                        base_dir=output_folder, message=msg, level="error"
+                    )
+                return False
+
+            if verbose:
+                print(f"Computing centerline from {aorta_segm_in}")
+
+            label_map = read_nifti_with_logging_cached(
+                aorta_segm_in, verbose, quiet, write_log_file, output_folder)
+            if label_map is None:
+                return False
+
+            start_point = clutils.read_landmarks(start_p_file)
+            end_point = clutils.read_landmarks(end_p_file)
+            if start_point is None or end_point is None:
+                print(f"Could not read landmarks {start_p_name} or {end_p_name}")
+                return False
+
+            aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point,
+                                                output_folder, verbose, quiet, write_log_file)
+            if not aorta_centerline.compute_centerline():
+                msg = f"Failed to compute centerline from {aorta_segm_in}"
+                if not quiet:
+                    print(msg)
+                if write_log_file:
+                    write_message_to_log_file(
+                        base_dir=output_folder, message=msg, level="error"
+                    )
+                with open(cl_name_fail, "w") as f:
+                    f.write(f"Failed to compute centerline from {aorta_segm_in}")
+                return False
+
+            writer = vtk.vtkXMLPolyDataWriter()
+            writer.SetFileName(skeleton_pd_name)
+            writer.SetInputData(aorta_centerline.skeleton_polydata)
+            writer.Write()
+
+            writer.SetFileName(pruned_skeleton_pd_name)
+            writer.SetInputData(aorta_centerline.pruned_skeleton)
+            writer.Write()
+
+            writer.SetFileName(dijkstra_path_name)
+            writer.SetInputData(aorta_centerline.dijkstra_path)
+            writer.Write()
+
+            cl_out = aorta_centerline.get_centerline_as_polydata(sample_spacing=0.25)
+            writer.SetFileName(cl_name)
+            writer.SetInputData(cl_out)
+            writer.Write()
+        return True
+
     return False
 
 
