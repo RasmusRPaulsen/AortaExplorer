@@ -11,7 +11,7 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 - Supports contrast-enhanced CT scans with a variety of scan field-of-views (FOV).
 - Automatically computes the following [measurements](MEASUREMENTS.md) of the aorta:
   - Cross sectional lumen areas in aorta segments defined by the [European society of cardiology (ESC)](https://pubmed.ncbi.nlm.nih.gov/25173340/).
-  - Vessel tortuosity of the different aorta segments
+  - Vessel tortuosity of the different [aorta segments](figs/AortaExplorer-tortuosity.pdf).
   - Diameter measurements
 - Aorta diameters have been validated against a large (10.000+) population with manual annotations.
 - Tortuosity measures on a large population (10.000+) are consistent with previously reported results.
