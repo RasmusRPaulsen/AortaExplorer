@@ -1657,10 +1657,40 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
     if verbose:
         print("EDF based closing and other EDF based operations")
     closed_mask = edt_based_closing(combined_mask, spacing, footprint_radius_mm)
-    large_components, _ = get_components_over_certain_size(
-        closed_mask, 5000, n_aorta_parts
+    # large_components, _ = get_components_over_certain_size(
+    #     closed_mask, 5000, n_aorta_parts
+    # )
+    # We can risk that the aorta and the LV are two different comps but the LV is the largest
+    large_components = get_components_over_certain_size_as_individual_volumes(
+        closed_mask, 5000, 4
     )
-    large_components, _ = close_cavities_in_segmentations(large_components)
+    if len(large_components) > n_aorta_parts:
+        # keep only the part that has the largest overlap with the original aorta segmentation
+        if verbose:
+            print(
+                f"Found {len(large_components)} components after closing - keeping only {n_aorta_parts} with largest overlap with original aorta segmentation"
+            )
+        largest_overlap = 0
+        large_overlap_comp = None
+
+        for idx, comp in enumerate(large_components):
+            overlap = np.sum(np.bitwise_and(comp, mask_np_aorta))
+            if overlap > largest_overlap:
+                largest_overlap = overlap
+                large_overlap_comp = comp
+        if large_overlap_comp is None:
+            msg = f"Could not find component with largest overlap with aorta segmentation"
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
+            return False
+    else:
+        large_overlap_comp = large_components[0]
+
+    large_components, _ = close_cavities_in_segmentations(large_overlap_comp)
 
     ct_np = sitk.GetArrayFromImage(ct_img)
     # Remove invalid out-of-scan voxels (typically values -2048)
@@ -2473,8 +2503,10 @@ def compute_centerline_landmarks_for_aorta_type_2(
     )
 
     # Check if the landmark is actually at the top of the scan
-    size = label_img.GetSize()
-    if com_np[2] < size[2] / 4:
+
+    # Find the physical coordinates of the top of the scan
+    z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
+    if abs(com_phys_1[2] - z_phys)  > 10:
         msg = f"The found landmark is not at the top of the scan - and it should for type 2. For {aorta_name}"
         if not quiet:
             print(msg)
@@ -2483,6 +2515,19 @@ def compute_centerline_landmarks_for_aorta_type_2(
                 base_dir=output_folder, message=msg, level="error"
             )
         return False
+
+    #
+    #
+    # size = label_img.GetSize()
+    # if com_np[2] < size[2] / 4:
+    #     msg = f"The found landmark is not at the top of the scan - and it should for type 2. For {aorta_name}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(
+    #             base_dir=output_folder, message=msg, level="error"
+    #         )
+    #     return False
 
     f_p_out = open(end_p_out_file, "w")
     f_p_out.write(f"{com_phys_1[0]} {com_phys_1[1]} {com_phys_1[2]}")

@@ -65,8 +65,12 @@ def test_aortaexplorer():
     # Type 5: where the aorta touches the side of the scan
     # input_file = "C:/data/AortaExplorer/input/8.img.nii.gz"
 
-    # Public dataset D1
-    input_file = "C:/data/AortaExplorer/input/D1.nii.gz"
+    # Public dataset
+    # input_file = "C:/data/AortaExplorer/input/D1.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/D2.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/abdominal_lymph_nodes.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/pancreas.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/subject001_CTA.nii.gz"
 
     output_folder = "C:/data/AortaExplorer/testoutput/"
 

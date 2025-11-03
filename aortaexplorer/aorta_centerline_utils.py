@@ -157,9 +157,16 @@ class AortaCenterliner:
         extended_image.SetSpacing(spacing)
         extended_image.SetDirection(image.GetDirection())
 
+        # Get direction matrix
+        direction = image.GetDirection()
+        sign_z = direction[2]
+
         # Adjust origin to account for top extension
         new_origin = list(image.GetOrigin())
-        new_origin[2] -= extension_mm
+        if sign_z > 0:
+            new_origin[2] -= extension_mm
+        else:
+            new_origin[2] += extension_mm
         extended_image.SetOrigin(new_origin)
 
         return extended_image
