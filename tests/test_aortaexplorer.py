@@ -69,8 +69,8 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/D1.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/D2.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/abdominal_lymph_nodes.nii.gz"
-    # input_file = "C:/data/AortaExplorer/input/pancreas.nii.gz"
-    input_file = "C:/data/AortaExplorer/input/subject001_CTA.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/pancreas.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/subject001_CTA.nii.gz"
 
     output_folder = "C:/data/AortaExplorer/testoutput/"
 

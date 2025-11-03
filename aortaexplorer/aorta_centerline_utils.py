@@ -463,10 +463,17 @@ class AortaCenterliner:
 
     def compute_spline_from_dijkstra_path(self, spline_smoothing_factor=20, sample_spacing=0.25):
         cl_in = self.dijkstra_path
-        spline_smoothing_factor = 50
+        # spline_smoothing_factor = 50
 
         sum_dist = 0
         n_points = cl_in.GetNumberOfPoints()
+
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.make_splrep.html#scipy.interpolate.make_splrep
+        spline_smoothing_factor = n_points / 3.0
+
+        if self.verbose:
+            print(f"Computing spline from Dijkstra path with {n_points} "
+                  f"points and smoothing factor {spline_smoothing_factor:.1f}")
 
         x = []
         y_1 = []
