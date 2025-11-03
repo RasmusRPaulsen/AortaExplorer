@@ -62,6 +62,10 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/LAA-1_0005_SERIES0005.nii.gz"
     # output_folder = "C:/data/AortaExplorer/testoutput/"
 
+    # ImageCAS
+    # input_file = "C:/data/AortaExplorer/input/3.img.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/4.img.nii.gz"
+
     # Type 5: where the aorta touches the side of the scan
     # input_file = "C:/data/AortaExplorer/input/8.img.nii.gz"
 
@@ -69,8 +73,9 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/D1.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/D2.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/abdominal_lymph_nodes.nii.gz"
-    input_file = "C:/data/AortaExplorer/input/pancreas.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/pancreas.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/subject001_CTA.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/subject002_CTA.nii.gz"
 
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
