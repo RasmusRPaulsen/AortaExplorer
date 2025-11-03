@@ -508,11 +508,14 @@ class AortaCenterliner:
         spl_2 = self.spline_parameters["spl_2"]
         spl_3 = self.spline_parameters["spl_3"]
 
+        der_1 = spl_1.derivative()
+        der_2 = spl_2.derivative()
+        der_3 = spl_3.derivative()
+
         samp_space = sample_spacing
         spline_n_points = int(max_x / samp_space)
         if self.verbose:
-            print(f"Computing sampled spline path with length {max_x:.1f} and sample spacing {samp_space} "
-                 f"resulting in {spline_n_points} samples for smoothing")
+            print(f"Computing sampled spline path with length {max_x:.1f} and sample spacing {samp_space} resulting in {spline_n_points} samples for smoothing")
 
         # Compute a polydata object with the spline points
         xs = np.linspace(min_x, max_x, spline_n_points)
@@ -522,19 +525,31 @@ class AortaCenterliner:
         scalars = vtk.vtkDoubleArray()
         scalars.SetNumberOfComponents(1)
 
+        tangents = vtk.vtkDoubleArray()
+        tangents.SetNumberOfComponents(3)
+        tangents.SetName("Tangents")  # Optional but useful for identification
+
         current_idx = 0
         sum_dist = 0
         sp = [spl_1(xs[current_idx]), spl_2(xs[current_idx]), spl_3(xs[current_idx])]
+        t = [der_1(xs[current_idx]), der_2(xs[current_idx]), der_3(xs[current_idx])]
+        vtk.vtkMath.Normalize(t)
+
         pid = points.InsertNextPoint(sp)
         scalars.InsertNextValue(sum_dist)
+        tangents.InsertNextTuple(t)
         current_idx += 1
 
         while current_idx < spline_n_points:
             p_1 = [spl_1(xs[current_idx]), spl_2(xs[current_idx]), spl_3(xs[current_idx])]
+            t_1 = [der_1(xs[current_idx]), der_2(xs[current_idx]), der_3(xs[current_idx])]
+            vtk.vtkMath.Normalize(t_1)
+
             sum_dist += np.linalg.norm(np.array(p_1) - np.array(sp))
             lines.InsertNextCell(2)
             pid_2 = points.InsertNextPoint(p_1)
             scalars.InsertNextValue(sum_dist)
+            tangents.InsertNextTuple(t_1)
             lines.InsertCellPoint(pid)
             lines.InsertCellPoint(pid_2)
             pid = pid_2
@@ -548,6 +563,8 @@ class AortaCenterliner:
         del lines
         self.cl_polydata.GetPointData().SetScalars(scalars)
         del scalars
+        self.cl_polydata.GetPointData().AddArray(tangents)
+        del tangents
 
         return self.cl_polydata
 

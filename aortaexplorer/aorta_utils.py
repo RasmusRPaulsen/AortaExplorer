@@ -854,9 +854,30 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
 def inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder,
                                   use_ts_org_segmentations=True):
     """
-    Sometime the scanner does not cover the full body - in that case we need to
+    Sometimes the scanner does not cover the full body - in that case we need to
     inpaint missing segmentations based on nearby slices.
+    This is especially for scan type 5 (cardiac scan) on older scanner models.
     """
+    stats_file = f"{stats_folder}aorta_scan_type.json"
+
+    scan_type_stats = read_json_file(stats_file)
+    if not scan_type_stats:
+        msg = f"Could not read {stats_file} can not compute centerline landmarks"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    scan_type = scan_type_stats["scan_type"]
+
+    if scan_type not in ["5"]:
+        if verbose:
+            print(f"Scan type is {scan_type} - normally no need to in paint segmentations")
+        return True
+
     ext = "_ts_org" if use_ts_org_segmentations else ""
 
     segm_in_name_annulus = f"{segm_folder}aorta_lumen_annulus_extended{ext}.nii.gz"
@@ -3650,7 +3671,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(
     low_infra_p = cl.GetPoint(low_idx)
     low_infra_dist = cl.GetPointData().GetScalars().GetValue(low_idx)
 
-    low_normal = clutils.estimate_normal_from_centerline(cl, low_idx)
+    low_normal = clutils.get_tangent_from_centerline(cl, low_idx)
     if low_normal is None:
         msg = f"Could not estimate normal at renal point. Something wrong. No infrarenal points for {cl_file}"
         if verbose:
@@ -3715,7 +3736,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(
 
     infra_p = cl.GetPoint(infra_idx)
 
-    normal = clutils.estimate_normal_from_centerline(cl, infra_idx)
+    normal = clutils.get_tangent_from_centerline(cl, infra_idx)
     if normal is None:
         msg = f"Could not estimate normal at renal point. Something wrong. No infrarenal point for {cl_file}"
         if verbose:
@@ -3862,8 +3883,8 @@ def compute_aortic_arch_landmarks_on_centerline(
     )
     min_pos = cl.GetPoint(min_idx)
     max_pos = cl.GetPoint(max_idx)
-    min_normal = clutils.estimate_normal_from_centerline(cl, min_idx)
-    max_normal = clutils.estimate_normal_from_centerline(cl, max_idx)
+    min_normal = clutils.get_tangent_from_centerline(cl, min_idx)
+    max_normal = clutils.get_tangent_from_centerline(cl, max_idx)
 
     if min_normal is None or max_normal is None:
         msg = f"Could not estimate normal at aortic arch point. Something wrong. No aortic arch point for {cl_file}"
@@ -4008,7 +4029,7 @@ def compute_diaphragm_point_on_centerline(
 
     p_cl_diaphragm = cl.GetPoint(idx_diaphragm)
 
-    diaphragm_normal = clutils.estimate_normal_from_centerline(cl, idx_diaphragm)
+    diaphragm_normal = clutils.get_tangent_from_centerline(cl, idx_diaphragm)
     if diaphragm_normal is None:
         msg = f"Could not estimate normal at diaphragm point. Something wrong. No diaphragm point for {cl_file}"
         if verbose:
@@ -4098,7 +4119,7 @@ def compute_ventricularoaortic_point_on_centerline(
     dist_ventri = cl.GetPointData().GetScalars().GetValue(idx_ventri)
     p_cl_ventri = cl.GetPoint(idx_ventri)
 
-    ventri_normal = clutils.estimate_normal_from_centerline(cl, idx_ventri)
+    ventri_normal = clutils.get_tangent_from_centerline(cl, idx_ventri)
     if ventri_normal is None:
         msg = f"Could not estimate normal at ventricularoaortic point. Something wrong. No ventricularoaortic point for {cl_file}"
         if verbose:
@@ -7106,10 +7127,6 @@ def do_aorta_analysis(
             use_ts_org_segmentations=True,
         )
     if success:
-        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
-                                                verbose, quiet, write_log_file, output_folder,
-                                                use_ts_org_segmentations=use_org_ts_segmentations)
-    if success:
         success = compute_aortic_arch_landmarks(
             segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder
         )
@@ -7128,6 +7145,10 @@ def do_aorta_analysis(
             write_log_file,
             output_folder,
         )
+    if success:
+        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
+                                                verbose, quiet, write_log_file, output_folder,
+                                                use_ts_org_segmentations=use_org_ts_segmentations)
     if success:
         success = extract_surfaces_for_centerlines(
             segm_folder,

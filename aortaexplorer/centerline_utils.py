@@ -304,41 +304,59 @@ def compute_single_center_line(surface_name, cl_name, start_p_name, end_p_name):
     return True
 
 
-def estimate_normal_from_centerline(cl, idx, n_samples=4):
+def get_tangent_from_centerline(cl, idx):
     """
-    Estimate centerline normal at given point idx.
-    n_samples is the number of points to use in the estimation
+    Get centerline tanget at given point idx.
+    The tangents are assumed to be precomputed and stored in the "Tangents" array.
+    Typically they are computed using a spline fit to the centerline.
     """
     if cl.GetNumberOfPoints() < 2:
-        print("Centerline has less than 2 points. Can not estimate normal.")
+        print("Centerline has less than 2 points. Can not estimate tangent.")
         return None
-        # return [1, 0, 0]
-    elif cl.GetNumberOfPoints() < n_samples:
-        print(f"Centerline has only {cl.GetNumberOfPoints()} points. Using them")
-        idx_1 = 0
-        idx_2 = cl.GetNumberOfPoints() - 1
-    elif idx == 0:
-        idx_1 = 0
-        idx_2 = n_samples
-    elif idx >= cl.GetNumberOfPoints() - 1:
-        idx_1 = cl.GetNumberOfPoints() - 1 - n_samples
-        idx_2 = cl.GetNumberOfPoints() - 1
-    else:
-        idx_1 = max(0, idx - n_samples // 2)
-        idx_2 = min(cl.GetNumberOfPoints() - 1, idx + n_samples // 2)
 
-    p_1 = cl.GetPoint(idx_1)
-    p_2 = cl.GetPoint(idx_2)
-    normal = np.subtract(p_1, p_2)
-    norm_length = np.linalg.norm(normal)
-    if norm_length < 0.001:
-        print("Normal estimation issue. Normal length too small")
+    tangents = cl.GetPointData().GetArray("Tangents")
+    if tangents is None:
+        print("Centerline has no Tangents array. Can not estimate tanget.")
         return None
-        # normal = [1, 0, 0]
-    else:
-        normal = np.divide(normal, norm_length)
-    return normal
 
+    t = tangents.GetTuple(idx)
+    return list(t)
+
+
+# def estimate_normal_from_centerline(cl, idx, n_samples=4):
+#     """
+#     Estimate centerline normal at given point idx.
+#     n_samples is the number of points to use in the estimation
+#     """
+#     if cl.GetNumberOfPoints() < 2:
+#         print("Centerline has less than 2 points. Can not estimate normal.")
+#         return None
+#         # return [1, 0, 0]
+#     elif cl.GetNumberOfPoints() < n_samples:
+#         print(f"Centerline has only {cl.GetNumberOfPoints()} points. Using them")
+#         idx_1 = 0
+#         idx_2 = cl.GetNumberOfPoints() - 1
+#     elif idx == 0:
+#         idx_1 = 0
+#         idx_2 = n_samples
+#     elif idx >= cl.GetNumberOfPoints() - 1:
+#         idx_1 = cl.GetNumberOfPoints() - 1 - n_samples
+#         idx_2 = cl.GetNumberOfPoints() - 1
+#     else:
+#         idx_1 = max(0, idx - n_samples // 2)
+#         idx_2 = min(cl.GetNumberOfPoints() - 1, idx + n_samples // 2)
+#
+#     p_1 = cl.GetPoint(idx_1)
+#     p_2 = cl.GetPoint(idx_2)
+#     normal = np.subtract(p_1, p_2)
+#     norm_length = np.linalg.norm(normal)
+#     if norm_length < 0.001:
+#         print("Normal estimation issue. Normal length too small")
+#         return None
+#         # normal = [1, 0, 0]
+#     else:
+#         normal = np.divide(normal, norm_length)
+#     return normal
 
 def find_position_on_centerline_based_on_scalar(cl, value):
     """
@@ -348,6 +366,10 @@ def find_position_on_centerline_based_on_scalar(cl, value):
     for idx in range(0, cl.GetNumberOfPoints() - 1):
         cl_val_1 = cl.GetPointData().GetScalars().GetValue(idx)
         cl_val_2 = cl.GetPointData().GetScalars().GetValue(idx + 1)
+        if value == cl_val_1:
+            return idx, cl_val_1
+        if value == cl_val_2:
+            return idx + 1, cl_val_2
         if cl_val_1 < value <= cl_val_2:
             if abs(cl_val_1 - value) < abs(cl_val_2 - value):
                 return idx, cl_val_1
@@ -755,7 +777,7 @@ def extract_max_cut_in_defined_section(
 
     cl_idx, cl_val = find_position_on_centerline_based_on_scalar(cl, max_dist)
     cl_point = cl.GetPoint(cl_idx)
-    cl_normal = estimate_normal_from_centerline(cl, cl_idx)
+    cl_normal = get_tangent_from_centerline(cl, cl_idx)
     max_slice_info["origin"] = list(cl_point)
     max_slice_info["normal"] = list(cl_normal)
 
