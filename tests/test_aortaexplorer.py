@@ -59,11 +59,15 @@ def test_aortaexplorer():
 
     # Type 5: with old time FOV. Here the descending aorta is cut of by the FOV inside the scan
     # input_file = "C:/data/AortaExplorer/input/LAA-1_0008_SERIES0002.nii.gz"
-    input_file = "C:/data/AortaExplorer/input/LAA-1_0005_SERIES0005.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/LAA-1_0005_SERIES0005.nii.gz"
     # output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # Type 5: where the aorta touches the side of the scan
     # input_file = "C:/data/AortaExplorer/input/8.img.nii.gz"
+
+    # Public dataset D1
+    input_file = "C:/data/AortaExplorer/input/D1.nii.gz"
+
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"

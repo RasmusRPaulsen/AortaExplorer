@@ -572,7 +572,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     store_ts_org_hires_aorta = True
     store_ts_org_aorta = False
     # segm_out_name = f"{segm_folder}aorta_lumen_raw.nii.gz"
-    segm_out_name_hires = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+    segm_out_name_hires = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     segm_out_name_total = f"{segm_folder}aorta_total_ts_org.nii.gz"
     segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_ts_org.nii.gz"
     segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_ts_org.nii.gz"
@@ -1090,7 +1090,7 @@ def extract_aortic_calcifications(
     hu_stats_file_2 = f"{stats_folder}/aorta_skeleton_descending_hu_stats.json"
     calcification_stats_file = f"{stats_folder}/aorta_calcification_stats.json"
 
-    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+    segm_in_name_hires = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
 
     segm_out_name = f"{segm_folder}aorta_calcification.nii.gz"
     segm_dilated_out_name = f"{segm_folder}aorta_lumen_dilated.nii.gz"
@@ -1222,7 +1222,7 @@ def check_for_aneurysm_sac(
     """
     aneurysm_sac_stats_file = f"{stats_folder}aorta_aneurysm_sac_stats.json"
     calcification_stats_file = f"{stats_folder}aorta_calcification_stats.json"
-    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+    segm_in_name_hires = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     segm_lumen_in = f"{segm_folder}aorta_lumen.nii.gz"
 
     if os.path.exists(aneurysm_sac_stats_file):
@@ -1364,7 +1364,7 @@ def compute_ventricularoaortic_landmark(
     ventricularoaortic_p_none_out_file = f"{lm_folder}ventricularoaortic_no_point.txt"
     stats_file = f"{stats_folder}/aorta_parts.json"
 
-    segm_name_aorta = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+    segm_name_aorta = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     segm_name_hc = f"{segm_folder}heartchambers_highres.nii.gz"
     aorta_segm_id = 1
     left_ventricle_id = 3
@@ -1574,7 +1574,7 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
 
     if n_aorta_parts == 1:
         if use_ts_org_segmentations:
-            segm_name_aorta = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+            segm_name_aorta = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
             segm_out_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen.nii.gz"
@@ -1684,7 +1684,7 @@ def compute_aortic_arch_landmarks(
     brachiocephalic trunk, left common carotid artery and left subclavian artery
     """
     debug = False
-    segm_name_aorta = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+    segm_name_aorta = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     segm_name_total = f"{segm_folder}total.nii.gz"
     aorta_segm_id = 1
 
@@ -2218,7 +2218,7 @@ def compute_aorta_iliac_artery_landmark(
     segm_r_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
     segm_aorta_name = f"{segm_folder}aorta_lumen.nii.gz"
     if use_ts_org_segmentations:
-        segm_aorta_name = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+        segm_aorta_name = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
 
     label_img_l = read_nifti_with_logging_cached(
         segm_l_name, False, quiet, write_log_file, output_folder
@@ -2326,7 +2326,7 @@ def compute_centerline_landmarks_for_aorta_type_2(
     sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
     aorta_name = f"{segm_folder}aorta_lumen.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+        aorta_name = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     overlap_name_1 = f"{segm_folder}aorta_side_region.nii.gz"
     debug = False
 

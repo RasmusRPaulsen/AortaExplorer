@@ -391,7 +391,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
                 q95_dists = aneurysm_sac_stats["q95_distances"]
                 if aneurysm_sac_ratio > 1.18 and q95_dists > 2.5:
                     # Show original total segmentations since they include the sac
-                    segm_name = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+                    segm_name = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
                     self.generate_actors_from_segment_file_name(
                         segm_name, "OldLace", 0.6, smooth="heavy"
                     )
