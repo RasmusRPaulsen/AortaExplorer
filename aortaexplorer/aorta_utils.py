@@ -895,12 +895,16 @@ def inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
     if percent_inpaint < 2.0:
         if verbose:
             print(f"No need to inpaint {n_inpaint_voxels} voxels ({percent_inpaint:.1f} %)")
+        for i in range(len(segm_in_names)):
+            segm_in_name = segm_in_names[i]
+            segm_out_name = segm_out_names[i]
+            copyfile(segm_in_name, segm_out_name)
         # Just copy the original segmentation
-        copyfile(segm_in_name_annulus, segm_out_name_annulus)
+        #copyfile(segm_in_name_annulus, segm_out_name_annulus)
         return True
     else:
-        print(f"Inpainting {n_inpaint_voxels} voxels ({percent_inpaint:.1f} %)")
-
+        if verbose:
+            print(f"Inpainting {n_inpaint_voxels} voxels ({percent_inpaint:.1f} %)")
 
     if verbose:
         print(f"Computing distance transform for inpainting")
@@ -7044,10 +7048,6 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
-                                                verbose, quiet, write_log_file, output_folder,
-                                                use_ts_org_segmentations=use_org_ts_segmentations)
-    if success:
         success = extract_top_of_iliac_arteries(
             input_file, segm_folder, verbose, quiet, write_log_file, output_folder
         )
@@ -7105,6 +7105,10 @@ def do_aorta_analysis(
             output_folder,
             use_ts_org_segmentations=True,
         )
+    if success:
+        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
+                                                verbose, quiet, write_log_file, output_folder,
+                                                use_ts_org_segmentations=use_org_ts_segmentations)
     if success:
         success = compute_aortic_arch_landmarks(
             segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder
