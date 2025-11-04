@@ -64,7 +64,7 @@ def test_aortaexplorer():
 
     # ImageCAS
     # input_file = "C:/data/AortaExplorer/input/3.img.nii.gz"
-    input_file = "C:/data/AortaExplorer/input/4.img.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/4.img.nii.gz"
 
     # Type 5: where the aorta touches the side of the scan
     # input_file = "C:/data/AortaExplorer/input/8.img.nii.gz"
@@ -76,7 +76,11 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/pancreas.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/subject001_CTA.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/subject002_CTA.nii.gz"
+    input_file = "C:/data/AortaSeg24/images/images/subject053_CTA.nii.gz"
 
+    # Very large bisection
+    # input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
+    params["compute_centerline_from_ts_segmentation"] = False
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"

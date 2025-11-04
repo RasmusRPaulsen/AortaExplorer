@@ -984,6 +984,7 @@ def extract_top_of_iliac_arteries(
     iliac_right_segm_id = 66
     top_length = 10.0  # mm
     min_size = 10 * 5 * 5  # mm^3
+    min_slice_size = 5 * 5  # mm^2
 
     if os.path.exists(segm_out_l_name) and os.path.exists(segm_out_r_name):
         if verbose:
@@ -1000,37 +1001,31 @@ def extract_top_of_iliac_arteries(
     )
     if label_img is None:
         return False
-    #
-    # try:
-    #     label_img = sitk.ReadImage(segm_in_name)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_in_name}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     spacing = label_img.GetSpacing()
-    # in_slice_spacing = spacing[0]
     slice_thickness = spacing[2]
 
     n_top_slices = int(top_length / slice_thickness)
     min_size_vox = min_size / (spacing[0] * spacing[1] * spacing[2])
+    min_slice_size_vox = min_slice_size / (spacing[0] * spacing[1])
     if verbose:
         print(f"n_top_slices: {n_top_slices} min_size_vox: {min_size_vox:.1f}")
 
     label_img_np = sitk.GetArrayFromImage(label_img)
     mask_np_left = label_img_np == iliac_left_segm_id
+    # Only largest component to avoid tiny fragments
+    mask_np_left, _ = get_components_over_certain_size(
+        mask_np_left, min_size_vox, 1
+    )
     if np.sum(mask_np_left) == 0:
         if verbose:
-            print(f"No iliac artery left found in {input_file}")
+            print(f"No iliac artery left found in {input_file} larger than {min_size} mm^3")
     else:
         shp = mask_np_left.shape
         start_slice = None
         # Remember that NP are in the order of z,y,x
         for z in range(shp[0] - 1, 0, -1):
-            if sum(sum(mask_np_left[z, :, :])) > 0:
+            if sum(sum(mask_np_left[z, :, :])) > min_slice_size_vox:
                 if start_slice is None:
                     start_slice = z
                 elif start_slice - z > n_top_slices:
@@ -1041,22 +1036,26 @@ def extract_top_of_iliac_arteries(
         )
         if large_components is None or np.sum(large_components) == 0:
             if verbose:
-                print(f"No iliac artery left found in {input_file}")
+                print(f"No iliac artery left found in {input_file} after extracting top part")
         else:
             img_o = sitk.GetImageFromArray(large_components.astype(int))
             img_o.CopyInformation(label_img)
             sitk.WriteImage(img_o, segm_out_l_name)
 
     mask_np_right = label_img_np == iliac_right_segm_id
+    mask_np_right, _ = get_components_over_certain_size(
+        mask_np_right, min_size_vox, 1
+    )
+
     if np.sum(mask_np_right) == 0:
         if verbose:
-            print(f"No iliac artery right found in {input_file}")
+            print(f"No iliac artery right found in {input_file} larger than {min_size} mm^3")
     else:
         shp = mask_np_right.shape
         start_slice = None
         # Remember that NP are in the order of z,y,x
         for z in range(shp[0] - 1, 0, -1):
-            if sum(sum(mask_np_right[z, :, :])) > 0:
+            if sum(sum(mask_np_right[z, :, :])) > min_slice_size_vox:
                 if start_slice is None:
                     start_slice = z
                 elif start_slice - z > n_top_slices:
@@ -1067,7 +1066,7 @@ def extract_top_of_iliac_arteries(
         )
         if large_components is None or np.sum(large_components) == 0:
             if verbose:
-                print(f"No iliac artery right found in {input_file}")
+                print(f"No iliac artery right found in {input_file} after extracting top part")
         else:
             img_o = sitk.GetImageFromArray(large_components.astype(int))
             img_o.CopyInformation(label_img)
@@ -7218,7 +7217,8 @@ def do_aorta_analysis(
         )
     if success:
         success = compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder,
-                                                     verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=True)
+                                                     verbose, quiet, write_log_file, output_folder,
+                                                     use_ts_org_segmentations=use_org_ts_segmentations)
     # if success:
     #     success = compute_center_line(
     #         stats_folder,
