@@ -76,7 +76,9 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/pancreas.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/subject001_CTA.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/subject002_CTA.nii.gz"
-    input_file = "C:/data/AortaSeg24/images/images/subject053_CTA.nii.gz"
+
+    # input_file = "C:/data/AortaSeg24/images/images/subject053_CTA.nii.gz"
+    input_file = "C:/data/AortaSeg24/images/images/subject075_CTA.nii.gz"
 
     # Very large bisection
     # input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
