@@ -2505,9 +2505,13 @@ def compute_centerline_landmarks_for_aorta_type_2(
     # Check if the landmark is actually at the top of the scan
 
     # Find the physical coordinates of the top of the scan
-    z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
-    if abs(com_phys_1[2] - z_phys)  > 10:
-        msg = f"The found landmark is not at the top of the scan - and it should for type 2. For {aorta_name}"
+    # Remember that numpy z axis is first
+    z_phys_1 = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
+    z_phys_2 = label_img.TransformIndexToPhysicalPoint([0, 0, label_img_np.shape[0] - 1])[2]
+    top_bottom_dist = min(abs(com_phys_1[2] - z_phys_1), abs(com_phys_1[2] - z_phys_2))
+    if top_bottom_dist > 10:
+        msg = (f"The found landmark is not at the top of the scan - and it should for type 2. For {aorta_name}."
+               f" Distance to top/bottom: {top_bottom_dist:.2f} mm")
         if not quiet:
             print(msg)
         if write_log_file:

@@ -83,9 +83,14 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaSeg24/images/images/subject075_CTA.nii.gz"
 
     # Very large bisection
-    input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
-    params["compute_centerline_from_ts_segmentation"] = False
-    params["compare_with_totalsegmentator"] = True
+    # input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
+    # params["compute_centerline_from_ts_segmentation"] = False
+    # params["compare_with_totalsegmentator"] = True
+
+    input_file = "C:/data/AortaExplorer/input/CGPS-1_10000_SERIES0017.nii.gz"
+    output_folder = "C:/data/AortaExplorer/testoutput/"
+    params["compute_centerline_from_ts_segmentation"] = True
+
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
