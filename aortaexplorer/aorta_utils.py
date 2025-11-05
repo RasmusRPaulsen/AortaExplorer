@@ -1625,9 +1625,12 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
     if ct_img is None:
         return False
 
-    label_img_lv = read_nifti_with_logging_cached(
-        segm_name_hc, verbose, quiet, write_log_file, output_folder
-    )
+    if os.path.exists(segm_name_hc):
+        label_img_lv = read_nifti_with_logging_cached(
+            segm_name_hc, verbose, quiet, write_log_file, output_folder
+        )
+    else:
+        label_img_lv = None
     # if label_img_lv is None:
     #     return False
 
@@ -6577,6 +6580,8 @@ def gather_whole_heart_volumes(segm_folder, stats):
     if not os.path.exists(segm_name_hc):
         return False
 
+    if not os.path.exists(segm_name_hc):
+        return False
     segm_data, spacing, size = read_nifti_itk_to_numpy(segm_name_hc)
 
     if segm_data is None:

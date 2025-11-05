@@ -704,9 +704,9 @@ def extract_max_cut_in_defined_section(
         "lvot_segment",
         "sinus_of_valsalva_segment",
         "sinotubular_junction_segment",
-        "lvot_segment_ts_original",
-        "sinus_of_valsalva_segment_ts_original",
-        "sinotubular_junction_segment_ts_original",
+        "lvot_segment_ts_org",
+        "sinus_of_valsalva_segment_ts_org",
+        "sinotubular_junction_segment_ts_org",
     ]
 
     if segment_name not in no_check:
