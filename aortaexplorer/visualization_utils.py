@@ -624,7 +624,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
             area = float(elem[1])
             prc = float(elem[2])
             # Only plot points that have at most 15% out of scan
-            if prc < 15:
+            if prc < 20:
                 PlotPoints.InsertNextPoint(dist, 0, 0)
                 PlotScalars.InsertNextValue(area)
 
