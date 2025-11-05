@@ -209,7 +209,7 @@ def main():
     aorta_parms["aorta_calcification_min_hu_value"] = args.calc_low_hu
     aorta_parms["aorta_calcification_max_hu_value"] = args.calc_max_hu
     aorta_parms["compute_centerline_from_ts_segmentation"] = not args.no_ts_centerline
-    aorta_parms["compare_with_totalsegmentator"] = not args.compare_with_ts
+    aorta_parms["compare_with_totalsegmentator"] = args.compare_with_ts
     aorta_parms["rendering_window_size"] = [args.image_x_size, args.image_y_size]
 
     aortaexplorer(
