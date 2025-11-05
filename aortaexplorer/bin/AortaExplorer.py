@@ -169,13 +169,19 @@ def main():
         default=False,
     )
     parser.add_argument(
+        "-cts",
+        "--compare_with_ts",
+        action="store_true",
+        help="Compare aorta diameters with those from TotalSegmentator",
+        default=False,
+    )
+    parser.add_argument(
         "-ix",
         "--image-x-size",
         type=int,
         help="Visualization image x-side length",
         default=1920,
     )
-
     parser.add_argument(
         "-iy",
         "--image-y-size",
@@ -183,7 +189,6 @@ def main():
         help="Visualization image y-side length",
         default=1080,
     )
-
     parser.add_argument(
         "--version",
         action="version",
@@ -204,6 +209,7 @@ def main():
     aorta_parms["aorta_calcification_min_hu_value"] = args.calc_low_hu
     aorta_parms["aorta_calcification_max_hu_value"] = args.calc_max_hu
     aorta_parms["compute_centerline_from_ts_segmentation"] = not args.no_ts_centerline
+    aorta_parms["compare_with_totalsegmentator"] = not args.compare_with_ts
     aorta_parms["rendering_window_size"] = [args.image_x_size, args.image_y_size]
 
     aortaexplorer(

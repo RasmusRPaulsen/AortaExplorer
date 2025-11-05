@@ -11,6 +11,7 @@ from aortaexplorer.general_utils import (
     read_json_file,
     get_last_error_message,
     clear_last_error_message,
+    get_pure_scan_file_name
 )
 from aortaexplorer.io_utils import read_nifti_with_logging_cached
 from aortaexplorer.surface_utils import (
@@ -6209,9 +6210,7 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(
     skimage.io.imsave(
         out_file_descending, np.flipud(single_slice_descending_1.transpose(1, 0, 2))
     )
-    skimage.io.imsave(
-        out_file_2_descending, np.flipud(single_slice_descending_2.transpose(1, 0, 2))
-    )
+    skimage.io.imsave(out_file_2_descending, np.flipud(single_slice_descending_2.transpose(1, 0, 2)))
 
     # Combine into two images
     single_slice_annulus_1 = np.flipud(single_slice_annulus_1.transpose(1, 0, 2))
@@ -6224,9 +6223,7 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(
     new_height = shp_annulus_1[0] + shp_descending_1[0] + spacing
     new_image = np.zeros([new_height, new_width, 3]).astype(np.uint8)
     new_image[0 : shp_annulus_1[0], 0 : shp_annulus_1[1]] = single_slice_annulus_1
-    new_image[shp_annulus_1[0] + spacing :, 0 : shp_descending_1[1]] = (
-        single_slice_descending_1
-    )
+    new_image[shp_annulus_1[0] + spacing :, 0 : shp_descending_1[1]] = single_slice_descending_1
 
     imageio.imwrite(out_file_combined_1, new_image)
 
@@ -6248,9 +6245,8 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(
     return True
 
 
-def create_longitudinal_figure_from_straight_volume(
-    cl_folder, segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder
-):
+def create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet, write_log_file,
+                                                    output_folder, compare_with_raw_ts_segmentations=False):
     """
     Based on the sampled straight volume, we here extract the samples along the long axis
     """
@@ -6283,6 +6279,7 @@ def create_longitudinal_figure_from_straight_volume(
 
     straight_vol_in = f"{segm_folder}straight_aorta_img.nii.gz"
     straight_label_in = f"{segm_folder}straight_aorta_label.nii.gz"
+    straight_label_ts_org_in = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
 
     out_file = f"{cl_folder}straight_volume_mid_cut.png"
     out_file_2 = f"{cl_folder}straight_volume_mid_cut_2.png"
@@ -6310,42 +6307,29 @@ def create_longitudinal_figure_from_straight_volume(
     )
     if label_img is None:
         return False
-    #
-    # try:
-    #     label_img = sitk.ReadImage(straight_label_in)
-    # except RuntimeError as e:
-    #     msg = f"Got an exception {str(e)} reading {straight_label_in}"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
+
+    label_img_np_ts_org = None
+    if compare_with_raw_ts_segmentations:
+        label_img_ts = read_nifti_with_logging_cached(
+            straight_label_ts_org_in, verbose, quiet, write_log_file, output_folder
+        )
+        if label_img_ts is not None:
+            label_img_np_ts_org = sitk.GetArrayFromImage(label_img_ts)
+            label_img_np_ts_org = label_img_np_ts_org.transpose(2, 1, 0)
 
     straight_img = read_nifti_with_logging_cached(
         straight_vol_in, verbose, quiet, write_log_file, output_folder
     )
     if straight_img is None:
         return False
-    #
-    # try:
-    #     straight_img = sitk.ReadImage(straight_vol_in)
-    # except RuntimeError as e:
-    #     msg = f"Got an exception {str(e)} reading {straight_vol_in}"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     straight_img_np = sitk.GetArrayFromImage(straight_img)
     straight_img_np = straight_img_np.transpose(2, 1, 0)
 
     label_img_np = sitk.GetArrayFromImage(label_img)
     label_img_np = label_img_np.transpose(2, 1, 0)
-    # dims = label_img_np.shape
 
     spacing = label_img.GetSpacing()
-    # n_slices = dims[2]
 
     # Defaults
     img_window = 200
@@ -6377,6 +6361,36 @@ def create_longitudinal_figure_from_straight_volume(
     boundary = find_boundaries(largest_cc, mode="thick")
     boundary_2 = find_boundaries(largest_cc_2, mode="thick")
 
+    boundary_ts_org = None
+    boundary_2_ts_org = None
+    if label_img_np_ts_org is not None:
+        dims = label_img_np_ts_org.shape
+        mid_id = dims[0] // 2
+        single_slice_np = label_img_np_ts_org[mid_id, :, :]
+
+        mid_id_2 = dims[1] // 2
+        single_slice_np_2 = label_img_np_ts_org[:, mid_id_2, :]
+
+        # Since we do this only for visualization we keep all components
+        # especially useful when raw ts segmentations include dissections etc
+        keep_largest = False
+        if keep_largest:
+            #  only keep one connected component in the slice. The one that is in the middle
+            slice_components = label(single_slice_np)
+            mid_label = slice_components[dims[1] // 2, dims[2] // 2]
+            largest_cc = slice_components == mid_label
+
+            slice_components = label(single_slice_np_2)
+            mid_label = slice_components[dims[1] // 2, dims[2] // 2]
+            largest_cc_2 = slice_components == mid_label
+        else:
+            largest_cc = single_slice_np > 0
+            largest_cc_2 = single_slice_np_2 > 0
+
+        # contour = find_contours(img_as_ubyte(largest_cc), 0.5)[0]
+        boundary_ts_org = find_boundaries(largest_cc, mode="thick")
+        boundary_2_ts_org = find_boundaries(largest_cc_2, mode="thick")
+
     # skimage.io.imsave(max_slice_boundary_out, boundary)
     single_slice_np_img = straight_img_np[mid_id, :, :]
     single_slice_np_img_2 = straight_img_np[:, mid_id_2, :]
@@ -6393,6 +6407,12 @@ def create_longitudinal_figure_from_straight_volume(
 
     scaled_2_rgb = color.gray2rgb(scaled_ubyte)
     scaled_2_rgb_2 = color.gray2rgb(scaled_ubyte_2)
+
+    if boundary_ts_org is not None:
+        rgb_boundary = [0, 255, 0]
+        scaled_2_rgb[boundary_ts_org > 0] = rgb_boundary
+        scaled_2_rgb_2[boundary_2_ts_org > 0] = rgb_boundary
+
     rgb_boundary = [255, 0, 0]
 
     # Draw boundary last for visual style
@@ -6738,12 +6758,7 @@ def compute_all_aorta_statistics(
     if verbose:
         print(f"Computing {stats_file}")
 
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(input_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
-
+    scan_id = get_pure_scan_file_name(input_file)
     stats = {"scan_name": input_file, "base_name": scan_id}
 
     try:
@@ -6933,13 +6948,7 @@ def aorta_visualization(
     if verbose:
         print(f"Creating aorta visualization {vis_file}")
 
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(input_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
-
-
+    scan_id = get_pure_scan_file_name(input_file)
     render_aorta_data = RenderAortaData(
         win_size, scan_id, save_to_file, stats_folder, segm_folder, cl_folder
     )
@@ -6972,12 +6981,7 @@ def do_aorta_analysis(
     Compute aorta data
     input_file: input CT file with path
     """
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(input_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
-
+    scan_id = get_pure_scan_file_name(input_file)
     segm_folder = f"{output_folder}{scan_id}/segmentations/"
     stats_folder = f"{output_folder}{scan_id}/statistics/"
     surface_folder = f"{output_folder}{scan_id}/surfaces/"
@@ -7271,15 +7275,9 @@ def do_aorta_analysis(
     if success:
         success = combine_cross_section_images_into_one(cl_folder, verbose)
     if success:
-        success = create_longitudinal_figure_from_straight_volume(
-            cl_folder,
-            segm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
+        success = create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose,
+                                                                  quiet, write_log_file, output_folder,
+                                                                  compare_with_raw_ts_segmentations)
     if success:
         success = compute_aortic_tortuosity_statistics(
             input_file,
@@ -7358,6 +7356,22 @@ def aorta_analysis(
     num_processes = nr_tg
     # no need to spawn more processes than files
     num_processes = min(num_processes, len(in_files))
+
+    files_to_process = []
+    for fname in in_files:
+        pure_id = get_pure_scan_file_name(fname)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        stats_file = f"{stats_folder}/aorta_statistics.json"
+        if not os.path.exists(stats_file):
+            files_to_process.append(fname)
+    if verbose:
+        print(f"Found {len(files_to_process)} files to compute aorta analysis out of {len(in_files)} files")
+
+    in_files = files_to_process
+    if len(in_files) == 0:
+        if verbose:
+            print("No files to compute aorta analysis on  - all done!")
+        return
 
     # no need to do multiprocessing for one file
     if len(in_files) == 1:

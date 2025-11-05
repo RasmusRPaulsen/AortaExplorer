@@ -1,5 +1,5 @@
 import os.path
-from aortaexplorer.general_utils import write_message_to_log_file, read_json_file
+from aortaexplorer.general_utils import write_message_to_log_file, read_json_file, get_pure_scan_file_name
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -29,11 +29,7 @@ def gather_all_stat_columen_names(
     all_column_names_set = set()
     all_column_names = []
     for in_file in in_files:
-        # Get pure name of input file without path and extension
-        scan_id = os.path.basename(in_file)
-        scan_id = os.path.splitext(scan_id)[0]
-        if scan_id.endswith(".nii"):
-            scan_id = os.path.splitext(scan_id)[0]
+        scan_id = get_pure_scan_file_name(in_file)
         stats_folder = f"{output_folder}{scan_id}/statistics/"
         stats_file = f"{stats_folder}aorta_statistics.json"
 
@@ -71,11 +67,7 @@ def gather_measurements_from_file(
     quiet=False,
     write_log_file=True,
 ):
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(in_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
+    scan_id = get_pure_scan_file_name(in_file)
     stats_folder = f"{output_folder}{scan_id}/statistics/"
     stats_file = f"{stats_folder}aorta_statistics.json"
 
@@ -136,11 +128,7 @@ def copy_all_visualization(
     Path(out_vis_folder).mkdir(parents=True, exist_ok=True)
 
     for in_file in in_files:
-        # Get pure name of input file without path and extension
-        scan_id = os.path.basename(in_file)
-        scan_id = os.path.splitext(scan_id)[0]
-        if scan_id.endswith(".nii"):
-            scan_id = os.path.splitext(scan_id)[0]
+        scan_id = get_pure_scan_file_name(in_file)
         vis_in = f"{output_folder}{scan_id}/visualization/aorta_visualization.png"
         vis_out = f"{out_vis_folder}{scan_id}_aorta_visualization.png"
 

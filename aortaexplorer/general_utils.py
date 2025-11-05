@@ -35,6 +35,15 @@ def get_last_error_message():
     return last_error_message
 
 
+def get_pure_scan_file_name(scan_file_name: str) -> str:
+    # Get pure name of input file without path and extension
+    scan_id = os.path.basename(scan_file_name)
+    scan_id = os.path.splitext(scan_id)[0]
+    if scan_id.endswith(".nii"):
+        scan_id = os.path.splitext(scan_id)[0]
+    return scan_id
+
+
 def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str], str]:
     """
     Gathers a list of input files from the given input, which can be a single file, a text file with entries or a directory

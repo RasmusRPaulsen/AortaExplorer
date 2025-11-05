@@ -3,7 +3,7 @@ from totalsegmentator.python_api import totalsegmentator
 from pathlib import Path
 import time
 import multiprocessing as mp
-from aortaexplorer.general_utils import write_message_to_log_file, clear_last_error_message
+from aortaexplorer.general_utils import write_message_to_log_file, clear_last_error_message, get_pure_scan_file_name
 from aortaexplorer.io_utils import read_nifti_with_logging
 import SimpleITK as sitk
 import numpy as np
@@ -29,12 +29,7 @@ def do_totalsegmentator(
             )
         return False
 
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(input_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
-
+    scan_id = get_pure_scan_file_name(input_file)
     ts_output_folder = f"{output_folder}{scan_id}/segmentations/"
     total_out_name = f"{ts_output_folder}total.nii.gz"
     hc_out_name = f"{ts_output_folder}heartchambers_highres.nii.gz"
@@ -121,16 +116,6 @@ def do_totalsegmentator(
         )
         if label_img is None:
             return False
-
-        # try:
-        #     label_img = sitk.ReadImage(total_out_name)
-        # except RuntimeError as e:
-        #     msg = f"Could not red {total_out_name} after TotalSegmentator run. Exception {str(e)}"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
 
         spacing = label_img.GetSpacing()
         vox_size = spacing[0] * spacing[1] * spacing[2]
@@ -223,6 +208,23 @@ def compute_totalsegmentator_segmentations(
     num_processes = nr_ts
     # no need to spawn more processes than files
     num_processes = min(num_processes, len(in_files))
+
+    files_to_process = []
+    for fname in in_files:
+        pure_id = get_pure_scan_file_name(fname)
+        ts_output_folder = f"{output_folder}{pure_id}/segmentations/"
+        total_out_name = f"{ts_output_folder}total.nii.gz"
+        if not os.path.exists(total_out_name):
+            files_to_process.append(fname)
+
+    if verbose:
+        print(f"Found {len(files_to_process)} files to process with TotalSegmentator out of {len(in_files)} files")
+
+    in_files = files_to_process
+    if len(in_files) == 0:
+        if verbose:
+            print("No files to process with TotalSegmentator - all done!")
+        return
 
     # no need to do multiprocessing for one file
     if len(in_files) == 1:
