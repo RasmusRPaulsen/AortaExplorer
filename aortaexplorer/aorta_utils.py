@@ -3351,9 +3351,7 @@ def compute_center_line(
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
             with open(cl_name_fail, "w") as f:
                 f.write(f"Failed to compute centerline from {aorta_surf_name}")
             return False
@@ -3369,6 +3367,7 @@ def compute_center_line(
 
 def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder, verbose, quiet,
                                        write_log_file, output_folder, use_ts_org_segmentations=True):
+    debug = False
     stats_file = f"{stats_folder}aorta_scan_type.json"
 
     scan_type_stats = read_json_file(stats_file)
@@ -3433,17 +3432,18 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
             return False
 
         writer = vtk.vtkXMLPolyDataWriter()
-        writer.SetFileName(skeleton_pd_name)
-        writer.SetInputData(aorta_centerline.skeleton_polydata)
-        writer.Write()
+        if debug:
+            writer.SetFileName(skeleton_pd_name)
+            writer.SetInputData(aorta_centerline.skeleton_polydata)
+            writer.Write()
 
-        writer.SetFileName(pruned_skeleton_pd_name)
-        writer.SetInputData(aorta_centerline.pruned_skeleton)
-        writer.Write()
+            writer.SetFileName(pruned_skeleton_pd_name)
+            writer.SetInputData(aorta_centerline.pruned_skeleton)
+            writer.Write()
 
-        writer.SetFileName(dijkstra_path_name)
-        writer.SetInputData(aorta_centerline.dijkstra_path)
-        writer.Write()
+            writer.SetFileName(dijkstra_path_name)
+            writer.SetInputData(aorta_centerline.dijkstra_path)
+            writer.Write()
 
         cl_out = aorta_centerline.get_centerline_as_polydata(sample_spacing=0.25)
         writer.SetFileName(cl_name)
@@ -3512,17 +3512,18 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
                 return False
 
             writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(skeleton_pd_name)
-            writer.SetInputData(aorta_centerline.skeleton_polydata)
-            writer.Write()
+            if debug:
+                writer.SetFileName(skeleton_pd_name)
+                writer.SetInputData(aorta_centerline.skeleton_polydata)
+                writer.Write()
 
-            writer.SetFileName(pruned_skeleton_pd_name)
-            writer.SetInputData(aorta_centerline.pruned_skeleton)
-            writer.Write()
+                writer.SetFileName(pruned_skeleton_pd_name)
+                writer.SetInputData(aorta_centerline.pruned_skeleton)
+                writer.Write()
 
-            writer.SetFileName(dijkstra_path_name)
-            writer.SetInputData(aorta_centerline.dijkstra_path)
-            writer.Write()
+                writer.SetFileName(dijkstra_path_name)
+                writer.SetInputData(aorta_centerline.dijkstra_path)
+                writer.Write()
 
             cl_out = aorta_centerline.get_centerline_as_polydata(sample_spacing=0.25)
             writer.SetFileName(cl_name)
@@ -4411,30 +4412,27 @@ def compute_straightened_volume_using_cpr(
             )
         return False
 
-    scan_type = scan_type_stats["scan_type"]
+    # scan_type = scan_type_stats["scan_type"]
 
     ct_img = read_nifti_with_logging_cached(
         input_file, verbose, quiet, write_log_file, output_folder
     )
     if ct_img is None:
         return False
-    #
-    # try:
-    #     ct_img = sitk.ReadImage(input_file)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file} for straigthening: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     if n_aorta_parts == 1:
         cl_file = f"{cl_folder}aorta_centerline.vtp"
         img_straight_name = f"{segm_folder}straight_aorta_img.nii.gz"
-        if os.path.exists(img_straight_name):
+        if use_raw_segmentations:
+            label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+            label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
+        else:
+            label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
+            label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
+
+        if os.path.exists(label_straight_name):
             if verbose:
-                print(f"{img_straight_name} already exists - skipping")
+                print(f"{label_straight_name} already exists - skipping")
             return True
 
         cl_in = vtk.vtkXMLPolyDataReader()
@@ -4442,44 +4440,11 @@ def compute_straightened_volume_using_cpr(
         cl_in.Update()
         cl = cl_in.GetOutput()
 
-        if use_raw_segmentations:
-            label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
-            label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
-        else:
-            label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
-            label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
-        #
-        # # For scan type 2, the aorta is not coupled with LV
-        # if scan_type == "2":
-        #     if use_raw_segmentations:
-        #         label_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-        #         label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
-        #     else:
-        #         label_name = f"{segm_folder}aorta_lumen.nii.gz"
-        #         label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
-        # else:
-        #     if use_raw_segmentations:
-        #         label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
-        #         label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
-        #     else:
-        #         label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
-        #         label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
-
         label_img = read_nifti_with_logging_cached(
             label_name, verbose, quiet, write_log_file, output_folder
         )
         if label_img is None:
             return False
-
-        # try:
-        #     label_img = sitk.ReadImage(label_name)
-        # except RuntimeError as e:
-        #     msg = f"Could not read {label_name} for straigthening: {str(e)} got an exception"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
 
         if not clutils.compute_single_straightened_volume_using_cpr(
             cl, ct_img, label_img, img_straight_name, label_straight_name, verbose
@@ -4497,16 +4462,6 @@ def compute_straightened_volume_using_cpr(
         for part in parts:
             cl_file = f"{cl_folder}aorta_centerline_{part}.vtp"
             img_straight_name = f"{segm_folder}straight_aorta_{part}_img.nii.gz"
-            if os.path.exists(img_straight_name):
-                if verbose:
-                    print(f"{img_straight_name} already exists - skipping")
-                return True
-
-            cl_in = vtk.vtkXMLPolyDataReader()
-            cl_in.SetFileName(cl_file)
-            cl_in.Update()
-            cl = cl_in.GetOutput()
-
             if use_raw_segmentations:
                 label_name = f"{segm_folder}aorta_lumen_{part}_ts_org.nii.gz"
                 if part == "annulus":
@@ -4520,21 +4475,22 @@ def compute_straightened_volume_using_cpr(
                     label_name = f"{segm_folder}aorta_lumen_{part}_extended.nii.gz"
                 label_straight_name = f"{segm_folder}straight_aorta_{part}_label.nii.gz"
 
+            if os.path.exists(label_straight_name):
+                if verbose:
+                    print(f"{label_straight_name} already exists - skipping")
+                return True
+
+            cl_in = vtk.vtkXMLPolyDataReader()
+            cl_in.SetFileName(cl_file)
+            cl_in.Update()
+            cl = cl_in.GetOutput()
+
             label_img = read_nifti_with_logging_cached(
                 label_name, verbose, quiet, write_log_file, output_folder
             )
             if label_img is None:
                 return False
-            #
-            # try:
-            #     label_img = sitk.ReadImage(label_name)
-            # except RuntimeError as e:
-            #     msg = f"Could not read {label_name} for straigthening: {str(e)} got an exception"
-            #     if not quiet:
-            #         print(msg)
-            #     if write_log_file:
-            #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-            #     return False
+
 
             if not clutils.compute_single_straightened_volume_using_cpr(
                 cl, ct_img, label_img, img_straight_name, label_straight_name, verbose
@@ -5478,31 +5434,11 @@ def identy_and_extract_samples_from_straight_volume(
     if label_img is None:
         return False
 
-    # try:
-    #     label_img = sitk.ReadImage(straight_label_in)
-    # except RuntimeError as e:
-    #     msg = f"Got an exception {str(e)} reading {straight_label_in}"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     straight_img = read_nifti_with_logging_cached(
         straight_vol_in, verbose, quiet, write_log_file, output_folder
     )
     if straight_img is None:
         return False
-
-    # try:
-    #     straight_img = sitk.ReadImage(straight_vol_in)
-    # except RuntimeError as e:
-    #     msg = f"Got an exception {str(e)} reading {straight_vol_in}"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     straight_img_np = sitk.GetArrayFromImage(straight_img)
     straight_img_np = straight_img_np.transpose(2, 1, 0)
@@ -5512,8 +5448,6 @@ def identy_and_extract_samples_from_straight_volume(
     dims = label_img_np.shape
 
     spacing = label_img.GetSpacing()
-    # n_slices = dims[2]
-    # max_cl_dist = spacing * n_slices
 
     if not os.path.exists(cl_sampling_in):
         msg = f"Could not read {cl_sampling_in}"
@@ -6781,7 +6715,7 @@ def compute_all_aorta_statistics(
     verbose,
     quiet,
     write_log_file,
-    output_folder,
+    output_folder, compare_with_raw_segmentations=False
 ):
     """
     Compute aorta statistics from scan.
@@ -6950,6 +6884,11 @@ def compute_all_aorta_statistics(
     if cut_stats is not None:
         stats = {**stats, **cut_stats}
 
+    if compare_with_raw_segmentations:
+        cut_stats_ts = compile_aorta_cut_statistics(cl_folder, True)
+        if cut_stats_ts is not None:
+            stats = {**stats, **cut_stats_ts}
+
     ati_stats = read_json_file(ati_stats_file)
     if ati_stats is not None:
         stats = {**stats, **ati_stats}
@@ -7053,7 +6992,7 @@ def do_aorta_analysis(
 
     # It is possible to compare with the results that the raw TotalSegmentator segmentations would give
     # This is mainly for research purposes to see how much the results differ
-    compare_with_raw_ts_segmentations = False
+    compare_with_raw_ts_segmentations = params["compare_with_totalsegmentator"]
 
     Path(stats_folder).mkdir(parents=True, exist_ok=True)
     Path(surface_folder).mkdir(parents=True, exist_ok=True)
@@ -7113,9 +7052,7 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = extract_top_of_iliac_arteries(
-            input_file, segm_folder, verbose, quiet, write_log_file, output_folder
-        )
+        success = extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
     if success:
         success = extract_aortic_calcifications(
             input_file,
@@ -7324,16 +7261,13 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = identy_and_extract_samples_from_straight_volume(
-            cl_folder,
-            segm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-            use_raw_segmentations=False,
-        )
+        success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                                  write_log_file, output_folder,
+                                                                  use_raw_segmentations=False)
+    if success and compare_with_raw_ts_segmentations:
+        success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                                  write_log_file, output_folder,
+                                                                  use_raw_segmentations=True)
     if success:
         success = combine_cross_section_images_into_one(cl_folder, verbose)
     if success:
@@ -7368,6 +7302,7 @@ def do_aorta_analysis(
         quiet,
         write_log_file,
         output_folder,
+        compare_with_raw_segmentations=compare_with_raw_ts_segmentations
     )
 
     # Also try to create visualization of the things we achieved even in erro

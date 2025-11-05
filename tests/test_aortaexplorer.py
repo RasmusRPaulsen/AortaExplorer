@@ -18,7 +18,9 @@ def test_aortaexplorer():
     # params["compute_centerline_from_ts_segmentation"] = True
 
     # Type 1:
-    # input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
+    params["compare_with_totalsegmentator"] = True
+
     # input_file = "C:/data/AortaExplorer/input/DTU_053.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/DTU_060.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/DTU_074i.gz"
@@ -78,11 +80,11 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/subject002_CTA.nii.gz"
 
     # input_file = "C:/data/AortaSeg24/images/images/subject053_CTA.nii.gz"
-    input_file = "C:/data/AortaSeg24/images/images/subject075_CTA.nii.gz"
+    # input_file = "C:/data/AortaSeg24/images/images/subject075_CTA.nii.gz"
 
     # Very large bisection
     # input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
-    params["compute_centerline_from_ts_segmentation"] = False
+    # params["compute_centerline_from_ts_segmentation"] = False
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
