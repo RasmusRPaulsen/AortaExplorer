@@ -3373,7 +3373,7 @@ def compute_center_line(
 
 def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder, verbose, quiet,
                                        write_log_file, output_folder, use_ts_org_segmentations=True):
-    debug = True
+    debug = False
     stats_file = f"{stats_folder}aorta_scan_type.json"
 
     scan_type_stats = read_json_file(stats_file)
@@ -7153,9 +7153,7 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
-                                                verbose, quiet, write_log_file, output_folder,
-                                                use_ts_org_segmentations=use_org_ts_segmentations)
+        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=use_org_ts_segmentations)
     if success:
         success = extract_surfaces_for_centerlines(
             segm_folder,
@@ -7359,6 +7357,12 @@ def computer_process(
             print(
                 f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s"
             )
+        pure_id = get_pure_scan_file_name(input_file)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        time_stats_out = f"{stats_folder}aorta_proc_time.txt"
+        with open(time_stats_out, "w") as f:
+            f.write(f"{elapsed_time}\n")
+
 
 
 def aorta_analysis(
@@ -7413,7 +7417,7 @@ def aorta_analysis(
         stats_folder = f"{output_folder}{pure_id}/statistics/"
         time_stats_out = f"{stats_folder}aorta_proc_time.txt"
         with open(time_stats_out, "w") as f:
-            f.write(f"{elapsed_time:.1f}\n")
+            f.write(f"{elapsed_time}\n")
     else:
         process_queue = mp.Queue()
         for idx in in_files:

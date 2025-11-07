@@ -183,9 +183,10 @@ def computer_process(
         elapsed_time = time.time() - local_start_time
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
+        Path(stats_folder).mkdir(parents=True, exist_ok=True)
         time_stats_out = f"{stats_folder}totalsegmentator_proc_time.txt"
         with open(time_stats_out, "w") as f:
-            f.write(f"{elapsed_time:.1f}\n")
+            f.write(f"{elapsed_time}\n")
 
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
@@ -242,6 +243,12 @@ def compute_totalsegmentator_segmentations(
         elapsed_time = time.time() - local_start_time
         if verbose:
             print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
+        pure_id = get_pure_scan_file_name(input_file)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        time_stats_out = f"{stats_folder}totalsegmentator_proc_time.txt"
+        Path(stats_folder).mkdir(parents=True, exist_ok=True)
+        with open(time_stats_out, "w") as f:
+            f.write(f"{elapsed_time}\n")
     else:
         process_queue = mp.Queue()
         for idx in in_files:
