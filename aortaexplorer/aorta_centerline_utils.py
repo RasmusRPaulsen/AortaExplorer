@@ -290,7 +290,7 @@ class AortaCenterliner:
         return True
 
 
-    def prune(self, min_endpoints=2):
+    def prune(self, min_endpoints=2, max_branch_length=20.0):
 
         cleaner = vtk.vtkCleanPolyData()
         cleaner.SetInputData(self.pruned_skeleton)
@@ -385,8 +385,9 @@ class AortaCenterliner:
         removed_branches = 0
         kept_branches = 0
         for branch in sorted_branches:
+            branch_lenght = branch["length"]
             # print(f"Processing branch {branch['branch_id']} with length {branch['length']}")
-            if branch["branch_id"] not in visited_branch_ids:
+            if branch["branch_id"] not in visited_branch_ids and branch_lenght < max_branch_length:
                 removed_branches += 1
                 for pid in branch["points"]:
                     cell_ids = vtk.vtkIdList()

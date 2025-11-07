@@ -87,7 +87,10 @@ def test_aortaexplorer():
     # params["compute_centerline_from_ts_segmentation"] = False
     # params["compare_with_totalsegmentator"] = True
 
-    input_file = "C:/data/AortaExplorer/input/CGPS-1_10000_SERIES0017.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_10000_SERIES0017.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_10943_SERIES0017.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_11194_SERIES0015_volume_0.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/CGPS-1_12230_SERIES0004.nii.gz"
     params["compare_with_totalsegmentator"] = True
 
     output_folder = "C:/data/AortaExplorer/testoutput/"

@@ -3352,9 +3352,7 @@ def compute_center_line(
         if verbose:
             print(f"Computing centerline from {aorta_surf_name}")
 
-        if not clutils.compute_single_center_line(
-            aorta_surf_name, cl_name, start_p_file, end_p_file
-        ):
+        if not clutils.compute_single_center_line(aorta_surf_name, cl_name, start_p_file, end_p_file):
             msg = f"Failed to compute centerline from {aorta_surf_name}"
             if not quiet:
                 print(msg)
@@ -3375,7 +3373,7 @@ def compute_center_line(
 
 def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder, verbose, quiet,
                                        write_log_file, output_folder, use_ts_org_segmentations=True):
-    debug = False
+    debug = True
     stats_file = f"{stats_folder}aorta_scan_type.json"
 
     scan_type_stats = read_json_file(stats_file)
@@ -3431,6 +3429,20 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
         aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point, output_folder, verbose, quiet,
                                             write_log_file, scan_id=aorta_segm_in)
         if not aorta_centerline.compute_centerline():
+            if debug:
+                writer = vtk.vtkXMLPolyDataWriter()
+                writer.SetFileName(skeleton_pd_name)
+                writer.SetInputData(aorta_centerline.skeleton_polydata)
+                writer.Write()
+
+                writer.SetFileName(pruned_skeleton_pd_name)
+                writer.SetInputData(aorta_centerline.pruned_skeleton)
+                writer.Write()
+
+                writer.SetFileName(dijkstra_path_name)
+                writer.SetInputData(aorta_centerline.dijkstra_path)
+                writer.Write()
+
             msg = f"Failed to compute centerline from {aorta_segm_in}"
             if not quiet:
                 print(msg)
@@ -7371,8 +7383,10 @@ def aorta_analysis(
     for fname in in_files:
         pure_id = get_pure_scan_file_name(fname)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
+        vis_folder = f"{output_folder}{pure_id}/visualization/"
         stats_file = f"{stats_folder}/aorta_statistics.json"
-        if not os.path.exists(stats_file):
+        vis_file = f"{vis_folder}aorta_visualization.png"
+        if not os.path.exists(stats_file) or not os.path.exists(vis_file):
             files_to_process.append(fname)
     if verbose:
         print(f"Found {len(files_to_process)} files to compute aorta analysis out of {len(in_files)} files")
@@ -7395,7 +7409,11 @@ def aorta_analysis(
         elapsed_time = time.time() - local_start_time
         if verbose:
             print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
-
+        pure_id = get_pure_scan_file_name(input_file)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        time_stats_out = f"{stats_folder}aorta_proc_time.txt"
+        with open(time_stats_out, "w") as f:
+            f.write(f"{elapsed_time:.1f}\n")
     else:
         process_queue = mp.Queue()
         for idx in in_files:

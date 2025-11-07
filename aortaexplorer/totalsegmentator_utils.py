@@ -179,10 +179,14 @@ def computer_process(
                 f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left"
             )
         local_start_time = time.time()
-        do_totalsegmentator(
-            device, verbose, quiet, write_log_file, output_folder, input_file
-        )
+        do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, input_file)
         elapsed_time = time.time() - local_start_time
+        pure_id = get_pure_scan_file_name(input_file)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        time_stats_out = f"{stats_folder}totalsegmentator_proc_time.txt"
+        with open(time_stats_out, "w") as f:
+            f.write(f"{elapsed_time:.1f}\n")
+
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
         if verbose:
