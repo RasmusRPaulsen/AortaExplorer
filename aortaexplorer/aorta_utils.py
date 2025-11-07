@@ -1018,7 +1018,7 @@ def extract_top_of_iliac_arteries(
     mask_np_left, _ = get_components_over_certain_size(
         mask_np_left, min_size_vox, 1
     )
-    if np.sum(mask_np_left) == 0:
+    if mask_np_left is None or np.sum(mask_np_left) == 0:
         if verbose:
             print(f"No iliac artery left found in {input_file} larger than {min_size} mm^3")
     else:
@@ -1048,7 +1048,7 @@ def extract_top_of_iliac_arteries(
         mask_np_right, min_size_vox, 1
     )
 
-    if np.sum(mask_np_right) == 0:
+    if mask_np_right is None or np.sum(mask_np_right) == 0:
         if verbose:
             print(f"No iliac artery right found in {input_file} larger than {min_size} mm^3")
     else:
@@ -3428,7 +3428,8 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
             print(f"Could not read landmarks {start_p_name} or {end_p_name}")
             return False
 
-        aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point, output_folder, verbose, quiet, write_log_file)
+        aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point, output_folder, verbose, quiet,
+                                            write_log_file, scan_id=aorta_segm_in)
         if not aorta_centerline.compute_centerline():
             msg = f"Failed to compute centerline from {aorta_segm_in}"
             if not quiet:
@@ -3506,7 +3507,7 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
                 return False
 
             aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point,
-                                                output_folder, verbose, quiet, write_log_file)
+                                                output_folder, verbose, quiet, write_log_file, scan_id=aorta_segm_in)
             if not aorta_centerline.compute_centerline():
                 msg = f"Failed to compute centerline from {aorta_segm_in}"
                 if not quiet:

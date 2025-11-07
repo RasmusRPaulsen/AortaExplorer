@@ -25,7 +25,8 @@ class AortaCenterliner:
     - aorta_type as a string
     """
 
-    def __init__(self, label_map, aorta_type, start_point, end_point, output_folder, verbose=False,  quiet=False, write_log_file=True ):
+    def __init__(self, label_map, aorta_type, start_point, end_point, output_folder,
+                 verbose=False,  quiet=False, write_log_file=True, scan_id=""):
         """
         Args:
             image: SimpleITK image of the segmented aorta.
@@ -41,6 +42,7 @@ class AortaCenterliner:
         self.verbose = verbose
         self.quiet = quiet
         self.write_log_file = write_log_file
+        self.scan_id = scan_id
         self.spacing = None
         self.skeleton_polydata = None
         self.pruned_skeleton = None
@@ -48,6 +50,7 @@ class AortaCenterliner:
         self.dijkstra_path = None
         self.spline_parameters = None
         self.cl_polydata = None
+
 
     def report_error(self, message: str, level: str = "error"):
         """
@@ -63,7 +66,7 @@ class AortaCenterliner:
         Computes the centerline
         """
         if self.label_map is None:
-            report_error(f"No label map provided for centerline computation.")
+            report_error(f"No label map provided for centerline computation. For scan {self.scan_id}")
             return False
         if not self.compute_skeleton_and_vtk_from_segmentation():
             return False
@@ -422,8 +425,14 @@ class AortaCenterliner:
         if self.aorta_type == "5":
             min_endpoints = 2  # Just the aorta in the ascending and descending parts
 
+        conn = vtk.vtkConnectivityFilter()
+        conn.SetInputData(self.skeleton_polydata)
+        conn.SetExtractionModeToLargestRegion()
+        conn.Update()
+
         self.pruned_skeleton = vtk.vtkPolyData()
-        self.pruned_skeleton.DeepCopy(self.skeleton_polydata)
+        # self.pruned_skeleton.DeepCopy(self.skeleton_polydata)
+        self.pruned_skeleton.DeepCopy(conn.GetOutput())
 
         it = 0
         stop = False
@@ -470,6 +479,10 @@ class AortaCenterliner:
 
         sum_dist = 0
         n_points = cl_in.GetNumberOfPoints()
+        if n_points < 10:
+            self.report_error(f"Dijkstra path has too few points ({n_points}) for spline computation. "
+                              f"For {self.scan_id}", level="error")
+            return False
 
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.make_splrep.html#scipy.interpolate.make_splrep
         spline_smoothing_factor = n_points / 3.0
