@@ -6,6 +6,7 @@ from aortaexplorer.general_utils import (
 )
 from aortaexplorer.totalsegmentator_utils import compute_totalsegmentator_segmentations
 from aortaexplorer.aorta_utils import aorta_analysis
+from aortaexplorer.fileconverter_utils import convert_input_files
 from aortaexplorer.measurement_utils import process_measurements
 
 
@@ -63,6 +64,9 @@ def aortaexplorer(
         return False
     if verbose:
         print(f"Found {len(in_files)} input files")
+
+    in_files = convert_input_files(in_files=in_files, output_folder=output, nr_tg=tg_nr_proc,
+                                   verbose=verbose, quiet=quiet, write_log_file=write_log_file)
 
     compute_totalsegmentator_segmentations(
         in_files=in_files,

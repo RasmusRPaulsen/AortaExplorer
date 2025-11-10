@@ -56,9 +56,12 @@ def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str],
     """
     in_name = in_name.strip()
     if os.path.isdir(in_name):
-        in_files = glob.glob(f"{in_name}/*.nii*")
+        # glob for both .nii and .nii.gz files and .nrrd files
+        in_files = glob.glob(f"{in_name}/*.nrrd")
+        in_files += glob.glob(f"{in_name}/*.nii")
+        in_files += glob.glob(f"{in_name}/*.nii.gz")
         if len(in_files) < 1:
-            msg = f"No nii or nii.gz files found in {in_name}"
+            msg = f"No nii, nii.gz or nrrd files found in {in_name}"
             print(msg)
             return [], msg
     elif os.path.isfile(in_name):
