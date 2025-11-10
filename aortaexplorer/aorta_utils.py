@@ -3443,7 +3443,7 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
                 writer.SetInputData(aorta_centerline.dijkstra_path)
                 writer.Write()
 
-            msg = f"Failed to compute centerline from {aorta_segm_in}"
+        msg = f"Failed to compute centerline from {aorta_segm_in}"
             if not quiet:
                 print(msg)
             if write_log_file:
