@@ -28,25 +28,25 @@ The patient has a type B aortic dissection as seen in the curved planar reformat
 
 The patient has a severe aortic aneurysmic sac and has been treated with a Thoracic Endovascular Aortic Repair (TEVAR) as seen as the metal grid in the image. The red part of the aorta is the pure lumen (contrast enhanced blood) identified by AortaExplorer. The transparent surface is the segmentations found by AortaExplorer that includes an aortic aneurysmic sac (stagnant blood inside a dissection).
 
-![subject011](figs/subject001_CTA_aorta_visualization.png)
+![subject011](figs/subject011_CTA_aorta_visualization.png)
 
 ## AortaSeg24 subject047
 
 The patient has a severe type B aortic dissection as seen in the curved planar reformatted images and on the cross sections. It is seen as a darker line crossing through the lumen. The red part of the aorta is the pure lumen (contrast enhanced blood) identified by AortaExplorer. The transparent surface is the segmentations found by AortaExplorer that includes an aortic aneurysmic sac (stagnant blood inside a dissection).
 
-![subject001](figs/subject047_CTA_aorta_visualization.png)
+![subject047](figs/subject047_CTA_aorta_visualization.png)
 
 
 ## AortaSeg24 subject050
 
 The patient has a aortic dissection at the aortic arch. The red part of the aorta is the pure lumen (contrast enhanced blood) identified by AortaExplorer. The transparent surface is the segmentations found by AortaExplorer that includes an aortic aneurysmic sac (stagnant blood inside a dissection).
 
-![subject001](figs/subject050_CTA_aorta_visualization.png)
+![subject050](figs/subject050_CTA_aorta_visualization.png)
 
 
 ## AortaSeg24 subject090
 
 The patient has a severe type B aortic dissection and several aortic aneurysms as seen on the diameter plot. 
 
-![subject001](figs/subject090_CTA_aorta_visualization.png)
+![subject090](figs/subject090_CTA_aorta_visualization.png)
 
