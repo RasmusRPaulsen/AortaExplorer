@@ -122,6 +122,8 @@ def convert_input_files(in_files, output_folder, params=None, nr_tg=1, verbose=F
             continue
         if not is_nrrd and not os.path.isdir(fname):
             # not a folder and not nrrd file
+            # probably a nifti file
+            output_files.append(fname)
             continue
 
         pure_id = get_pure_scan_file_name(fname)
