@@ -8,7 +8,7 @@ import dicom2nifti as d2n
 
 
 
-def do_convert(verbose, quiet, write_log_file, output_folder, input_file):
+def do_convert(verbose, quiet, write_log_file, output_folder, input_file, params):
     """
     """
     # Do not inherit any previous error message
@@ -17,16 +17,24 @@ def do_convert(verbose, quiet, write_log_file, output_folder, input_file):
     conv_output_folder = f"{output_folder}{pure_id}/NIFTI/"
     conv_out_name = f"{conv_output_folder}{pure_id}.nii.gz"
     Path(conv_output_folder).mkdir(parents=True, exist_ok=True)
+    hu_offset = 0
+    if params is not None:
+        hu_offset = params.get("hounsfield_unit_offset", 0)
 
     # Check if input is nrrd file
     if input_file.lower().endswith(".nrrd"):
         try:
             # Read nrrd file with SimpleITK
             sitk_image = sitk.ReadImage(input_file)
+            if hu_offset != 0:
+                # Apply HU offset
+                sitk_image = sitk.Cast(sitk_image, sitk.sitkInt16)
+                sitk_image = sitk_image + hu_offset
+
             # Write as NIfTI
             sitk.WriteImage(sitk_image, conv_out_name)
             if verbose:
-                print(f"Converted NRRD file {input_file} to NIfTI file {conv_out_name}")
+                print(f"Converted NRRD file {input_file} to NIfTI file {conv_out_name} with HU offset {hu_offset}")
         except Exception as e:
             msg = f"Failed to convert NRRD file {input_file} to NIfTI: {e}"
             if not quiet:
@@ -69,7 +77,7 @@ def do_convert(verbose, quiet, write_log_file, output_folder, input_file):
     return True
 
 
-def computer_process(verbose, quiet, write_log_file, output_folder, process_queue, process_id):
+def computer_process(verbose, quiet, write_log_file, params, output_folder, process_queue, process_id):
     while not process_queue.empty():
         q_size = process_queue.qsize()
         input_file = process_queue.get()
@@ -78,7 +86,7 @@ def computer_process(verbose, quiet, write_log_file, output_folder, process_queu
                 f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left"
             )
         local_start_time = time.time()
-        do_convert(verbose, quiet, write_log_file, output_folder, input_file)
+        do_convert(verbose, quiet, write_log_file, output_folder, input_file, params)
         elapsed_time = time.time() - local_start_time
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
@@ -93,7 +101,7 @@ def computer_process(verbose, quiet, write_log_file, output_folder, process_queu
             print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
     return True
 
-def convert_input_files(in_files, output_folder, nr_tg=1, verbose=False, quiet=False, write_log_file=True):
+def convert_input_files(in_files, output_folder, params=None, nr_tg=1, verbose=False, quiet=False, write_log_file=True):
     if verbose:
         print(f"Converting {len(in_files)} files. Output to {output_folder}")
 
@@ -138,7 +146,7 @@ def convert_input_files(in_files, output_folder, nr_tg=1, verbose=False, quiet=F
         if verbose:
             print(f"Converting: {input_file}")
         local_start_time = time.time()
-        do_convert(verbose, quiet, write_log_file, output_folder, input_file)
+        do_convert(verbose, quiet, write_log_file, output_folder, input_file, params)
         elapsed_time = time.time() - local_start_time
         if verbose:
             print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
@@ -165,6 +173,7 @@ def convert_input_files(in_files, output_folder, nr_tg=1, verbose=False, quiet=F
                     verbose,
                     quiet,
                     write_log_file,
+                    params,
                     output_folder,
                     process_queue,
                     i + 1,

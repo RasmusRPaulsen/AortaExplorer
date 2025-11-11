@@ -21,6 +21,7 @@ def get_default_parameters():
         "aorta_min_max_hu_value": 400,
         "aorta_calcification_min_hu_value": 400,
         "aorta_calcification_max_hu_value": 1500,
+        "hounsfield_unit_offset": 0,
         "compute_centerline_from_ts_segmentation": True,
         "compare_with_totalsegmentator": False,
         "rendering_window_size": [1920, 1080],
@@ -65,7 +66,7 @@ def aortaexplorer(
     if verbose:
         print(f"Found {len(in_files)} input files")
 
-    in_files = convert_input_files(in_files=in_files, output_folder=output, nr_tg=tg_nr_proc,
+    in_files = convert_input_files(in_files=in_files, output_folder=output, params=aorta_parameters, nr_tg=tg_nr_proc,
                                    verbose=verbose, quiet=quiet, write_log_file=write_log_file)
 
     compute_totalsegmentator_segmentations(
