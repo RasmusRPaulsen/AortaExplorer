@@ -95,7 +95,8 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_12551_SERIES0020.nii.gz"
     # params["compare_with_totalsegmentator"] = True
 
-    input_file = "C:/data/AVT-Aorta/Dongyang/D1/D1.nrrd"
+    # input_file = "C:/data/AVT-Aorta/Dongyang/D1/D1.nrrd"
+    input_file = "C:/data/AVT-Aorta/Dongyang/All/"
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"

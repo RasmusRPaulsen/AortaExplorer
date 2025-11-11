@@ -1973,6 +1973,7 @@ def compute_aorta_scan_type(
     https://github.com/RasmusRPaulsen/AortaExplorer
     """
     stats_file = f"{stats_folder}/aorta_scan_type.json"
+    sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
 
     if os.path.exists(stats_file):
         if verbose:
@@ -2032,11 +2033,49 @@ def compute_aorta_scan_type(
                 base_dir=output_folder, message=msg, level="error"
             )
         return False
-    # sides = set()
 
-    # TODO: Use the out-of-scan SDF to determine if the aorta is touching the side of the scan
-    sides = check_if_segmentation_hit_sides_of_scan(segm_data, aorta_segment_id)
-    stats["sides"] = list(sides)
+    sdf_img = read_nifti_with_logging_cached(
+        sdf_name, False, quiet, write_log_file, output_folder
+    )
+    if sdf_img is None:
+        return False
+
+    sdf_np = sitk.GetArrayFromImage(sdf_img)
+    label_img = read_nifti_with_logging_cached(
+        segm_name, False, quiet, write_log_file, output_folder
+    )
+    if label_img is None:
+        return False
+    label_img_np = sitk.GetArrayFromImage(label_img)
+
+    # Force it to one component
+    min_comp_size = 5000
+    if verbose:
+        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+    components, _ = get_components_over_certain_size(label_img_np, min_comp_size, 1)
+    if components is None:
+        msg = f"No aorta lumen found left after connected components {input_file}"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+    label_img_np = components
+
+    spacing = label_img.GetSpacing()
+    max_space = np.max(np.asarray(spacing))
+    overlap_dist = max(3 * max_space, 3)
+
+    # Find the part of the aorta that hits the side of the scan
+    overlap_region = label_img_np & (sdf_np < overlap_dist)
+    if np.sum(overlap_region) > 0:
+        sides = check_if_segmentation_hit_sides_of_scan(segm_data, aorta_segment_id)
+        stats["sides"] = list(sides)
+    else:
+        sides = []
+        stats["sides"] = sides
 
     scan_type = "unknown"
     scan_type_desc = "unknown"
@@ -2420,18 +2459,6 @@ def compute_centerline_landmarks_for_aorta_type_2(
     )
     if label_img is None:
         return False
-    #
-    #
-    # try:
-    #     label_img = sitk.ReadImage(aorta_name)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {aorta_name}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     label_img_np = sitk.GetArrayFromImage(label_img)
 
     # Force it to one component

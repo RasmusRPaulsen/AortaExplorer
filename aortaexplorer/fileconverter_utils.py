@@ -83,7 +83,7 @@ def computer_process(verbose, quiet, write_log_file, output_folder, process_queu
 
 def convert_input_files(in_files, output_folder, nr_tg=1, verbose=False, quiet=False, write_log_file=True):
     if verbose:
-        print(f"Converting{len(in_files)} files. Output to {output_folder}")
+        print(f"Converting {len(in_files)} files. Output to {output_folder}")
 
     num_processes = nr_tg
     # no need to spawn more processes than files
