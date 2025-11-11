@@ -4,6 +4,8 @@ import time
 import multiprocessing as mp
 from aortaexplorer.general_utils import write_message_to_log_file, clear_last_error_message, get_pure_scan_file_name
 import SimpleITK as sitk
+import dicom2nifti as d2n
+
 
 
 def do_convert(verbose, quiet, write_log_file, output_folder, input_file):
@@ -36,14 +38,25 @@ def do_convert(verbose, quiet, write_log_file, output_folder, input_file):
             return False
     else:
         # Assume input is DICOM folder
+        # try:
+        #     reader = sitk.ImageSeriesReader()
+        #     dicom_names = reader.GetGDCMSeriesFileNames(input_file)
+        #     reader.SetFileNames(dicom_names)
+        #     sitk_image = reader.Execute()
+        #     sitk.WriteImage(sitk_image, conv_out_name)
+        #     if verbose:
+        #         print(f"Converted DICOM folder {input_file} to NIfTI file {conv_out_name}")
+        # except Exception as e:
+        #     msg = f"Failed to convert DICOM folder {input_file} to NIfTI: {e}"
+        #     if not quiet:
+        #         print(msg)
+        #     if write_log_file:
+        #         write_message_to_log_file(
+        #             base_dir=output_folder, message=msg, level="error"
+        #         )
+        #     return False
         try:
-            reader = sitk.ImageSeriesReader()
-            dicom_names = reader.GetGDCMSeriesFileNames(input_file)
-            reader.SetFileNames(dicom_names)
-            sitk_image = reader.Execute()
-            sitk.WriteImage(sitk_image, conv_out_name)
-            if verbose:
-                print(f"Converted DICOM folder {input_file} to NIfTI file {conv_out_name}")
+            d2n.dicom_series_to_nifti(input_file, conv_out_name, reorient_nifti=True)
         except Exception as e:
             msg = f"Failed to convert DICOM folder {input_file} to NIfTI: {e}"
             if not quiet:
@@ -53,7 +66,6 @@ def do_convert(verbose, quiet, write_log_file, output_folder, input_file):
                     base_dir=output_folder, message=msg, level="error"
                 )
             return False
-
     return True
 
 

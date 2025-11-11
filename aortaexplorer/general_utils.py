@@ -36,6 +36,11 @@ def get_last_error_message():
 
 
 def get_pure_scan_file_name(scan_file_name: str) -> str:
+    # check if scan name is actually a directory
+    if os.path.isdir(scan_file_name):
+        scan_id = os.path.basename(os.path.normpath(scan_file_name))
+        return scan_id
+
     # Get pure name of input file without path and extension
     scan_id = os.path.basename(scan_file_name)
     scan_id = os.path.splitext(scan_id)[0]
@@ -61,7 +66,19 @@ def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str],
         in_files += glob.glob(f"{in_name}/*.nii")
         in_files += glob.glob(f"{in_name}/*.nii.gz")
         if len(in_files) < 1:
-            msg = f"No nii, nii.gz or nrrd files found in {in_name}"
+            # try finding non-empty subdirectories. These can contain DICOM files
+            for d in os.listdir(in_name):
+                full_d = os.path.join(in_name, d)
+                if os.path.isdir(full_d):
+                    # check if directory is non-empty
+                    if len(os.listdir(full_d)) > 0:
+                        in_files.append(full_d)
+        if len(in_files) < 1:
+            # Check if there files in the current directory. These can be DICOM files
+            if len(os.listdir(in_name)) > 0:
+                in_files.append(in_name)
+        if len(in_files) < 1:
+            msg = f"No nii, nii.gz, nrrd files or DICOM folders found in {in_name}"
             print(msg)
             return [], msg
     elif os.path.isfile(in_name):

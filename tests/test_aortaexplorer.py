@@ -96,7 +96,10 @@ def test_aortaexplorer():
     # params["compare_with_totalsegmentator"] = True
 
     # input_file = "C:/data/AVT-Aorta/Dongyang/D1/D1.nrrd"
-    input_file = "C:/data/AVT-Aorta/Dongyang/All/"
+    # input_file = "C:/data/AVT-Aorta/Dongyang/All/"
+    # input_file = "C:/data/Abdominal/Pancreas-CT/PANCREAS_0003/11-24-2015-PANCREAS0003-Pancreas-02648/"
+    input_file = "C:/data/Abdominal/CTLymphNodes/manifest-IVhUf5Gd7581798897432071977/CT Lymph Nodes/ABD_LYMPH_001/09-14-2014-ABDLYMPH001-abdominallymphnodes-30274/abdominallymphnodes-26828/"
+
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
