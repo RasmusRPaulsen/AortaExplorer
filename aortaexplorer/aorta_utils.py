@@ -128,6 +128,7 @@ def compute_body_segmentation(
 
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(ct_img)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
     # print(f"saving")
     sitk.WriteImage(img_o, segm_out_name)
@@ -189,6 +190,8 @@ def compute_out_scan_field_segmentation_and_sdf(
 
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(ct_img)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
+
     # print(f"saving")
     sitk.WriteImage(img_o, segm_out_name)
 
@@ -318,6 +321,7 @@ def refine_single_aorta_part(
     if debug:
         img_o = sitk.GetImageFromArray(dilated_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {segm_skeleton_out_name}")
         sitk.WriteImage(img_o, segm_skeleton_out_name)
@@ -409,6 +413,7 @@ def refine_single_aorta_part(
     if debug:
         img_o = sitk.GetImageFromArray(combined_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {segm_out_thres_name}")
         sitk.WriteImage(img_o, segm_out_thres_name)
@@ -428,6 +433,7 @@ def refine_single_aorta_part(
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
             print(f"Debug: saving {segm_open_out_name}")
             sitk.WriteImage(img_o, segm_open_out_name)
@@ -440,6 +446,7 @@ def refine_single_aorta_part(
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
             print(f"Debug: saving {segm_closed_out_name}")
             sitk.WriteImage(img_o, segm_closed_out_name)
@@ -466,6 +473,7 @@ def refine_single_aorta_part(
 
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
     if debug:
         sitk.WriteImage(img_o, segm_no_holes_name)
 
@@ -549,6 +557,7 @@ def refine_single_aorta_part(
 
     img_o = sitk.GetImageFromArray(components[0].astype(int))
     img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
     if debug:
         print(f"Debug: saving {segm_out_name}")
@@ -621,16 +630,6 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     if label_img_aorta is None:
         return False
 
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     label_img_aorta_hires = None
     if os.path.exists(segm_name_aorta_hires):
         label_img_aorta_hires = read_nifti_with_logging_cached(
@@ -638,39 +637,17 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         )
         if label_img_aorta_hires is None:
             return False
-        # try:
-        #     label_img_aorta_hires = sitk.ReadImage(segm_name_aorta_hires)
-        # except RuntimeError as e:
-        #     msg = f"Could not read {segm_name_aorta_hires}: {str(e)} got an exception"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
 
     ct_img = read_nifti_with_logging_cached(
         input_file, verbose, quiet, write_log_file, output_folder
     )
     if ct_img is None:
         return False
-    #
-    # try:
-    #     ct_img = sitk.ReadImage(ct_name)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     ct_np = sitk.GetArrayFromImage(ct_img)
 
     spacing = ct_img.GetSpacing()
-    # in_slice_spacing = spacing[0]
     slice_thickness = spacing[2]
-    # ratio = slice_thickness / in_slice_spacing
-    # ratio = max(ratio, 1.0)
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
@@ -678,6 +655,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     if store_ts_org_aorta:
         img_o = sitk.GetImageFromArray(mask_np_aorta.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         sitk.WriteImage(img_o, segm_out_name_total)
 
     if label_img_aorta_hires:
@@ -689,6 +667,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     if store_ts_org_hires_aorta:
         img_o = sitk.GetImageFromArray(mask_np_aorta.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         sitk.WriteImage(img_o, segm_out_name_hires)
 
     # TODO: This is completely guesswork
@@ -699,8 +678,11 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     else:
         min_comp_size = 10000
 
+    spacing = label_img_aorta.GetSpacing()
+    min_comp_size_mm = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels = {min_comp_size_mm:.1f} mm^3")
     components = get_components_over_certain_size_as_individual_volumes(
         mask_np_aorta, min_comp_size, 2
     )
@@ -746,18 +728,22 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
 
         img_o = sitk.GetImageFromArray(components[0].astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         # print(f"saving {name_o_1}")
         sitk.WriteImage(img_o, name_o_1)
 
         img_o = sitk.GetImageFromArray(components[1].astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         # print(f"saving {name_o_2}")
         sitk.WriteImage(img_o, name_o_2)
 
         # Combine to make one lumen segmentation
-        combined = np.bitwise_or(components[0], components[1])
-        img_o = sitk.GetImageFromArray(combined.astype(int))
-        img_o.CopyInformation(label_img_aorta)
+        # combined = np.bitwise_or(components[0], components[1])
+        #
+        # img_o = sitk.GetImageFromArray(combined.astype(int))
+        # img_o.CopyInformation(label_img_aorta)
+        # img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         # print(f"saving {segm_out_name}")
         # sitk.WriteImage(img_o, segm_out_name)
@@ -796,31 +782,11 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         if label_img_annulus is None:
             return False
 
-        # try:
-        #     label_img_annulus = sitk.ReadImage(segm_in_name_annulus)
-        # except RuntimeError as e:
-        #     msg = f"Could not read {segm_in_name_annulus}: {str(e)} got an exception"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
-
         label_img_descending = read_nifti_with_logging_cached(
             segm_in_name_descending, verbose, quiet, write_log_file, output_folder
         )
         if label_img_descending is None:
             return False
-        #
-        # try:
-        #     label_img_descending = sitk.ReadImage(segm_in_name_descending)
-        # except RuntimeError as e:
-        #     msg = f"Could not read {segm_in_name_descending}: {str(e)} got an exception"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
 
         label_img_comb = sitk.GetArrayFromImage(
             label_img_annulus
@@ -828,11 +794,12 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
 
         img_o = sitk.GetImageFromArray(label_img_comb)
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         sitk.WriteImage(img_o, segm_total_out)
     else:
-        img_o = sitk.GetImageFromArray(components[0].astype(int))
-        img_o.CopyInformation(label_img_aorta)
-
+        # img_o = sitk.GetImageFromArray(components[0].astype(int))
+        # img_o.CopyInformation(label_img_aorta)
+        # img_o = sitk.Cast(img_o, sitk.sitkInt16)
         # print(f"saving {segm_out_name}")
         # sitk.WriteImage(img_o, segm_out_name)
         if not refine_single_aorta_part(
@@ -967,6 +934,7 @@ def inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder,
         # write inpainted label map
         img_o = sitk.GetImageFromArray(label_map_np.astype(int))
         img_o.CopyInformation(label_map)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         sitk.WriteImage(img_o, segm_out_name)
 
     return True
@@ -1041,6 +1009,7 @@ def extract_top_of_iliac_arteries(
         else:
             img_o = sitk.GetImageFromArray(large_components.astype(int))
             img_o.CopyInformation(label_img)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
             sitk.WriteImage(img_o, segm_out_l_name)
 
     mask_np_right = label_img_np == iliac_right_segm_id
@@ -1071,6 +1040,7 @@ def extract_top_of_iliac_arteries(
         else:
             img_o = sitk.GetImageFromArray(large_components.astype(int))
             img_o.CopyInformation(label_img)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
             sitk.WriteImage(img_o, segm_out_r_name)
     return True
 
@@ -1162,6 +1132,7 @@ def extract_aortic_calcifications(
     if debug:
         img_o = sitk.GetImageFromArray(dilated_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {segm_dilated_out_name}")
         sitk.WriteImage(img_o, segm_dilated_out_name)
@@ -1194,6 +1165,7 @@ def extract_aortic_calcifications(
     # if debug:
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
     if debug:
         print(f"Saving {segm_raw_out_name}")
@@ -1519,6 +1491,7 @@ def compute_ventricularoaortic_landmark(
     if debug:
         img_o = sitk.GetImageFromArray(overlap_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"saving {overlap_name}")
         sitk.WriteImage(img_o, overlap_name)
@@ -1701,6 +1674,7 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
 
     img_o = sitk.GetImageFromArray(large_components.astype(int))
     img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
     if debug:
         print(f"saving {segm_out_name}")
@@ -2498,6 +2472,7 @@ def compute_centerline_landmarks_for_aorta_type_2(
     if debug:
         img_o = sitk.GetImageFromArray(overlap_region.astype(int))
         img_o.CopyInformation(label_img)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {overlap_name_1}")
         sitk.WriteImage(img_o, overlap_name_1)
@@ -2753,6 +2728,7 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(
     if debug:
         img_o = sitk.GetImageFromArray(overlap_region.astype(int))
         img_o.CopyInformation(label_img)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {overlap_name_1}")
         sitk.WriteImage(img_o, overlap_name_1)
@@ -2921,6 +2897,7 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
     if debug:
         img_o = sitk.GetImageFromArray(overlap_region.astype(int))
         img_o.CopyInformation(label_img)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {overlap_name_1}")
         sitk.WriteImage(img_o, overlap_name_1)

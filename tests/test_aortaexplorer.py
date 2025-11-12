@@ -96,7 +96,9 @@ def test_aortaexplorer():
     # params["compare_with_totalsegmentator"] = True
 
     # input_file = "C:/data/AVT-Aorta/Dongyang/D1/D1.nrrd"
-    input_file = "C:/data/AVT-Aorta/KiTS/K1/K1.nrrd"
+    # input_file = "C:/data/AVT-Aorta/KiTS/K1/K1.nrrd"
+    # input_file = "C:/data/AVT-aorta/Rider/R1 (AD)/R1.nrrd"
+    input_file = "C:/data/AVT-aorta/Rider/R3/R3.nrrd"
     params["hounsfield_unit_offset"] = -1000
     # input_file = "C:/data/AVT-Aorta/Dongyang/All/"
     # input_file = "C:/data/Abdominal/Pancreas-CT/PANCREAS_0003/11-24-2015-PANCREAS0003-Pancreas-02648/"

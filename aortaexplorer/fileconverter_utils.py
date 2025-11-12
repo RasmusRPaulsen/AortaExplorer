@@ -83,7 +83,7 @@ def computer_process(verbose, quiet, write_log_file, params, output_folder, proc
         input_file = process_queue.get()
         if verbose:
             print(
-                f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left"
+                f"Process {process_id} converting: {input_file} - {q_size} left"
             )
         local_start_time = time.time()
         do_convert(verbose, quiet, write_log_file, output_folder, input_file, params)
@@ -112,7 +112,7 @@ def convert_input_files(in_files, output_folder, params=None, nr_tg=1, verbose=F
     files_to_process = []
     output_files = []
     for fname in in_files:
-        # Get extension and check if it an nrrd file or if it is a DICOM folder
+        # Get extension and check if it is an nrrd file or if it is a DICOM folder
         if fname.lower().endswith(".nrrd"):
             is_nrrd = True
         else:
@@ -154,7 +154,7 @@ def convert_input_files(in_files, output_folder, params=None, nr_tg=1, verbose=F
             print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
-        time_stats_out = f"{stats_folder}totalsegmentator_proc_time.txt"
+        time_stats_out = f"{stats_folder}conversion_proc_time.txt"
         Path(stats_folder).mkdir(parents=True, exist_ok=True)
         with open(time_stats_out, "w") as f:
             f.write(f"{elapsed_time}\n")
