@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 import time
 import multiprocessing as mp
-from aortaexplorer.general_utils import write_message_to_log_file, clear_last_error_message, get_pure_scan_file_name
+from aortaexplorer.general_utils import (write_message_to_log_file, clear_last_error_message, get_pure_scan_file_name,
+                                         display_time)
 import SimpleITK as sitk
 import dicom2nifti as d2n
 
@@ -97,8 +98,11 @@ def computer_process(verbose, quiet, write_log_file, params, output_folder, proc
 
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
+        time_left_str = display_time(int(est_time_left))
+        time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
-            print(f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s")
+            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}."
+                  f" Time left {time_left_str} (if only one process)")
     return True
 
 def convert_input_files(in_files, output_folder, params=None, nr_tg=1, verbose=False, quiet=False, write_log_file=True):
@@ -150,8 +154,9 @@ def convert_input_files(in_files, output_folder, params=None, nr_tg=1, verbose=F
         local_start_time = time.time()
         do_convert(verbose, quiet, write_log_file, output_folder, input_file, params)
         elapsed_time = time.time() - local_start_time
+        elapsed_time_str = display_time(int(elapsed_time))
         if verbose:
-            print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
+            print(f"Done with {input_file} - took {elapsed_time_str}")
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
         time_stats_out = f"{stats_folder}conversion_proc_time.txt"

@@ -11,7 +11,7 @@ from aortaexplorer.general_utils import (
     read_json_file,
     get_last_error_message,
     clear_last_error_message,
-    get_pure_scan_file_name
+    get_pure_scan_file_name, display_time
 )
 from aortaexplorer.io_utils import read_nifti_with_logging_cached
 from aortaexplorer.surface_utils import (
@@ -7357,10 +7357,11 @@ def computer_process(
         elapsed_time = time.time() - local_start_time
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
+        time_left_str = display_time(int(est_time_left))
+        time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
-            print(
-                f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s"
-            )
+            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}."
+                  f" Time left {time_left_str} (if only one process)")
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
         time_stats_out = f"{stats_folder}aorta_proc_time.txt"
@@ -7415,8 +7416,9 @@ def aorta_analysis(
             verbose, quiet, write_log_file, params, output_folder, input_file
         )
         elapsed_time = time.time() - local_start_time
+        elapsed_time_str = display_time(int(elapsed_time))
         if verbose:
-            print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
+            print(f"Done with {input_file} - took {elapsed_time_str}")
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
         time_stats_out = f"{stats_folder}aorta_proc_time.txt"
