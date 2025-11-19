@@ -139,6 +139,7 @@ def edt_based_compute_landmark_from_segmentation_overlap(
     segm_sitk_img,
     overlap_name,
     lm_name,
+    min_size_mm3 = 2000,
     only_larges_components=True,
     debug=False,
 ):
@@ -147,9 +148,11 @@ def edt_based_compute_landmark_from_segmentation_overlap(
 
     spacing = segm_sitk_img.GetSpacing()
     spc_trans = [spacing[2], spacing[1], spacing[0]]
+    min_size_vox = min_size_mm3 / (spacing[0] * spacing[1] * spacing[2])
+
     overlap_mask = edt_based_overlap(segmentation_1, segmentation_2, spc_trans, radius)
     if only_larges_components:
-        overlap_mask, n_comp = get_components_over_certain_size(overlap_mask, 100, 1)
+        overlap_mask, n_comp = get_components_over_certain_size(overlap_mask, min_size_vox, 1)
         if overlap_mask is None or n_comp < 1:
             if debug:
                 print(f"No components found in {overlap_name}")

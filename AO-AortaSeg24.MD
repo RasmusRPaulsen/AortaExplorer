@@ -12,9 +12,11 @@ To use AortaExplorer on the AortaSeg24 dataset, the following command can be use
 AortaExplorer -i /data/AortaSeg24/images/ -o /data/AortaSeg24/AortaExplorerOutput/ -nts -cts
 ```
 
-Where, `/data/AortaSeg24/images/` is the folder where the input CTA scans are placed. The arguments `-nts -cts` tells AortaExplorer not to use the original TotalSegmentator segmentation for the centerline and to include the measurements based on the TotalSegmentator segmentation for comparison. Our experiments shows that AortaExplorer can succesfully compute on 99 of the 100 scans and the failed scan is because TotalSegmentator can not correctly segment a part of the aorta (subject075).
+Where, `/data/AortaSeg24/images/` is the folder where the input CTA scans are placed. The arguments `-nts -cts` tells AortaExplorer not to use the original TotalSegmentator segmentation for the centerline and to include the measurements based on the TotalSegmentator segmentation for comparison. 
 
 # Commented results on AortaSeg24
+
+Our experiments shows that AortaExplorer can succesfully compute on **99** of the **100** scans and the failed scan is because TotalSegmentator can not correctly segment a part of the aorta (subject075). We have visually inspected the rendered outputs and they generally looks correct.
 
 The following comments are from a trained radiologist inspecting some of the visualizations produced by AortaExplorer on AortaSeg24.
 

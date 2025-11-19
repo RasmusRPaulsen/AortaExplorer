@@ -274,16 +274,6 @@ def refine_single_aorta_part(
     )
     if label_img_aorta is None:
         return False
-    #
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_in_name)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_in_name}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     spacing = label_img_aorta.GetSpacing()
     # in_slice_spacing = spacing[0]
@@ -526,8 +516,11 @@ def refine_single_aorta_part(
     else:
         min_comp_size = 10000
 
+    vox_size = spacing[0] * spacing[1] * spacing[2]
+    min_comp_size_mm3 = min_comp_size * vox_size
+
     if verbose:
-        print(f"Finding componenents with min_comp_size: {min_comp_size}")
+        print(f"Finding componenents with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm3")
     components = get_components_over_certain_size_as_individual_volumes(
         combined_mask, min_comp_size, 1
     )
@@ -1395,37 +1388,17 @@ def compute_ventricularoaortic_landmark(
         f_p_out.write("no point")
         f_p_out.close()
         return True
-    #
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    # try:
-    #     label_img_lv = sitk.ReadImage(segm_name_hc)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     f_p_out = open(ventricularoaortic_p_none_out_file, "w")
-    #     f_p_out.write("no point")
-    #     f_p_out.close()
-    #     return True
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
 
     # Force it to have only the found components (since we can use the original ts segmentations with spurious parts)
     min_comp_size = 5000
+    spacing = label_img_aorta.GetSpacing()
+    min_comp_size_mm3 = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm^3")
     components, _ = get_components_over_certain_size(
         mask_np_aorta, min_comp_size, n_aorta_parts
     )
@@ -1456,6 +1429,10 @@ def compute_ventricularoaortic_landmark(
     )
 
     min_comp_size = 100
+    spacing = label_img_aorta.GetSpacing()
+    min_comp_size_mm3 = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+    if verbose:
+        print(f"Finding overlap components with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm^3")
     overlap_mask = get_components_over_certain_size_as_individual_volumes(
         overlap_mask, min_comp_size, 1
     )
@@ -1713,28 +1690,8 @@ def compute_aortic_arch_landmarks(
     if label_img_total is None:
         return False
 
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
-
-    # try:
-    #     label_img = sitk.ReadImage(segm_name_total)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_total}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
     label_img_np = sitk.GetArrayFromImage(label_img_total)
 
     for idx in range(len(lm_names)):
@@ -1751,7 +1708,10 @@ def compute_aortic_arch_landmarks(
         if verbose:
             print(f"Computing {lm_out_name}")
 
-        radius = 5
+        # For some image, the spacing is actually 5 mm creating problems if the radius is too love
+        spacing = label_img_total.GetSpacing()
+        radius = max(5, 1.5 * max(spacing))
+
         current_segm = label_img_np == segm_id
         if np.sum(current_segm) > 10:
             if verbose:
@@ -2024,8 +1984,12 @@ def compute_aorta_scan_type(
 
     # Force it to one component
     min_comp_size = 5000
+    spacing = label_img.GetSpacing()
+    vox_size = spacing[0] * spacing[1] * spacing[2]
+    min_comp_size_mm3 = min_comp_size * vox_size
+
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm^3")
     components, _ = get_components_over_certain_size(label_img_np, min_comp_size, 1)
     if components is None:
         msg = f"No aorta lumen found left after connected components {input_file}"
@@ -2437,8 +2401,12 @@ def compute_centerline_landmarks_for_aorta_type_2(
 
     # Force it to one component
     min_comp_size = 5000
+    spacing = label_img.GetSpacing()
+    vox_size = spacing[0] * spacing[1] * spacing[2]
+    min_comp_size_mm3 = min_comp_size * vox_size
+
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm^3")
     components, _ = get_components_over_certain_size(label_img_np, min_comp_size, 1)
     if components is None:
         msg = f"No aorta lumen found left after connected components {input_file}"
