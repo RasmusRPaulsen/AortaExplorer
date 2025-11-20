@@ -578,7 +578,7 @@ def compute_tortuosity_index_based_on_scan_type(
         if geometric_length > 0 and aortic_length > 0:
             aortic_tortuosity_index = aortic_length / geometric_length
             if verbose:
-                print(f"Computed Annulus tortuosity index: {aortic_tortuosity_index}")
+                print(f"Computed Annulus tortuosity index: {aortic_tortuosity_index:.2f}")
             ati_stats["annulus_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["annulus_aortic_length"] = aortic_length
             ati_stats["annulus_geometric_length"] = geometric_length
@@ -603,7 +603,7 @@ def compute_tortuosity_index_based_on_scan_type(
         if geometric_length > 0 and aortic_length > 0:
             aortic_tortuosity_index = aortic_length / geometric_length
             if verbose:
-                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index}")
+                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index:.2f}")
             ati_stats["ascending_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["ascending_aortic_length"] = aortic_length
             ati_stats["ascending_geometric_length"] = geometric_length
@@ -621,7 +621,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["infrarenal_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -643,7 +643,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
@@ -661,7 +661,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["descending_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -679,7 +679,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed iliac bifucation to arch tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed iliac bifucation to arch tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["ib_arch_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["ib_arch_aortic_length"] = aortic_length
@@ -737,7 +737,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["infrarenal_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -759,7 +759,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
@@ -775,7 +775,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed abdominal tortuosity index (no diaphragm): {aortic_tortuosity_index}"
+                        f"Computed abdominal tortuosity index (no diaphragm): {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
@@ -818,7 +818,7 @@ def compute_tortuosity_index_based_on_scan_type(
         if geometric_length > 0 and aortic_length > 0:
             aortic_tortuosity_index = aortic_length / geometric_length
             if verbose:
-                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index}")
+                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index:.2f}")
             ati_stats["ascending_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["ascending_aortic_length"] = aortic_length
             ati_stats["ascending_geometric_length"] = geometric_length
@@ -868,7 +868,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["descending_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -887,7 +887,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["descending_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -931,7 +931,7 @@ def compute_tortuosity_index_based_on_scan_type(
         if geometric_length > 0 and aortic_length > 0:
             aortic_tortuosity_index = aortic_length / geometric_length
             if verbose:
-                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index}")
+                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index:.2f}")
             ati_stats["ascending_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["ascending_aortic_length"] = aortic_length
             ati_stats["ascending_geometric_length"] = geometric_length
@@ -989,7 +989,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["infrarenal_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -1010,7 +1010,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed diaphragm tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed diaphragm tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["diaphragm_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["diaphragm_aortic_length"] = aortic_length
@@ -1044,7 +1044,7 @@ def compute_tortuosity_index_based_on_scan_type(
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 print(
-                    f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                    f"Computed descending tortuosity index: {aortic_tortuosity_index:.2f}"
                 )
                 ati_stats["descending_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index

@@ -507,25 +507,32 @@ def refine_single_aorta_part(
             )
         return False
 
-    # TODO: This is completely guesswork
-    if slice_thickness < 1:
-        min_comp_size = 25000
-    elif slice_thickness < 2:
-        min_comp_size = 15000
-    else:
-        min_comp_size = 10000
+    # # TODO: This is completely guesswork
+    # if slice_thickness < 1:
+    #     min_comp_size = 25000
+    # elif slice_thickness < 2:
+    #     min_comp_size = 15000
+    # else:
+    #     min_comp_size = 10000
+    #
+    # vox_size = spacing[0] * spacing[1] * spacing[2]
+    # min_comp_size_mm3 = min_comp_size * vox_size
+    #
+    # if verbose:
+    #     print(f"Finding componenents with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm3")
 
-    vox_size = spacing[0] * spacing[1] * spacing[2]
-    min_comp_size_mm3 = min_comp_size * vox_size
-
+    # We want at least 5 cubic centimeter
+    min_comp_size_mm3 = 5000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
     if verbose:
-        print(f"Finding componenents with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm3")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
+
     components = get_components_over_certain_size_as_individual_volumes(
-        combined_mask, min_comp_size, 1
+        combined_mask, min_comp_size_vox, 1
     )
     if components is None:
         msg = (
-            f"Could not find any components of size > {min_comp_size} in {segm_in_name}"
+            f"Could not find any components of size > {min_comp_size_mm3} mm3 in {segm_in_name}"
         )
         if not quiet:
             print(msg)
@@ -538,7 +545,7 @@ def refine_single_aorta_part(
     n_components = len(components)
 
     if n_components < 1:
-        msg = f"Could not find any components of size > {min_comp_size} in {segm_in_name} for {part}"
+        msg = f"Could not find any components of size > {min_comp_size_mm3} mm3 in {segm_in_name} for {part}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -639,7 +646,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     ct_np = sitk.GetArrayFromImage(ct_img)
 
     spacing = ct_img.GetSpacing()
-    slice_thickness = spacing[2]
+    # slice_thickness = spacing[2]
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
@@ -662,21 +669,25 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         img_o = sitk.Cast(img_o, sitk.sitkInt16)
         sitk.WriteImage(img_o, segm_out_name_hires)
 
-    # TODO: This is completely guesswork
-    if slice_thickness < 1:
-        min_comp_size = 25000
-    elif slice_thickness < 2:
-        min_comp_size = 15000
-    else:
-        min_comp_size = 10000
+    # # TODO: This is completely guesswork
+    # if slice_thickness < 1:
+    #     min_comp_size = 25000
+    # elif slice_thickness < 2:
+    #     min_comp_size = 15000
+    # else:
+    #     min_comp_size = 10000
+    #
+    # spacing = label_img_aorta.GetSpacing()
+    # min_comp_size_mm = min_comp_size * spacing[0] * spacing[1] * spacing[2]
 
-    spacing = label_img_aorta.GetSpacing()
-    min_comp_size_mm = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+    # We want at least 5 cubic centimeters
+    min_comp_size_mm3 = 5000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
 
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels = {min_comp_size_mm:.1f} mm^3")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
     components = get_components_over_certain_size_as_individual_volumes(
-        mask_np_aorta, min_comp_size, 2
+        mask_np_aorta, min_comp_size_vox, 2
     )
     if components is None:
         msg = f"No aorta lumen found left after connected components {input_file}"
@@ -1087,26 +1098,6 @@ def extract_aortic_calcifications(
     if ct_img is None:
         return False
 
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_in_name_hires)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_in_name_hires}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    # try:
-    #     ct_img = sitk.ReadImage(input_file)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file} for calcification segmentation: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     spacing = ct_img.GetSpacing()
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
@@ -1143,7 +1134,7 @@ def extract_aortic_calcifications(
         low_thresh = hu_stats["high_thresh"]
 
     if verbose:
-        print(f"Calcification: min HU: {low_thresh} max HU: {high_thresh} ")
+        print(f"Calcification: min HU: {low_thresh:.1f} max HU: {high_thresh:.1f} ")
 
     img_mask_1 = low_thresh < ct_np
     img_mask_2 = ct_np < high_thresh
@@ -1392,17 +1383,23 @@ def compute_ventricularoaortic_landmark(
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
 
     # Force it to have only the found components (since we can use the original ts segmentations with spurious parts)
-    min_comp_size = 5000
+    # min_comp_size = 5000
+    # spacing = label_img_aorta.GetSpacing()
+    # min_comp_size_mm3 = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+
     spacing = label_img_aorta.GetSpacing()
-    min_comp_size_mm3 = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+
+    # We want at least 1 cubic centimeters
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
 
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm^3")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
     components, _ = get_components_over_certain_size(
-        mask_np_aorta, min_comp_size, n_aorta_parts
+        mask_np_aorta, min_comp_size_vox, n_aorta_parts
     )
     if components is None:
-        msg = f"No aorta lumen found left after connected components {input_file}"
+        msg = f"No aorta lumen found left after connected components {segm_name_aorta}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -1427,13 +1424,16 @@ def compute_ventricularoaortic_landmark(
         radius=footprint_radius_mm,
     )
 
-    min_comp_size = 100
     spacing = label_img_aorta.GetSpacing()
-    min_comp_size_mm3 = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+    min_comp_size_mm3 = 200
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    # min_comp_size = 100
+    # min_comp_size_mm3 = min_comp_size * spacing[0] * spacing[1] * spacing[2]
     if verbose:
-        print(f"Finding overlap components with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm^3")
+        print(f"Finding overlap components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
     overlap_mask = get_components_over_certain_size_as_individual_volumes(
-        overlap_mask, min_comp_size, 1
+        overlap_mask, min_comp_size_vox, 1
     )
     if overlap_mask is None:
         if verbose:
@@ -1605,7 +1605,7 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
     spc = label_img_aorta.GetSpacing()
     # Make the spacing fit the numpy array
     spacing = [spc[2], spc[1], spc[0]]
-    footprint_radius_mm = 5
+    footprint_radius_mm = max(5, 1.5 * max(spacing))
     if verbose:
         print("EDF based closing and other EDF based operations")
     closed_mask = edt_based_closing(combined_mask, spacing, footprint_radius_mm)
@@ -1613,8 +1613,13 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
     #     closed_mask, 5000, n_aorta_parts
     # )
     # We can risk that the aorta and the LV are two different comps but the LV is the largest
+
+    # We want at least 1 cubic centimeters
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
     large_components = get_components_over_certain_size_as_individual_volumes(
-        closed_mask, 5000, 4
+        closed_mask, min_comp_size_vox, 4
     )
     if len(large_components) > n_aorta_parts:
         # keep only the part that has the largest overlap with the original aorta segmentation
@@ -1710,11 +1715,13 @@ def compute_aortic_arch_landmarks(
         # For some image, the spacing is actually 5 mm creating problems if the radius is too love
         spacing = label_img_total.GetSpacing()
         radius = max(5, 1.5 * max(spacing))
+        min_size_mm3 = 500
+        min_size_vox = int(min_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
 
         current_segm = label_img_np == segm_id
         if np.sum(current_segm) > 10:
             if verbose:
-                print(f"EDT based overlap for {lm_out_name}")
+                print(f"EDT based overlap for {lm_out_name} with min size {min_size_mm3} mm3 = {min_size_vox} voxels")
             if not edt_based_compute_landmark_from_segmentation_overlap(
                 mask_np_aorta,
                 current_segm,
@@ -1722,6 +1729,7 @@ def compute_aortic_arch_landmarks(
                 label_img_total,
                 segm_oname,
                 lm_out_name,
+                min_size_mm3=min_size_mm3,
                 only_larges_components=True,
                 debug=debug,
             ):
@@ -1940,11 +1948,18 @@ def compute_aorta_scan_type(
 
     # Check for top of aortic arch
     # We need all three top landmarks
+    # lm_check_names = [
+    #     "brachiocephalic_trunc.txt",
+    #     "common_carotid_artery_left.txt",
+    #     "subclavian_artery_left.txt",
+    # ]
+
+    # Update 20/11-2025 : We only need the two outermost. Sometimes the carotid is attached to one of the others
     lm_check_names = [
         "brachiocephalic_trunc.txt",
-        "common_carotid_artery_left.txt",
         "subclavian_artery_left.txt",
     ]
+
     aortic_arch_present = True
     for cn in lm_check_names:
         if not os.path.exists(f"{lm_folder}{cn}"):
@@ -1981,15 +1996,19 @@ def compute_aorta_scan_type(
         return False
     label_img_np = sitk.GetArrayFromImage(label_img)
 
-    # Force it to one component
-    min_comp_size = 5000
+    # We want at least 1 cubic centimeters
     spacing = label_img.GetSpacing()
-    vox_size = spacing[0] * spacing[1] * spacing[2]
-    min_comp_size_mm3 = min_comp_size * vox_size
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    # # Force it to one component
+    # min_comp_size = 5000
+    # vox_size = spacing[0] * spacing[1] * spacing[2]
+    # min_comp_size_mm3 = min_comp_size * vox_size
 
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm^3")
-    components, _ = get_components_over_certain_size(label_img_np, min_comp_size, 1)
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
+    components, _ = get_components_over_certain_size(label_img_np, min_comp_size_vox, 1)
     if components is None:
         msg = f"No aorta lumen found left after connected components {input_file}"
         if not quiet:
@@ -2399,16 +2418,20 @@ def compute_centerline_landmarks_for_aorta_type_2(
     label_img_np = sitk.GetArrayFromImage(label_img)
 
     # Force it to one component
-    min_comp_size = 5000
+    # We want at least 1 cubic centimeters
     spacing = label_img.GetSpacing()
-    vox_size = spacing[0] * spacing[1] * spacing[2]
-    min_comp_size_mm3 = min_comp_size * vox_size
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+    #
+    # min_comp_size = 5000
+    # vox_size = spacing[0] * spacing[1] * spacing[2]
+    # min_comp_size_mm3 = min_comp_size * vox_size
 
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm^3")
-    components, _ = get_components_over_certain_size(label_img_np, min_comp_size, 1)
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
+    components, _ = get_components_over_certain_size(label_img_np, min_comp_size_vox, 1)
     if components is None:
-        msg = f"No aorta lumen found left after connected components {input_file}"
+        msg = f"No aorta lumen found left after connected components {aorta_name}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -3251,7 +3274,7 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
         start_point = clutils.read_landmarks(start_p_file)
         end_point = clutils.read_landmarks(end_p_file)
         if start_point is None or end_point is None:
-            print(f"Could not read landmarks {start_p_name} or {end_p_name}")
+            print(f"Could not read landmarks {start_p_file} or {end_p_file}")
             return False
 
         aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point, output_folder, verbose, quiet,
@@ -3343,7 +3366,7 @@ def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, sur
             start_point = clutils.read_landmarks(start_p_file)
             end_point = clutils.read_landmarks(end_p_file)
             if start_point is None or end_point is None:
-                print(f"Could not read landmarks {start_p_name} or {end_p_name}")
+                print(f"Could not read landmarks {start_p_file} or {end_p_file}")
                 return False
 
             aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point,
