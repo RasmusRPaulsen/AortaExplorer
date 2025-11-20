@@ -947,7 +947,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
     def set_precomputed_straight_longitudinal_slices(self, cl_folder):
         """
-        Here the longitudinal are precomputed as png files in the vmtk processing script
+        Here the longitudinal are precomputed as png files
         """
         plane_file_1 = f"{cl_folder}straight_volume_mid_cut.png"
         plane_file_2 = f"{cl_folder}straight_volume_mid_cut_2.png"

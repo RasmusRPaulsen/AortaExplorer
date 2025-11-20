@@ -1,6 +1,5 @@
 import os
 from shutil import copyfile
-
 from scipy.ndimage import measurements
 from pathlib import Path
 import time
@@ -3198,149 +3197,6 @@ def extract_surfaces_for_centerlines(
         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
     return False
 
-
-def compute_center_line(
-    stats_folder,
-    lm_folder,
-    surface_folder,
-    cl_folder,
-    verbose,
-    quiet,
-    write_log_file,
-    output_folder,
-):
-    stats_file = f"{stats_folder}aorta_scan_type.json"
-
-    scan_type_stats = read_json_file(stats_file)
-    if not scan_type_stats:
-        msg = f"Could not read {stats_file} can not compute centerline landmarks"
-        if not quiet:
-            print(msg)
-        if write_log_file:
-            write_message_to_log_file(
-                base_dir=output_folder, message=msg, level="error"
-            )
-        return False
-
-    scan_type = scan_type_stats["scan_type"]
-
-    if scan_type in ["1", "1b", "1c", "1d", "2"]:
-        aorta_surf_name = f"{surface_folder}aorta_surface_for_centerline.vtp"
-
-        cl_name = f"{cl_folder}aorta_centerline.vtp"
-        cl_name_fail = f"{cl_folder}aorta_centerline_failed.txt"
-        start_p_file = f"{lm_folder}aorta_start_point.txt"
-        end_p_file = f"{lm_folder}aorta_end_point.txt"
-
-        if os.path.exists(cl_name):
-            if verbose:
-                print(f"{cl_name} already exists - skipping")
-            return True
-
-        if os.path.exists(cl_name_fail):
-            msg = f"Centerline failed before on {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            return False
-
-        if verbose:
-            print(f"Computing centerline from {aorta_surf_name}")
-
-        if not clutils.compute_single_center_line(
-            aorta_surf_name, cl_name, start_p_file, end_p_file
-        ):
-            msg = f"Failed to compute centerline from {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            with open(cl_name_fail, "w") as f:
-                f.write(f"Failed to compute centerline from {aorta_surf_name}")
-            return False
-        return True
-
-    if scan_type == "5":
-        aorta_surf_name = f"{surface_folder}aorta_annulus_surface_for_centerline.vtp"
-        cl_name = f"{cl_folder}aorta_centerline_annulus.vtp"
-        cl_name_fail = f"{cl_folder}aorta_centerline_annulus_failed.txt"
-        start_p_file = f"{lm_folder}aorta_start_point_annulus.txt"
-        end_p_file = f"{lm_folder}aorta_end_point_annulus.txt"
-
-        if os.path.exists(cl_name):
-            if verbose:
-                print(f"{cl_name} already exists - skipping")
-            return True
-
-        if os.path.exists(cl_name_fail):
-            msg = f"Centerline failed before on {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-            return False
-
-        if verbose:
-            print(f"Computing centerline from {aorta_surf_name}")
-
-        if not clutils.compute_single_center_line(aorta_surf_name, cl_name, start_p_file, end_p_file):
-            msg = f"Failed to compute centerline from {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            with open(cl_name_fail, "w") as f:
-                f.write(f"Failed to compute centerline from {aorta_surf_name}")
-            return False
-
-        aorta_surf_name = f"{surface_folder}aorta_descending_surface_for_centerline.vtp"
-        cl_name = f"{cl_folder}aorta_centerline_descending.vtp"
-        cl_name_fail = f"{cl_folder}aorta_centerline_descending_failed.txt"
-        start_p_file = f"{lm_folder}aorta_start_point_descending.txt"
-        end_p_file = f"{lm_folder}aorta_end_point_descending.txt"
-
-        if os.path.exists(cl_name):
-            if verbose:
-                print(f"{cl_name} already exists - skipping")
-            return True
-
-        if os.path.exists(cl_name_fail):
-            msg = f"Centerline failed before on {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            return False
-
-        if verbose:
-            print(f"Computing centerline from {aorta_surf_name}")
-
-        if not clutils.compute_single_center_line(aorta_surf_name, cl_name, start_p_file, end_p_file):
-            msg = f"Failed to compute centerline from {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-            with open(cl_name_fail, "w") as f:
-                f.write(f"Failed to compute centerline from {aorta_surf_name}")
-            return False
-        return True
-
-    msg = f"Can not compute centerline for scan type {scan_type}"
-    if not quiet:
-        print(msg)
-    if write_log_file:
-        write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
-    return False
 
 
 def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder, verbose, quiet,
@@ -7125,7 +6981,8 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder, use_ts_org_segmentations=use_org_ts_segmentations)
+        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet,
+                                                write_log_file, output_folder, use_ts_org_segmentations=use_org_ts_segmentations)
     if success:
         success = extract_surfaces_for_centerlines(
             segm_folder,
@@ -7152,17 +7009,6 @@ def do_aorta_analysis(
         success = compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder,
                                                      verbose, quiet, write_log_file, output_folder,
                                                      use_ts_org_segmentations=use_org_ts_segmentations)
-    # if success:
-    #     success = compute_center_line(
-    #         stats_folder,
-    #         lm_folder,
-    #         surface_folder,
-    #         cl_folder,
-    #         verbose,
-    #         quiet,
-    #         write_log_file,
-    #         output_folder,
-    #     )
     if success:
         success = compute_infrarenal_section_using_kidney_to_kidney_line(
             segm_folder,
@@ -7328,8 +7174,8 @@ def computer_process(
         time_left_str = display_time(int(est_time_left))
         time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
-            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}."
-                  f" Time left {time_left_str} (if only one process)")
+            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}.\n"
+                  f"Time left {time_left_str} for {q_size} scans (if only one process)")
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
         time_stats_out = f"{stats_folder}aorta_proc_time.txt"

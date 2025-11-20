@@ -194,8 +194,8 @@ def computer_process(
         time_left_str = display_time(int(est_time_left))
         time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
-            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}."
-                  f" Time left {time_left_str} (if only one process)")
+            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}.\n"
+                  f"Time left {time_left_str} for {q_size} scans (if only one process)")
 
 
 def compute_totalsegmentator_segmentations(

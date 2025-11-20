@@ -101,8 +101,8 @@ def computer_process(verbose, quiet, write_log_file, params, output_folder, proc
         time_left_str = display_time(int(est_time_left))
         time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
-            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}."
-                  f" Time left {time_left_str} (if only one process)")
+            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}.\n"
+                  f"Time left {time_left_str} for {q_size} scans (if only one process)")
     return True
 
 def convert_input_files(in_files, output_folder, params=None, nr_tg=1, verbose=False, quiet=False, write_log_file=True):
