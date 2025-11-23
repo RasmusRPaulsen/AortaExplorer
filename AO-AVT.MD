@@ -52,7 +52,7 @@ For example subject **D1**:
 
 ### Kits
 
-AortaExplorer succesfully analyse **9** out of **20** scans in the Kits dataset. 
+AortaExplorer succesfully analyse **18** out of **20** scans in the Kits dataset. 
 
 For example subject **K1**:
 
@@ -61,8 +61,10 @@ For example subject **K1**:
 
 ### Rider
 
-AortaExplorer succesfully analyse **9** out of **18** scans in the Rider dataset. 
+AortaExplorer succesfully analyse **13** out of **18** scans in the Rider dataset. 
 
 For example subject **R1** that has a abdominal dissection of the aorta. The gray semitransparent surface is the original aorta segmentation computed by [TotalSegmentator](https://github.com/wasserth/TotalSegmentator):
 
 ![R1](figs/R1_aorta_visualization.png)
+
+The failed scans are typically due to non-contrast, file reading errors or TotalSegmentator failing to segment inital estimate.
