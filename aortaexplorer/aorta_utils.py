@@ -522,7 +522,8 @@ def refine_single_aorta_part(
     #     print(f"Finding componenents with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm3")
 
     # We want at least 5 cubic centimeter
-    min_comp_size_mm3 = 5000
+    # Updated to 10 cubic centimeters (23/11-2025) to avoid false positives
+    min_comp_size_mm3 = 10000
     min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
     if verbose:
         print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
@@ -681,7 +682,8 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     # min_comp_size_mm = min_comp_size * spacing[0] * spacing[1] * spacing[2]
 
     # We want at least 5 cubic centimeters
-    min_comp_size_mm3 = 5000
+    # Updated to 10 cubic centimeters (23/11-2025) to avoid false positives
+    min_comp_size_mm3 = 10000
     min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
 
     if verbose:

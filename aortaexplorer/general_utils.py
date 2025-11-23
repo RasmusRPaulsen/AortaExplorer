@@ -128,6 +128,8 @@ def display_time(seconds):
         ('s', 1),
     )
     result = []
+    if seconds < 60:
+        return f"{seconds}s"
     for name, count in intervals:
         value = seconds // count
         if value > 0:

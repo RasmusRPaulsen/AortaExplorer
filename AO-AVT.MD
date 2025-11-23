@@ -39,7 +39,7 @@ The parameter `-huo -1024` will subtract a value of 1024 from all voxels values 
 
 ## Results on the Aortic Vessel Tree (AVT) CTA Datasets
 
-The ground truth segmentations provided in the AVT dataset includes both the aorta and the aortic branches. The segmentation from AortaExplorer only includes the aorta from the iliac arteries to the end of the aortic annulus. The segmentation masks are therefore not directly comparable with for example DICE or IoU.
+The ground truth segmentations provided in the AVT dataset includes both the aorta and the aortic branches. The segmentation from AortaExplorer only includes the aorta from the iliac arteries to the end of the aortic annulus. The segmentation masks will therefore only overlap in the true aorta part and that will influence a DICE score.
 
 
 ### Dongyang
@@ -54,3 +54,15 @@ For example subject **D1**:
 
 AortaExplorer succesfully analyse **9** out of **20** scans in the Kits dataset. 
 
+For example subject **K1**:
+
+![K1](figs/K1_aorta_visualization.png)
+
+
+### Rider
+
+AortaExplorer succesfully analyse **9** out of **18** scans in the Rider dataset. 
+
+For example subject **R1** that has a abdominal dissection of the aorta. The gray semitransparent surface is the original aorta segmentation computed by [TotalSegmentator](https://github.com/wasserth/TotalSegmentator):
+
+![R1](figs/R1_aorta_visualization.png)
