@@ -1,4 +1,27 @@
 from aortaexplorer.python_api import aortaexplorer, get_default_parameters
+from shutil import copyfile
+
+def test_aortaexplorer_calcium_estimator():
+    params = get_default_parameters()
+    params["num_proc_general"] = 8
+    device = "gpu"
+    verbose = True
+    quiet = False
+
+    std_mults = [2, 3, 4]
+    hu_mins = [200, 300, 400]
+    for std_mult in std_mults:
+        for hu_min in hu_mins:
+            params["aorta_calcification_std_multiplier"] = std_mult
+            params["aorta_calcification_min_hu_value"] = hu_min
+            input_file = "/data/Data/RAPA/AortaExplorer/calcification_test_files.txt"
+            output_folder = "/data/Data/RAPA/AortaExplorer/calcification_tests/"
+            output_measurements = f"{output_folder}calcification_results_std{std_mult}_min{hu_min}.csv"
+
+            success = aortaexplorer(
+                input_file, output_folder, params, device=device, verbose=verbose, quiet=quiet
+            )
+            copyfile(f"{output_folder}AortaExplorer_measurements", output_measurements)
 
 
 def test_aortaexplorer():
@@ -56,7 +79,9 @@ def test_aortaexplorer():
 
     # Type 2: problems computing CL from TS segmentation
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_4281_SERIES0012.nii.gz"
-    # input_file = "C:/data/AortaExplorer/input/CGPS-1_6954_SERIES0009.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/CGPS-1_6954_SERIES0009.nii.gz"
+    params["aorta_calcification_std_multiplier"] = 2
+    params["aorta_calcification_min_hu_value"] = 300
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_7246_SERIES0009.nii.gz"
 
     # Type 5: with old time FOV. Here the descending aorta is cut of by the FOV inside the scan
@@ -99,8 +124,8 @@ def test_aortaexplorer():
     # input_file = "C:/data/AVT-Aorta/KiTS/K1/K1.nrrd"
     # input_file = "C:/data/AVT-aorta/Rider/R1 (AD)/R1.nrrd"
     # input_file = "C:/data/AVT-aorta/Rider/R3/R3.nrrd"
-    input_file = "C:/data/AVT-Aorta/KiTS/K10/K10.nrrd"
-    params["hounsfield_unit_offset"] = -1000
+    # input_file = "C:/data/AVT-Aorta/KiTS/K10/K10.nrrd"
+    # params["hounsfield_unit_offset"] = -1000
     # input_file = "C:/data/AVT-Aorta/Dongyang/All/"
     # input_file = "C:/data/Abdominal/Pancreas-CT/PANCREAS_0003/11-24-2015-PANCREAS0003-Pancreas-02648/"
     # input_file = "C:/data/Abdominal/CTLymphNodes/manifest-IVhUf5Gd7581798897432071977/CT Lymph Nodes/ABD_LYMPH_001/09-14-2014-ABDLYMPH001-abdominallymphnodes-30274/abdominallymphnodes-26828/"
@@ -129,4 +154,6 @@ def test_aortaexplorer():
 
 
 if __name__ == "__main__":
-    test_aortaexplorer()
+    # test_aortaexplorer()
+    test_aortaexplorer_calcium_estimator()
+    

@@ -21,6 +21,7 @@ def get_default_parameters():
         "aorta_min_max_hu_value": 400,
         "aorta_calcification_min_hu_value": 400,
         "aorta_calcification_max_hu_value": 1500,
+        "aorta_calcification_std_multiplier": 3,
         "hounsfield_unit_offset": 0,
         "compute_centerline_from_ts_segmentation": True,
         "compare_with_totalsegmentator": False,

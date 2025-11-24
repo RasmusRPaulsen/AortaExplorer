@@ -89,25 +89,6 @@ def compute_body_segmentation(
     if ct_img is None:
         return False
 
-    #
-    # if not os.path.exists(input_file):
-    #     msg = f"Could not find {input_file} for extracting body segmentation"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-    #
-    # try:
-    #     ct_img = sitk.ReadImage(input_file)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file} for body segmentation: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     ct_np = sitk.GetArrayFromImage(ct_img)
 
     img_mask_1 = low_thresh < ct_np
@@ -129,7 +110,6 @@ def compute_body_segmentation(
     img_o.CopyInformation(ct_img)
     img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
-    # print(f"saving")
     sitk.WriteImage(img_o, segm_out_name)
 
     return True
@@ -275,11 +255,6 @@ def refine_single_aorta_part(
         return False
 
     spacing = label_img_aorta.GetSpacing()
-    # in_slice_spacing = spacing[0]
-    slice_thickness = spacing[2]
-    # ratio = slice_thickness / in_slice_spacing
-    # ratio = max(ratio, 1.0)
-
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == 1
 
@@ -1075,6 +1050,7 @@ def extract_aortic_calcifications(
     segm_name_lumen = f"{segm_folder}aorta_lumen.nii.gz"
     calc_min_hu = params["aorta_calcification_min_hu_value"]
     calc_max_hu = params["aorta_calcification_max_hu_value"]
+    calc_std_mult = params["aorta_calcification_std_multiplier"]
 
     aorta_segm_id = 1
     debug = False
@@ -1133,7 +1109,12 @@ def extract_aortic_calcifications(
     if not hu_stats:
         hu_stats = read_json_file(hu_stats_file_2)
     if hu_stats:
-        low_thresh = hu_stats["high_thresh"]
+        # Recompute high_thresh based on stats
+        mean_hu = hu_stats["skeleton_avg_hu"]
+        std_hu = hu_stats["skeleton_std_hu"]
+        recomputed_high_thresh = mean_hu + calc_std_mult * std_hu
+        low_thresh = max(low_thresh, recomputed_high_thresh)
+        # low_thresh = hu_stats["high_thresh"]
 
     if verbose:
         print(f"Calcification: min HU: {low_thresh:.1f} max HU: {high_thresh:.1f} ")
