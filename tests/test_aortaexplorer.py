@@ -1,6 +1,20 @@
 import numpy as np
 from aortaexplorer.python_api import aortaexplorer, get_default_parameters
 from shutil import copyfile
+import os
+
+def remove_list_of_files(file_list):
+    for file_path in file_list:
+        try:
+            os.remove(file_path)
+        except FileNotFoundError:
+            pass
+
+
+def purge(dir, pattern):
+    for f in os.listdir(dir):
+        if re.search(pattern, f):
+            os.remove(os.path.join(dir, f))
 
 def test_aortaexplorer_calcium_estimator():
     params = get_default_parameters()
@@ -21,18 +35,23 @@ def test_aortaexplorer_calcium_estimator():
         for hu_min in hu_mins:
             # delete all stats files in output to force recomputation
             for base_name in base_names:
-                scan_id = base_names
+                scan_id = base_name
                 stats_folder = f"{output_folder}{scan_id}/statistics/"
-                stats_file = f"{stats_folder}aorta_statistics.json"
-                try:
-                    os.remove(stats_file)
-                except FileNotFoundError:
-                    pass
-                stats_file = f"{stats_folder}aorta_calcification_stats.json"
-                try:
-                    os.remove(stats_file)
-                except FileNotFoundError:
-                    pass
+                segm_folder = f"{output_folder}{scan_id}/segmentations/"
+                stats_folder = f"{output_folder}{scan_id}/statistics/"
+                lm_folder = f"{output_folder}{scan_id}/landmarks/"
+                cl_folder = f"{output_folder}{scan_id}/centerlines/"
+
+                files_to_delete = []
+                files_to_delete.append(f"{stats_folder}aorta_statistics.json")
+                files_to_delete.append(f"{stats_folder}aorta_calcification_stats.json")
+                remove_list_of_files(files_to_delete)
+
+                purge(segm_folder, r"aorta_*")
+                purge(segm_folder, r"straight_aorta*")
+                purge(cl_folder, r"*")
+
+
 
             params["aorta_calcification_std_multiplier"] = std_mult
             params["aorta_calcification_min_hu_value"] = hu_min
@@ -42,7 +61,7 @@ def test_aortaexplorer_calcium_estimator():
             success = aortaexplorer(
                 input_file, output_folder, params, device=device, verbose=verbose, quiet=quiet
             )
-            copyfile(f"{output_folder}AortaExplorer_measurements", output_measurements)
+            copyfile(f"{output_folder}AortaExplorer_measurements.csv", output_measurements)
 
 
 def test_aortaexplorer():
