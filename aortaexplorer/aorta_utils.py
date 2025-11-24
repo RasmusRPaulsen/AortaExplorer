@@ -95,7 +95,12 @@ def compute_body_segmentation(
     img_mask_2 = ct_np < high_thresh
     combined_mask = np.bitwise_and(img_mask_1, img_mask_2)
 
-    combined_mask, _ = get_components_over_certain_size(combined_mask, 5000, 1)
+    # We want at least 5 cubic centimeters
+    spacing = ct_img.GetSpacing()
+    min_comp_size_mm3 = 5000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    combined_mask, _ = get_components_over_certain_size(combined_mask, min_comp_size_vox, 1)
     if combined_mask is None:
         msg = f"Could not find body segmentation in {input_file}. No connected components found."
         if not quiet:
@@ -227,6 +232,7 @@ def refine_single_aorta_part(
     forced_min_hu_value = params.get("forced_aorta_min_hu_value", None)
     forced_max_hu_value = params.get("forced_aorta_max_hu_value", None)
     hu_stats_file = f"{stats_folder}/aorta_skeleton{part}_hu_stats.json"
+    calc_std_mult = params["aorta_calcification_std_multiplier"]
 
     debug = False
 
@@ -319,7 +325,7 @@ def refine_single_aorta_part(
 
     hu_stdev = stats["skeleton_std_hu"]
     low_thresh = avg_hu - 5 * hu_stdev
-    high_thresh = avg_hu + 3 * hu_stdev
+    high_thresh = avg_hu + calc_std_mult * hu_stdev
 
     # TODO: Update this to something smarter
     high_std = False
@@ -1089,7 +1095,12 @@ def extract_aortic_calcifications(
         mask_np_aorta, [spacing[2], spacing[1], spacing[0]], dilation_size
     )
 
-    dilated_mask, _ = get_components_over_certain_size(dilated_mask, 5000, 2)
+    # We want at least 1 cubic centimeters
+    spacing = label_img_aorta.GetSpacing()
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    dilated_mask, _ = get_components_over_certain_size(dilated_mask, min_comp_size_vox, 2)
     if debug:
         img_o = sitk.GetImageFromArray(dilated_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)

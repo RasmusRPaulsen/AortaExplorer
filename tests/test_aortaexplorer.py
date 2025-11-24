@@ -1,3 +1,4 @@
+import numpy as np
 from aortaexplorer.python_api import aortaexplorer, get_default_parameters
 from shutil import copyfile
 
@@ -7,15 +8,35 @@ def test_aortaexplorer_calcium_estimator():
     device = "gpu"
     verbose = True
     quiet = False
+    input_file = "/data/Data/RAPA/AortaExplorer/calcification_test_files.txt"
+    output_folder = "/data/Data/RAPA/AortaExplorer/calcification_tests/"
 
-    std_mults = [2, 3, 4]
-    hu_mins = [200, 300, 400]
+    input_files = np.loadtxt(input_file, dtype=str)
+    # strip path and extensions
+    base_names = [f.split("/")[-1].replace(".nii.gz", "").replace(".nii", "") for f in input_files]
+
+    std_mults = [1, 3,  5]
+    hu_mins = [200, 300, 400, 600, 800]
     for std_mult in std_mults:
         for hu_min in hu_mins:
+            # delete all stats files in output to force recomputation
+            for base_name in base_names:
+                scan_id = base_names
+                stats_folder = f"{output_folder}{scan_id}/statistics/"
+                stats_file = f"{stats_folder}aorta_statistics.json"
+                try:
+                    os.remove(stats_file)
+                except FileNotFoundError:
+                    pass
+                stats_file = f"{stats_folder}aorta_calcification_stats.json"
+                try:
+                    os.remove(stats_file)
+                except FileNotFoundError:
+                    pass
+
             params["aorta_calcification_std_multiplier"] = std_mult
             params["aorta_calcification_min_hu_value"] = hu_min
-            input_file = "/data/Data/RAPA/AortaExplorer/calcification_test_files.txt"
-            output_folder = "/data/Data/RAPA/AortaExplorer/calcification_tests/"
+            params["aorta_min_max_hu_value"] = hu_min
             output_measurements = f"{output_folder}calcification_results_std{std_mult}_min{hu_min}.csv"
 
             success = aortaexplorer(
@@ -156,4 +177,3 @@ def test_aortaexplorer():
 if __name__ == "__main__":
     # test_aortaexplorer()
     test_aortaexplorer_calcium_estimator()
-    
