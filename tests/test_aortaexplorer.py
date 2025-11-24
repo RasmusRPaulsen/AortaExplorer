@@ -2,6 +2,7 @@ import numpy as np
 from aortaexplorer.python_api import aortaexplorer, get_default_parameters
 from shutil import copyfile
 import os
+import re
 
 def remove_list_of_files(file_list):
     for file_path in file_list:
@@ -13,7 +14,7 @@ def remove_list_of_files(file_list):
 
 def purge(dir, pattern):
     for f in os.listdir(dir):
-        if re.search(pattern, f):
+        if pattern == "" or re.search(pattern, f):
             os.remove(os.path.join(dir, f))
 
 def test_aortaexplorer_calcium_estimator():
@@ -49,7 +50,8 @@ def test_aortaexplorer_calcium_estimator():
 
                 purge(segm_folder, r"aorta_*")
                 purge(segm_folder, r"straight_aorta*")
-                purge(cl_folder, r"*")
+                # Delete all
+                purge(cl_folder, "")
 
 
 
