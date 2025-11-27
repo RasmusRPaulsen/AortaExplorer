@@ -340,7 +340,10 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
         self.message_text += f"Scan: {base_name}\n"
 
-        ao_version = importlib.metadata.version("AortaExplorer")
+        try:
+            ao_version = importlib.metadata.version("AortaExplorer")
+        except importlib.metadata.PackageNotFoundError:
+            ao_version = None
         if ao_version is not None and ao_version != "":
             self.message_text += f"AortaExplorer version: {ao_version}\n"
 
@@ -388,7 +391,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
                 q95_dists = aneurysm_sac_stats["q95_distances"]
                 if aneurysm_sac_ratio > 1.18 and q95_dists > 2.5:
                     # Show original total segmentations since they include the sac
-                    segm_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+                    segm_name = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
                     self.generate_actors_from_segment_file_name(
                         segm_name, "OldLace", 0.6, smooth="heavy"
                     )
@@ -621,7 +624,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
             area = float(elem[1])
             prc = float(elem[2])
             # Only plot points that have at most 15% out of scan
-            if prc < 15:
+            if prc < 20:
                 PlotPoints.InsertNextPoint(dist, 0, 0)
                 PlotScalars.InsertNextValue(area)
 
@@ -944,7 +947,7 @@ class RenderAortaData(RenderTotalSegmentatorData):
 
     def set_precomputed_straight_longitudinal_slices(self, cl_folder):
         """
-        Here the longitudinal are precomputed as png files in the vmtk processing script
+        Here the longitudinal are precomputed as png files
         """
         plane_file_1 = f"{cl_folder}straight_volume_mid_cut.png"
         plane_file_2 = f"{cl_folder}straight_volume_mid_cut_2.png"

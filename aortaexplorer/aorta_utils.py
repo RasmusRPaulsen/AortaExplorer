@@ -1,4 +1,5 @@
 import os
+from shutil import copyfile
 from scipy.ndimage import measurements
 from pathlib import Path
 import time
@@ -9,9 +10,11 @@ from aortaexplorer.general_utils import (
     read_json_file,
     get_last_error_message,
     clear_last_error_message,
+    get_pure_scan_file_name, display_time
 )
 from aortaexplorer.io_utils import read_nifti_with_logging_cached
 from aortaexplorer.surface_utils import (
+    convert_sitk_image_to_surface,
     convert_label_map_to_surface,
     compute_min_and_max_z_landmark,
     find_closests_points_on_two_surfaces_with_start_point,
@@ -30,11 +33,12 @@ from aortaexplorer.segmentation_utils import (
     read_nifti_itk_to_numpy,
     check_if_segmentation_hit_sides_of_scan,
 )
+from aortaexplorer.aorta_centerline_utils import AortaCenterliner
 import aortaexplorer.centerline_utils as clutils
 from aortaexplorer.visualization_utils import RenderAortaData
 import SimpleITK as sitk
 import numpy as np
-from skimage.morphology import skeletonize
+from skimage.morphology import skeletonize, binary_dilation, binary_closing, ball
 from skimage.measure import label
 from skimage.segmentation import find_boundaries
 import edt
@@ -46,6 +50,7 @@ import skimage.io
 from skimage import color
 from skimage.util import img_as_ubyte
 import importlib.metadata
+from scipy.ndimage import distance_transform_edt
 
 
 def setup_vtk_error_handling(err_dir):
@@ -84,32 +89,18 @@ def compute_body_segmentation(
     if ct_img is None:
         return False
 
-    #
-    # if not os.path.exists(input_file):
-    #     msg = f"Could not find {input_file} for extracting body segmentation"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-    #
-    # try:
-    #     ct_img = sitk.ReadImage(input_file)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file} for body segmentation: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     ct_np = sitk.GetArrayFromImage(ct_img)
 
     img_mask_1 = low_thresh < ct_np
     img_mask_2 = ct_np < high_thresh
     combined_mask = np.bitwise_and(img_mask_1, img_mask_2)
 
-    combined_mask, _ = get_components_over_certain_size(combined_mask, 5000, 1)
+    # We want at least 5 cubic centimeters
+    spacing = ct_img.GetSpacing()
+    min_comp_size_mm3 = 5000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    combined_mask, _ = get_components_over_certain_size(combined_mask, min_comp_size_vox, 1)
     if combined_mask is None:
         msg = f"Could not find body segmentation in {input_file}. No connected components found."
         if not quiet:
@@ -122,8 +113,8 @@ def compute_body_segmentation(
 
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(ct_img)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
-    # print(f"saving")
     sitk.WriteImage(img_o, segm_out_name)
 
     return True
@@ -183,6 +174,8 @@ def compute_out_scan_field_segmentation_and_sdf(
 
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(ct_img)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
+
     # print(f"saving")
     sitk.WriteImage(img_o, segm_out_name)
 
@@ -229,7 +222,7 @@ def refine_single_aorta_part(
     the lumen. It does this by computing HU statistics from a skeleton
     of the aorta and then thresholds the aorta based on these statistics.
     """
-    segm_in_name = f"{segm_folder}aorta_lumen{part}_raw.nii.gz"
+    segm_in_name = f"{segm_folder}aorta_lumen{part}_ts_org.nii.gz"
     segm_out_name = f"{segm_folder}aorta_lumen{part}.nii.gz"
     segm_skeleton_out_name = f"{segm_folder}aorta_lumen{part}_skeleton.nii.gz"
     segm_out_thres_name = f"{segm_folder}aorta_lumen{part}_thresholded.nii.gz"
@@ -239,6 +232,7 @@ def refine_single_aorta_part(
     forced_min_hu_value = params.get("forced_aorta_min_hu_value", None)
     forced_max_hu_value = params.get("forced_aorta_max_hu_value", None)
     hu_stats_file = f"{stats_folder}/aorta_skeleton{part}_hu_stats.json"
+    calc_std_mult = params["aorta_calcification_std_multiplier"]
 
     debug = False
 
@@ -265,23 +259,8 @@ def refine_single_aorta_part(
     )
     if label_img_aorta is None:
         return False
-    #
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_in_name)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_in_name}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     spacing = label_img_aorta.GetSpacing()
-    # in_slice_spacing = spacing[0]
-    slice_thickness = spacing[2]
-    # ratio = slice_thickness / in_slice_spacing
-    # ratio = max(ratio, 1.0)
-
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == 1
 
@@ -312,6 +291,7 @@ def refine_single_aorta_part(
     if debug:
         img_o = sitk.GetImageFromArray(dilated_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {segm_skeleton_out_name}")
         sitk.WriteImage(img_o, segm_skeleton_out_name)
@@ -319,6 +299,7 @@ def refine_single_aorta_part(
     hu_values = ct_np[dilated_mask > 0]
 
     # Check for out of scanfield values
+    # TODO: Update with out-of-scan values from settings
     hu_in_mask = hu_values > -2000
     hu_values = hu_values[hu_in_mask]
 
@@ -344,7 +325,7 @@ def refine_single_aorta_part(
 
     hu_stdev = stats["skeleton_std_hu"]
     low_thresh = avg_hu - 5 * hu_stdev
-    high_thresh = avg_hu + 3 * hu_stdev
+    high_thresh = avg_hu + calc_std_mult * hu_stdev
 
     # TODO: Update this to something smarter
     high_std = False
@@ -402,6 +383,7 @@ def refine_single_aorta_part(
     if debug:
         img_o = sitk.GetImageFromArray(combined_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {segm_out_thres_name}")
         sitk.WriteImage(img_o, segm_out_thres_name)
@@ -421,6 +403,7 @@ def refine_single_aorta_part(
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
             print(f"Debug: saving {segm_open_out_name}")
             sitk.WriteImage(img_o, segm_open_out_name)
@@ -433,6 +416,7 @@ def refine_single_aorta_part(
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
             print(f"Debug: saving {segm_closed_out_name}")
             sitk.WriteImage(img_o, segm_closed_out_name)
@@ -459,11 +443,14 @@ def refine_single_aorta_part(
 
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(label_img_aorta)
-    sitk.WriteImage(img_o, segm_no_holes_name)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
+    if debug:
+        sitk.WriteImage(img_o, segm_no_holes_name)
 
-    aorta_surface = convert_label_map_to_surface(
-        segm_no_holes_name, only_largest_component=False
-    )
+    aorta_surface = convert_sitk_image_to_surface(img_o)
+    # aorta_surface = convert_label_map_to_surface(
+    #     segm_no_holes_name, only_largest_component=False
+    # )
     if aorta_surface is None:
         msg = f"Could not compute surface area of {segm_in_name}. Something wrong with refinement."
         if not quiet:
@@ -501,22 +488,33 @@ def refine_single_aorta_part(
             )
         return False
 
-    # TODO: This is completely guesswork
-    if slice_thickness < 1:
-        min_comp_size = 25000
-    elif slice_thickness < 2:
-        min_comp_size = 15000
-    else:
-        min_comp_size = 10000
+    # # TODO: This is completely guesswork
+    # if slice_thickness < 1:
+    #     min_comp_size = 25000
+    # elif slice_thickness < 2:
+    #     min_comp_size = 15000
+    # else:
+    #     min_comp_size = 10000
+    #
+    # vox_size = spacing[0] * spacing[1] * spacing[2]
+    # min_comp_size_mm3 = min_comp_size * vox_size
+    #
+    # if verbose:
+    #     print(f"Finding componenents with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm3")
 
+    # We want at least 5 cubic centimeter
+    # Updated to 10 cubic centimeters (23/11-2025) to avoid false positives
+    min_comp_size_mm3 = 10000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
     if verbose:
-        print(f"Finding componenents with min_comp_size: {min_comp_size}")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
+
     components = get_components_over_certain_size_as_individual_volumes(
-        combined_mask, min_comp_size, 1
+        combined_mask, min_comp_size_vox, 1
     )
     if components is None:
         msg = (
-            f"Could not find any components of size > {min_comp_size} in {segm_in_name}"
+            f"Could not find any components of size > {min_comp_size_mm3} mm3 in {segm_in_name}"
         )
         if not quiet:
             print(msg)
@@ -529,7 +527,7 @@ def refine_single_aorta_part(
     n_components = len(components)
 
     if n_components < 1:
-        msg = f"Could not find any components of size > {min_comp_size} in {segm_in_name} for {part}"
+        msg = f"Could not find any components of size > {min_comp_size_mm3} mm3 in {segm_in_name} for {part}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -540,6 +538,7 @@ def refine_single_aorta_part(
 
     img_o = sitk.GetImageFromArray(components[0].astype(int))
     img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
     if debug:
         print(f"Debug: saving {segm_out_name}")
@@ -561,13 +560,13 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     """
     Take the original aorta segmentation and keep only the lumen
     """
-    store_raw_hires_aorta = True
-    store_raw_aorta = True
-    segm_out_name = f"{segm_folder}aorta_lumen_raw.nii.gz"
-    segm_out_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-    segm_out_name_raw = f"{segm_folder}aorta_ts_original.nii.gz"
-    segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_raw.nii.gz"
-    segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
+    store_ts_org_hires_aorta = True
+    store_ts_org_aorta = False
+    # segm_out_name = f"{segm_folder}aorta_lumen_raw.nii.gz"
+    segm_out_name_hires = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
+    segm_out_name_total = f"{segm_folder}aorta_total_ts_org.nii.gz"
+    segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_ts_org.nii.gz"
+    segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_ts_org.nii.gz"
     segm_in_name_annulus = f"{segm_folder}aorta_lumen_annulus.nii.gz"
     segm_in_name_descending = f"{segm_folder}aorta_lumen_descending.nii.gz"
     segm_total_out = f"{segm_folder}aorta_lumen.nii.gz"
@@ -581,13 +580,13 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     # ct_name = input_file
     # debug = False
 
-    if os.path.exists(segm_out_name):
+    if os.path.exists(segm_total_out):
         if verbose:
-            print(f"{segm_out_name} already exists - skipping")
+            print(f"{segm_total_out} already exists - skipping")
         return True
 
     if verbose:
-        print(f"Computing pure aorta lumen segmentation to {segm_out_name}")
+        print(f"Computing pure aorta lumen segmentation to {segm_total_out}")
 
     if not os.path.exists(segm_name_aorta):
         msg = f"TotalSegmentator aorta segmentation {segm_name_aorta} not found. Can not extract aorta lumen."
@@ -606,24 +605,11 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         else:
             print(f"Did not find high-res heart segmentation {segm_name_aorta_hires}")
 
-    if verbose:
-        print(f"Computing {segm_out_name}")
-
     label_img_aorta = read_nifti_with_logging_cached(
         segm_name_aorta, verbose, quiet, write_log_file, output_folder
     )
     if label_img_aorta is None:
         return False
-
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     label_img_aorta_hires = None
     if os.path.exists(segm_name_aorta_hires):
@@ -632,47 +618,26 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         )
         if label_img_aorta_hires is None:
             return False
-        # try:
-        #     label_img_aorta_hires = sitk.ReadImage(segm_name_aorta_hires)
-        # except RuntimeError as e:
-        #     msg = f"Could not read {segm_name_aorta_hires}: {str(e)} got an exception"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
 
     ct_img = read_nifti_with_logging_cached(
         input_file, verbose, quiet, write_log_file, output_folder
     )
     if ct_img is None:
         return False
-    #
-    # try:
-    #     ct_img = sitk.ReadImage(ct_name)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     ct_np = sitk.GetArrayFromImage(ct_img)
 
     spacing = ct_img.GetSpacing()
-    # in_slice_spacing = spacing[0]
-    slice_thickness = spacing[2]
-    # ratio = slice_thickness / in_slice_spacing
-    # ratio = max(ratio, 1.0)
+    # slice_thickness = spacing[2]
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
 
-    if store_raw_aorta:
+    if store_ts_org_aorta:
         img_o = sitk.GetImageFromArray(mask_np_aorta.astype(int))
         img_o.CopyInformation(label_img_aorta)
-        sitk.WriteImage(img_o, segm_out_name_raw)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
+        sitk.WriteImage(img_o, segm_out_name_total)
 
     if label_img_aorta_hires:
         # print("Adding hires aorta to baseline segmentation")
@@ -680,23 +645,32 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         mask_np_aorta_hires = label_img_aorta_hires_np == aorta_hires_segm_id
         mask_np_aorta = np.bitwise_or(mask_np_aorta, mask_np_aorta_hires)
 
-    if store_raw_hires_aorta:
+    if store_ts_org_hires_aorta:
         img_o = sitk.GetImageFromArray(mask_np_aorta.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         sitk.WriteImage(img_o, segm_out_name_hires)
 
-    # TODO: This is completely guesswork
-    if slice_thickness < 1:
-        min_comp_size = 25000
-    elif slice_thickness < 2:
-        min_comp_size = 15000
-    else:
-        min_comp_size = 10000
+    # # TODO: This is completely guesswork
+    # if slice_thickness < 1:
+    #     min_comp_size = 25000
+    # elif slice_thickness < 2:
+    #     min_comp_size = 15000
+    # else:
+    #     min_comp_size = 10000
+    #
+    # spacing = label_img_aorta.GetSpacing()
+    # min_comp_size_mm = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+
+    # We want at least 5 cubic centimeters
+    # Updated to 10 cubic centimeters (23/11-2025) to avoid false positives
+    min_comp_size_mm3 = 10000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
 
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
     components = get_components_over_certain_size_as_individual_volumes(
-        mask_np_aorta, min_comp_size, 2
+        mask_np_aorta, min_comp_size_vox, 2
     )
     if components is None:
         msg = f"No aorta lumen found left after connected components {input_file}"
@@ -740,21 +714,25 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
 
         img_o = sitk.GetImageFromArray(components[0].astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         # print(f"saving {name_o_1}")
         sitk.WriteImage(img_o, name_o_1)
 
         img_o = sitk.GetImageFromArray(components[1].astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         # print(f"saving {name_o_2}")
         sitk.WriteImage(img_o, name_o_2)
 
         # Combine to make one lumen segmentation
-        combined = np.bitwise_or(components[0], components[1])
-        img_o = sitk.GetImageFromArray(combined.astype(int))
-        img_o.CopyInformation(label_img_aorta)
+        # combined = np.bitwise_or(components[0], components[1])
+        #
+        # img_o = sitk.GetImageFromArray(combined.astype(int))
+        # img_o.CopyInformation(label_img_aorta)
+        # img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         # print(f"saving {segm_out_name}")
-        sitk.WriteImage(img_o, segm_out_name)
+        # sitk.WriteImage(img_o, segm_out_name)
 
         if not refine_single_aorta_part(
             input_file,
@@ -790,31 +768,11 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         if label_img_annulus is None:
             return False
 
-        # try:
-        #     label_img_annulus = sitk.ReadImage(segm_in_name_annulus)
-        # except RuntimeError as e:
-        #     msg = f"Could not read {segm_in_name_annulus}: {str(e)} got an exception"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
-
         label_img_descending = read_nifti_with_logging_cached(
             segm_in_name_descending, verbose, quiet, write_log_file, output_folder
         )
         if label_img_descending is None:
             return False
-        #
-        # try:
-        #     label_img_descending = sitk.ReadImage(segm_in_name_descending)
-        # except RuntimeError as e:
-        #     msg = f"Could not read {segm_in_name_descending}: {str(e)} got an exception"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
 
         label_img_comb = sitk.GetArrayFromImage(
             label_img_annulus
@@ -822,13 +780,14 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
 
         img_o = sitk.GetImageFromArray(label_img_comb)
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
         sitk.WriteImage(img_o, segm_total_out)
     else:
-        img_o = sitk.GetImageFromArray(components[0].astype(int))
-        img_o.CopyInformation(label_img_aorta)
-
+        # img_o = sitk.GetImageFromArray(components[0].astype(int))
+        # img_o.CopyInformation(label_img_aorta)
+        # img_o = sitk.Cast(img_o, sitk.sitkInt16)
         # print(f"saving {segm_out_name}")
-        sitk.WriteImage(img_o, segm_out_name)
+        # sitk.WriteImage(img_o, segm_out_name)
         if not refine_single_aorta_part(
             input_file,
             params,
@@ -846,6 +805,126 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
     return True
 
 
+def inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder,
+                                  use_ts_org_segmentations=True):
+    """
+    Sometimes the scanner does not cover the full body - in that case we need to
+    inpaint missing segmentations based on nearby slices.
+    This is especially for scan type 5 (cardiac scan) on older scanner models.
+    """
+    stats_file = f"{stats_folder}aorta_scan_type.json"
+
+    scan_type_stats = read_json_file(stats_file)
+    if not scan_type_stats:
+        msg = f"Could not read {stats_file} can not compute centerline landmarks"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    scan_type = scan_type_stats["scan_type"]
+
+    if scan_type not in ["5"]:
+        if verbose:
+            print(f"Scan type is {scan_type} - normally no need to in paint segmentations")
+        return True
+
+    ext = "_ts_org" if use_ts_org_segmentations else ""
+
+    segm_in_name_annulus = f"{segm_folder}aorta_lumen_annulus_extended{ext}.nii.gz"
+    segm_out_name_annulus = f"{segm_folder}aorta_lumen_annulus_extended_inpaint{ext}.nii.gz"
+    segm_in_name_descending = f"{segm_folder}aorta_lumen_descending{ext}.nii.gz"
+    segm_out_name_descending = f"{segm_folder}aorta_lumen_descending_inpaint{ext}.nii.gz"
+
+    segm_in_names = [segm_in_name_annulus, segm_in_name_descending]
+    segm_out_names = [segm_out_name_annulus, segm_out_name_descending]
+
+    low_thresh = params["out_of_reconstruction_value"]
+    high_thresh = 16000
+
+    # TODO: better check
+    if os.path.exists(segm_out_name_annulus):
+        if verbose:
+            print(f"{segm_out_name_annulus} already exists - skipping")
+        return True
+
+    if verbose:
+        print(f"Inpainting {segm_in_name_annulus} to {segm_out_name_annulus}")
+
+    ct_img = read_nifti_with_logging_cached(input_file, verbose, quiet, write_log_file, output_folder)
+    if ct_img is None:
+        return False
+    ct_np = sitk.GetArrayFromImage(ct_img)
+
+    combined_mask = (low_thresh >= ct_np) | (ct_np > high_thresh)
+
+    # Find out how many percent of the total image that needs inpainting
+    tot_voxels = ct_np.shape[0] * ct_np.shape[1] * ct_np.shape[2]
+    n_inpaint_voxels = np.sum(combined_mask)
+    percent_inpaint = (n_inpaint_voxels / tot_voxels) * 100.0
+    if verbose:
+        print(f"Need to inpaint {n_inpaint_voxels} voxels ({percent_inpaint:.1f} %)")
+    if percent_inpaint < 2.0:
+        if verbose:
+            print(f"No need to inpaint {n_inpaint_voxels} voxels ({percent_inpaint:.1f} %)")
+        for i in range(len(segm_in_names)):
+            segm_in_name = segm_in_names[i]
+            segm_out_name = segm_out_names[i]
+            copyfile(segm_in_name, segm_out_name)
+        # Just copy the original segmentation
+        #copyfile(segm_in_name_annulus, segm_out_name_annulus)
+        return True
+    else:
+        if verbose:
+            print(f"Inpainting {n_inpaint_voxels} voxels ({percent_inpaint:.1f} %)")
+
+    if verbose:
+        print(f"Computing distance transform for inpainting")
+    # Get indices of nearest valid voxels
+    distance, indices = distance_transform_edt(combined_mask == True, return_indices=True)
+
+    for i in range(len(segm_in_names)):
+        segm_in_name = segm_in_names[i]
+        segm_out_name = segm_out_names[i]
+
+        # Read label map
+        label_map = read_nifti_with_logging_cached(segm_in_name, verbose, quiet, write_log_file, output_folder)
+        if label_map is None:
+            continue
+        label_map_np = sitk.GetArrayFromImage(label_map)
+
+        if verbose:
+            print(f"Dilating segmentation for inpainting {segm_in_name}")
+        # Dilate the segmentation to be sure it hits the border of the missing parts
+        footprint = ball(radius=3)
+        dilated_segm = binary_dilation(label_map_np, footprint)
+
+        if verbose:
+            print(f"Filling missing segmentation voxels by inpainting")
+        # Fill border voxels
+        # label_map_np[combined_mask] = label_map_np[tuple(ind[combined_mask] for ind in indices)]
+        label_map_np[combined_mask] = dilated_segm[tuple(ind[combined_mask] for ind in indices)]
+
+        # Do closing to avoid gaps around border
+        if verbose:
+            print(f"Closing segmentation after inpainting")
+        footprint = ball(radius=3)
+        label_map_np = binary_closing(label_map_np, footprint)
+
+
+        if verbose:
+            print(f"Saving inpainted segmentation to {segm_out_name}")
+        # write inpainted label map
+        img_o = sitk.GetImageFromArray(label_map_np.astype(int))
+        img_o.CopyInformation(label_map)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
+        sitk.WriteImage(img_o, segm_out_name)
+
+    return True
+
 def extract_top_of_iliac_arteries(
     input_file, segm_folder, verbose, quiet, write_log_file, output_folder
 ):
@@ -860,6 +939,7 @@ def extract_top_of_iliac_arteries(
     iliac_right_segm_id = 66
     top_length = 10.0  # mm
     min_size = 10 * 5 * 5  # mm^3
+    min_slice_size = 5 * 5  # mm^2
 
     if os.path.exists(segm_out_l_name) and os.path.exists(segm_out_r_name):
         if verbose:
@@ -876,37 +956,31 @@ def extract_top_of_iliac_arteries(
     )
     if label_img is None:
         return False
-    #
-    # try:
-    #     label_img = sitk.ReadImage(segm_in_name)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_in_name}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     spacing = label_img.GetSpacing()
-    # in_slice_spacing = spacing[0]
     slice_thickness = spacing[2]
 
     n_top_slices = int(top_length / slice_thickness)
     min_size_vox = min_size / (spacing[0] * spacing[1] * spacing[2])
+    min_slice_size_vox = min_slice_size / (spacing[0] * spacing[1])
     if verbose:
         print(f"n_top_slices: {n_top_slices} min_size_vox: {min_size_vox:.1f}")
 
     label_img_np = sitk.GetArrayFromImage(label_img)
     mask_np_left = label_img_np == iliac_left_segm_id
-    if np.sum(mask_np_left) == 0:
+    # Only largest component to avoid tiny fragments
+    mask_np_left, _ = get_components_over_certain_size(
+        mask_np_left, min_size_vox, 1
+    )
+    if mask_np_left is None or np.sum(mask_np_left) == 0:
         if verbose:
-            print(f"No iliac artery left found in {input_file}")
+            print(f"No iliac artery left found in {input_file} larger than {min_size} mm^3")
     else:
         shp = mask_np_left.shape
         start_slice = None
         # Remember that NP are in the order of z,y,x
         for z in range(shp[0] - 1, 0, -1):
-            if sum(sum(mask_np_left[z, :, :])) > 0:
+            if sum(sum(mask_np_left[z, :, :])) > min_slice_size_vox:
                 if start_slice is None:
                     start_slice = z
                 elif start_slice - z > n_top_slices:
@@ -917,22 +991,27 @@ def extract_top_of_iliac_arteries(
         )
         if large_components is None or np.sum(large_components) == 0:
             if verbose:
-                print(f"No iliac artery left found in {input_file}")
+                print(f"No iliac artery left found in {input_file} after extracting top part")
         else:
             img_o = sitk.GetImageFromArray(large_components.astype(int))
             img_o.CopyInformation(label_img)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
             sitk.WriteImage(img_o, segm_out_l_name)
 
     mask_np_right = label_img_np == iliac_right_segm_id
-    if np.sum(mask_np_right) == 0:
+    mask_np_right, _ = get_components_over_certain_size(
+        mask_np_right, min_size_vox, 1
+    )
+
+    if mask_np_right is None or np.sum(mask_np_right) == 0:
         if verbose:
-            print(f"No iliac artery right found in {input_file}")
+            print(f"No iliac artery right found in {input_file} larger than {min_size} mm^3")
     else:
         shp = mask_np_right.shape
         start_slice = None
         # Remember that NP are in the order of z,y,x
         for z in range(shp[0] - 1, 0, -1):
-            if sum(sum(mask_np_right[z, :, :])) > 0:
+            if sum(sum(mask_np_right[z, :, :])) > min_slice_size_vox:
                 if start_slice is None:
                     start_slice = z
                 elif start_slice - z > n_top_slices:
@@ -943,10 +1022,11 @@ def extract_top_of_iliac_arteries(
         )
         if large_components is None or np.sum(large_components) == 0:
             if verbose:
-                print(f"No iliac artery right found in {input_file}")
+                print(f"No iliac artery right found in {input_file} after extracting top part")
         else:
             img_o = sitk.GetImageFromArray(large_components.astype(int))
             img_o.CopyInformation(label_img)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
             sitk.WriteImage(img_o, segm_out_r_name)
     return True
 
@@ -966,7 +1046,7 @@ def extract_aortic_calcifications(
     hu_stats_file_2 = f"{stats_folder}/aorta_skeleton_descending_hu_stats.json"
     calcification_stats_file = f"{stats_folder}/aorta_calcification_stats.json"
 
-    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_in_name_hires = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
 
     segm_out_name = f"{segm_folder}aorta_calcification.nii.gz"
     segm_dilated_out_name = f"{segm_folder}aorta_lumen_dilated.nii.gz"
@@ -976,6 +1056,7 @@ def extract_aortic_calcifications(
     segm_name_lumen = f"{segm_folder}aorta_lumen.nii.gz"
     calc_min_hu = params["aorta_calcification_min_hu_value"]
     calc_max_hu = params["aorta_calcification_max_hu_value"]
+    calc_std_mult = params["aorta_calcification_std_multiplier"]
 
     aorta_segm_id = 1
     debug = False
@@ -1001,26 +1082,6 @@ def extract_aortic_calcifications(
     if ct_img is None:
         return False
 
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_in_name_hires)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_in_name_hires}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    # try:
-    #     ct_img = sitk.ReadImage(input_file)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file} for calcification segmentation: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     spacing = ct_img.GetSpacing()
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
@@ -1034,10 +1095,16 @@ def extract_aortic_calcifications(
         mask_np_aorta, [spacing[2], spacing[1], spacing[0]], dilation_size
     )
 
-    dilated_mask, _ = get_components_over_certain_size(dilated_mask, 5000, 2)
+    # We want at least 1 cubic centimeters
+    spacing = label_img_aorta.GetSpacing()
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    dilated_mask, _ = get_components_over_certain_size(dilated_mask, min_comp_size_vox, 2)
     if debug:
         img_o = sitk.GetImageFromArray(dilated_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {segm_dilated_out_name}")
         sitk.WriteImage(img_o, segm_dilated_out_name)
@@ -1053,10 +1120,15 @@ def extract_aortic_calcifications(
     if not hu_stats:
         hu_stats = read_json_file(hu_stats_file_2)
     if hu_stats:
-        low_thresh = hu_stats["high_thresh"]
+        # Recompute high_thresh based on stats
+        mean_hu = hu_stats["skeleton_avg_hu"]
+        std_hu = hu_stats["skeleton_std_hu"]
+        recomputed_high_thresh = mean_hu + calc_std_mult * std_hu
+        low_thresh = max(low_thresh, recomputed_high_thresh)
+        # low_thresh = hu_stats["high_thresh"]
 
     if verbose:
-        print(f"Calcification: min HU: {low_thresh} max HU: {high_thresh} ")
+        print(f"Calcification: min HU: {low_thresh:.1f} max HU: {high_thresh:.1f} ")
 
     img_mask_1 = low_thresh < ct_np
     img_mask_2 = ct_np < high_thresh
@@ -1070,6 +1142,7 @@ def extract_aortic_calcifications(
     # if debug:
     img_o = sitk.GetImageFromArray(combined_mask.astype(int))
     img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
     if debug:
         print(f"Saving {segm_raw_out_name}")
@@ -1098,7 +1171,7 @@ def check_for_aneurysm_sac(
     """
     aneurysm_sac_stats_file = f"{stats_folder}aorta_aneurysm_sac_stats.json"
     calcification_stats_file = f"{stats_folder}aorta_calcification_stats.json"
-    segm_in_name_hires = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_in_name_hires = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     segm_lumen_in = f"{segm_folder}aorta_lumen.nii.gz"
 
     if os.path.exists(aneurysm_sac_stats_file):
@@ -1240,7 +1313,7 @@ def compute_ventricularoaortic_landmark(
     ventricularoaortic_p_none_out_file = f"{lm_folder}ventricularoaortic_no_point.txt"
     stats_file = f"{stats_folder}/aorta_parts.json"
 
-    segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_name_aorta = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     segm_name_hc = f"{segm_folder}heartchambers_highres.nii.gz"
     aorta_segm_id = 1
     left_ventricle_id = 3
@@ -1299,42 +1372,28 @@ def compute_ventricularoaortic_landmark(
         f_p_out.write("no point")
         f_p_out.close()
         return True
-    #
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    # try:
-    #     label_img_lv = sitk.ReadImage(segm_name_hc)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     f_p_out = open(ventricularoaortic_p_none_out_file, "w")
-    #     f_p_out.write("no point")
-    #     f_p_out.close()
-    #     return True
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
 
     # Force it to have only the found components (since we can use the original ts segmentations with spurious parts)
-    min_comp_size = 5000
+    # min_comp_size = 5000
+    # spacing = label_img_aorta.GetSpacing()
+    # min_comp_size_mm3 = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+
+    spacing = label_img_aorta.GetSpacing()
+
+    # We want at least 1 cubic centimeters
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
     components, _ = get_components_over_certain_size(
-        mask_np_aorta, min_comp_size, n_aorta_parts
+        mask_np_aorta, min_comp_size_vox, n_aorta_parts
     )
     if components is None:
-        msg = f"No aorta lumen found left after connected components {input_file}"
+        msg = f"No aorta lumen found left after connected components {segm_name_aorta}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -1359,9 +1418,16 @@ def compute_ventricularoaortic_landmark(
         radius=footprint_radius_mm,
     )
 
-    min_comp_size = 100
+    spacing = label_img_aorta.GetSpacing()
+    min_comp_size_mm3 = 200
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    # min_comp_size = 100
+    # min_comp_size_mm3 = min_comp_size * spacing[0] * spacing[1] * spacing[2]
+    if verbose:
+        print(f"Finding overlap components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
     overlap_mask = get_components_over_certain_size_as_individual_volumes(
-        overlap_mask, min_comp_size, 1
+        overlap_mask, min_comp_size_vox, 1
     )
     if overlap_mask is None:
         if verbose:
@@ -1395,6 +1461,7 @@ def compute_ventricularoaortic_landmark(
     if debug:
         img_o = sitk.GetImageFromArray(overlap_mask.astype(int))
         img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"saving {overlap_name}")
         sitk.WriteImage(img_o, overlap_name)
@@ -1402,7 +1469,7 @@ def compute_ventricularoaortic_landmark(
     return True
 
 
-def combine_aorta_and_left_ventricle(
+def combine_aorta_and_left_ventricle_and_iliac_arteries(
     input_file,
     segm_folder,
     lm_folder,
@@ -1414,31 +1481,34 @@ def combine_aorta_and_left_ventricle(
     use_ts_org_segmentations=False,
 ):
     """
-    Combine aorta and left ventricle since this is beneficial for computing the centerline.
+    Combine aorta, left ventricle and iliac arteries since this is beneficial for computing the centerline.
     It is ignored if no LV is present and just the aorta is returned
     """
     ventricularoaortic_p_in_file = f"{lm_folder}ventricularoaortic_point.txt"
     stats_file = f"{stats_folder}/aorta_parts.json"
     aorta_segm_id = 1
     left_ventricle_id = 3
+    iliac_left_id = 65
+    iliac_right_id = 66
 
     debug = False
     segm_name_hc = f"{segm_folder}heartchambers_highres.nii.gz"
+    total_in_name = f"{segm_folder}total.nii.gz"
 
     # Heart might not be present and that is fine
-    if not os.path.exists(segm_name_hc):
-        if verbose:
-            print(
-                f"Could not find {segm_name_hc} can not compute combined lv and aorta"
-            )
-        return True
+    # if not os.path.exists(segm_name_hc):
+    #     if verbose:
+    #         print(
+    #             f"Could not find {segm_name_hc} can not compute combined lv and aorta"
+    #         )
+    #     return True
 
-    if not os.path.exists(ventricularoaortic_p_in_file):
-        if verbose:
-            print(
-                f"Could not find {ventricularoaortic_p_in_file} can not compute combined lv and aorta"
-            )
-        return True
+    # if not os.path.exists(ventricularoaortic_p_in_file):
+    #     if verbose:
+    #         print(
+    #             f"Could not find {ventricularoaortic_p_in_file} can not compute combined lv and aorta"
+    #         )
+    #     return True
 
     n_aorta_parts = 1
     parts_stats = read_json_file(stats_file)
@@ -1447,18 +1517,18 @@ def combine_aorta_and_left_ventricle(
 
     if n_aorta_parts == 1:
         if use_ts_org_segmentations:
-            segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+            segm_name_aorta = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
     elif n_aorta_parts == 2:
         if use_ts_org_segmentations:
-            segm_name_aorta = f"{segm_folder}aorta_lumen_annulus_raw.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+            segm_name_aorta = f"{segm_folder}aorta_lumen_annulus_ts_org.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
         else:
             segm_name_aorta = f"{segm_folder}aorta_lumen_annulus.nii.gz"
-            segm_out_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+            segm_out_name = f"{segm_folder}aorta_lumen_annulus_extended.nii.gz"
     else:
         msg = f"Can not handle more than 2 parts. Found {n_aorta_parts}"
         if not quiet:
@@ -1498,66 +1568,88 @@ def combine_aorta_and_left_ventricle(
     if ct_img is None:
         return False
 
-    label_img_lv = read_nifti_with_logging_cached(
-        segm_name_hc, verbose, quiet, write_log_file, output_folder
+    if os.path.exists(segm_name_hc):
+        label_img_lv = read_nifti_with_logging_cached(
+            segm_name_hc, verbose, quiet, write_log_file, output_folder
+        )
+    else:
+        label_img_lv = None
+    # if label_img_lv is None:
+    #     return False
+
+    label_img_total = read_nifti_with_logging_cached(
+        total_in_name, verbose, quiet, write_log_file, output_folder
     )
-    if label_img_lv is None:
+    if label_img_total is None:
         return False
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    # try:
-    #     ct_img = sitk.ReadImage(input_file)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file} for combined aorta and left ventricle segmentation: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    # try:
-    #     label_img_lv = sitk.ReadImage(segm_name_hc)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_hc}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
-    label_img_lv_np = sitk.GetArrayFromImage(label_img_lv)
 
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
+    label_img_total_np = sitk.GetArrayFromImage(label_img_total)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
-    mask_np_lv = label_img_lv_np == left_ventricle_id
-    combined_mask = np.bitwise_or(mask_np_aorta, mask_np_lv)
+    mask_np_iliac_left = label_img_total_np == iliac_left_id
+    mask_np_iliac_right = label_img_total_np == iliac_right_id
+    combined_mask = np.bitwise_or(mask_np_aorta, mask_np_iliac_left)
+    combined_mask = np.bitwise_or(combined_mask, mask_np_iliac_right)
+
+    if label_img_lv:
+        label_img_lv_np = sitk.GetArrayFromImage(label_img_lv)
+        mask_np_lv = label_img_lv_np == left_ventricle_id
+        combined_mask = np.bitwise_or(combined_mask, mask_np_lv)
 
     spc = label_img_aorta.GetSpacing()
     # Make the spacing fit the numpy array
     spacing = [spc[2], spc[1], spc[0]]
-    footprint_radius_mm = 5
+    footprint_radius_mm = max(5, 1.5 * max(spacing))
     if verbose:
         print("EDF based closing and other EDF based operations")
     closed_mask = edt_based_closing(combined_mask, spacing, footprint_radius_mm)
-    large_components, _ = get_components_over_certain_size(
-        closed_mask, 5000, n_aorta_parts
+    # large_components, _ = get_components_over_certain_size(
+    #     closed_mask, 5000, n_aorta_parts
+    # )
+    # We can risk that the aorta and the LV are two different comps but the LV is the largest
+
+    # We want at least 1 cubic centimeters
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    large_components = get_components_over_certain_size_as_individual_volumes(
+        closed_mask, min_comp_size_vox, 4
     )
-    large_components, _ = close_cavities_in_segmentations(large_components)
+    if len(large_components) > n_aorta_parts:
+        # keep only the part that has the largest overlap with the original aorta segmentation
+        if verbose:
+            print(
+                f"Found {len(large_components)} components after closing - keeping only {n_aorta_parts} with largest overlap with original aorta segmentation"
+            )
+        largest_overlap = 0
+        large_overlap_comp = None
+
+        for idx, comp in enumerate(large_components):
+            overlap = np.sum(np.bitwise_and(comp, mask_np_aorta))
+            if overlap > largest_overlap:
+                largest_overlap = overlap
+                large_overlap_comp = comp
+        if large_overlap_comp is None:
+            msg = f"Could not find component with largest overlap with aorta segmentation"
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
+            return False
+    else:
+        large_overlap_comp = large_components[0]
+
+    large_components, _ = close_cavities_in_segmentations(large_overlap_comp)
 
     ct_np = sitk.GetArrayFromImage(ct_img)
     # Remove invalid out-of-scan voxels (typically values -2048)
-    large_components = (-2000 < ct_np) & large_components
+    large_components = (-200 < ct_np) & large_components
 
     img_o = sitk.GetImageFromArray(large_components.astype(int))
     img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
     if debug:
         print(f"saving {segm_out_name}")
@@ -1574,7 +1666,7 @@ def compute_aortic_arch_landmarks(
     brachiocephalic trunk, left common carotid artery and left subclavian artery
     """
     debug = False
-    segm_name_aorta = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+    segm_name_aorta = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     segm_name_total = f"{segm_folder}total.nii.gz"
     aorta_segm_id = 1
 
@@ -1596,28 +1688,8 @@ def compute_aortic_arch_landmarks(
     if label_img_total is None:
         return False
 
-    # try:
-    #     label_img_aorta = sitk.ReadImage(segm_name_aorta)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_aorta}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
     mask_np_aorta = label_img_aorta_np == aorta_segm_id
-
-    # try:
-    #     label_img = sitk.ReadImage(segm_name_total)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {segm_name_total}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
     label_img_np = sitk.GetArrayFromImage(label_img_total)
 
     for idx in range(len(lm_names)):
@@ -1634,11 +1706,16 @@ def compute_aortic_arch_landmarks(
         if verbose:
             print(f"Computing {lm_out_name}")
 
-        radius = 5
+        # For some image, the spacing is actually 5 mm creating problems if the radius is too love
+        spacing = label_img_total.GetSpacing()
+        radius = max(5, 1.5 * max(spacing))
+        min_size_mm3 = 500
+        min_size_vox = int(min_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
         current_segm = label_img_np == segm_id
         if np.sum(current_segm) > 10:
             if verbose:
-                print(f"EDT based overlap for {lm_out_name}")
+                print(f"EDT based overlap for {lm_out_name} with min size {min_size_mm3} mm3 = {min_size_vox} voxels")
             if not edt_based_compute_landmark_from_segmentation_overlap(
                 mask_np_aorta,
                 current_segm,
@@ -1646,6 +1723,7 @@ def compute_aortic_arch_landmarks(
                 label_img_total,
                 segm_oname,
                 lm_out_name,
+                min_size_mm3=min_size_mm3,
                 only_larges_components=True,
                 debug=debug,
             ):
@@ -1830,6 +1908,7 @@ def compute_aorta_scan_type(
     https://github.com/RasmusRPaulsen/AortaExplorer
     """
     stats_file = f"{stats_folder}/aorta_scan_type.json"
+    sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
 
     if os.path.exists(stats_file):
         if verbose:
@@ -1863,11 +1942,18 @@ def compute_aorta_scan_type(
 
     # Check for top of aortic arch
     # We need all three top landmarks
+    # lm_check_names = [
+    #     "brachiocephalic_trunc.txt",
+    #     "common_carotid_artery_left.txt",
+    #     "subclavian_artery_left.txt",
+    # ]
+
+    # Update 20/11-2025 : We only need the two outermost. Sometimes the carotid is attached to one of the others
     lm_check_names = [
         "brachiocephalic_trunc.txt",
-        "common_carotid_artery_left.txt",
         "subclavian_artery_left.txt",
     ]
+
     aortic_arch_present = True
     for cn in lm_check_names:
         if not os.path.exists(f"{lm_folder}{cn}"):
@@ -1889,11 +1975,57 @@ def compute_aorta_scan_type(
                 base_dir=output_folder, message=msg, level="error"
             )
         return False
-    # sides = set()
 
-    # TODO: Use the out-of-scan SDF to determine if the aorta is touching the side of the scan
-    sides = check_if_segmentation_hit_sides_of_scan(segm_data, aorta_segment_id)
-    stats["sides"] = list(sides)
+    sdf_img = read_nifti_with_logging_cached(
+        sdf_name, False, quiet, write_log_file, output_folder
+    )
+    if sdf_img is None:
+        return False
+
+    sdf_np = sitk.GetArrayFromImage(sdf_img)
+    label_img = read_nifti_with_logging_cached(
+        segm_name, False, quiet, write_log_file, output_folder
+    )
+    if label_img is None:
+        return False
+    label_img_np = sitk.GetArrayFromImage(label_img)
+
+    # We want at least 1 cubic centimeters
+    spacing = label_img.GetSpacing()
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+
+    # # Force it to one component
+    # min_comp_size = 5000
+    # vox_size = spacing[0] * spacing[1] * spacing[2]
+    # min_comp_size_mm3 = min_comp_size * vox_size
+
+    if verbose:
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
+    components, _ = get_components_over_certain_size(label_img_np, min_comp_size_vox, 1)
+    if components is None:
+        msg = f"No aorta lumen found left after connected components {input_file}"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+    label_img_np = components
+
+    spacing = label_img.GetSpacing()
+    max_space = np.max(np.asarray(spacing))
+    overlap_dist = max(3 * max_space, 3)
+
+    # Find the part of the aorta that hits the side of the scan
+    overlap_region = label_img_np & (sdf_np < overlap_dist)
+    if np.sum(overlap_region) > 0:
+        sides = check_if_segmentation_hit_sides_of_scan(segm_data, aorta_segment_id)
+        stats["sides"] = list(sides)
+    else:
+        sides = []
+        stats["sides"] = sides
 
     scan_type = "unknown"
     scan_type_desc = "unknown"
@@ -2108,7 +2240,7 @@ def compute_aorta_iliac_artery_landmark(
     segm_r_name = f"{segm_folder}iliac_artery_right_top.nii.gz"
     segm_aorta_name = f"{segm_folder}aorta_lumen.nii.gz"
     if use_ts_org_segmentations:
-        segm_aorta_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+        segm_aorta_name = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
 
     label_img_l = read_nifti_with_logging_cached(
         segm_l_name, False, quiet, write_log_file, output_folder
@@ -2216,7 +2348,7 @@ def compute_centerline_landmarks_for_aorta_type_2(
     sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
     aorta_name = f"{segm_folder}aorta_lumen.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
+        aorta_name = f"{segm_folder}aorta_lumen_ts_org.nii.gz"
     overlap_name_1 = f"{segm_folder}aorta_side_region.nii.gz"
     debug = False
 
@@ -2277,27 +2409,23 @@ def compute_centerline_landmarks_for_aorta_type_2(
     )
     if label_img is None:
         return False
-    #
-    #
-    # try:
-    #     label_img = sitk.ReadImage(aorta_name)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {aorta_name}: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     label_img_np = sitk.GetArrayFromImage(label_img)
 
     # Force it to one component
-    min_comp_size = 5000
+    # We want at least 1 cubic centimeters
+    spacing = label_img.GetSpacing()
+    min_comp_size_mm3 = 1000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+    #
+    # min_comp_size = 5000
+    # vox_size = spacing[0] * spacing[1] * spacing[2]
+    # min_comp_size_mm3 = min_comp_size * vox_size
+
     if verbose:
-        print(f"Finding aorta components with min_comp_size: {min_comp_size} voxels")
-    components, _ = get_components_over_certain_size(label_img_np, min_comp_size, 1)
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
+    components, _ = get_components_over_certain_size(label_img_np, min_comp_size_vox, 1)
     if components is None:
-        msg = f"No aorta lumen found left after connected components {input_file}"
+        msg = f"No aorta lumen found left after connected components {aorta_name}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -2328,6 +2456,7 @@ def compute_centerline_landmarks_for_aorta_type_2(
     if debug:
         img_o = sitk.GetImageFromArray(overlap_region.astype(int))
         img_o.CopyInformation(label_img)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {overlap_name_1}")
         sitk.WriteImage(img_o, overlap_name_1)
@@ -2363,9 +2492,15 @@ def compute_centerline_landmarks_for_aorta_type_2(
     )
 
     # Check if the landmark is actually at the top of the scan
-    size = label_img.GetSize()
-    if com_np[2] < size[2] / 4:
-        msg = f"The found landmark is not at the top of the scan - and it should for type 2. For {aorta_name}"
+
+    # Find the physical coordinates of the top of the scan
+    # Remember that numpy z axis is first
+    z_phys_1 = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
+    z_phys_2 = label_img.TransformIndexToPhysicalPoint([0, 0, label_img_np.shape[0] - 1])[2]
+    top_bottom_dist = min(abs(com_phys_1[2] - z_phys_1), abs(com_phys_1[2] - z_phys_2))
+    if top_bottom_dist > 10:
+        msg = (f"The found landmark is not at the top of the scan - and it should for type 2. For {aorta_name}."
+               f" Distance to top/bottom: {top_bottom_dist:.2f} mm")
         if not quiet:
             print(msg)
         if write_log_file:
@@ -2373,6 +2508,19 @@ def compute_centerline_landmarks_for_aorta_type_2(
                 base_dir=output_folder, message=msg, level="error"
             )
         return False
+
+    #
+    #
+    # size = label_img.GetSize()
+    # if com_np[2] < size[2] / 4:
+    #     msg = f"The found landmark is not at the top of the scan - and it should for type 2. For {aorta_name}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(
+    #             base_dir=output_folder, message=msg, level="error"
+    #         )
+    #     return False
 
     f_p_out = open(end_p_out_file, "w")
     f_p_out.write(f"{com_phys_1[0]} {com_phys_1[1]} {com_phys_1[2]}")
@@ -2395,9 +2543,9 @@ def compute_centerline_landmarks_for_aorta_type_1(
     """
     start_p_out_file = f"{lm_folder}aorta_start_point.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point.txt"
-    aorta_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
+    aorta_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+        aorta_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
 
     # debug = False
     if os.path.exists(start_p_out_file) and os.path.exists(end_p_out_file):
@@ -2483,10 +2631,10 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(
     start_p_out_file = f"{lm_folder}aorta_start_point_annulus.txt"
     end_p_out_file = f"{lm_folder}aorta_end_point_annulus.txt"
     sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
-    aorta_lv_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
-    overlap_name_1 = f"{segm_folder}aorta_left_ventricle_side_region.nii.gz"
+    aorta_lv_name = f"{segm_folder}aorta_lumen_annulus_extended.nii.gz"
+    overlap_name_1 = f"{segm_folder}aorta_lumen_annulus_extended_side_region.nii.gz"
     if use_ts_org_segmentations:
-        aorta_lv_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+        aorta_lv_name = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
 
     debug = False
 
@@ -2564,6 +2712,7 @@ def compute_centerline_landmarks_for_aorta_type_5_annulus(
     if debug:
         img_o = sitk.GetImageFromArray(overlap_region.astype(int))
         img_o.CopyInformation(label_img)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {overlap_name_1}")
         sitk.WriteImage(img_o, overlap_name_1)
@@ -2653,7 +2802,7 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
     sdf_name = f"{segm_folder}out_of_scan_sdf.nii.gz"
     aorta_name = f"{segm_folder}aorta_lumen_descending.nii.gz"
     if use_ts_org_segmentations:
-        aorta_name = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
+        aorta_name = f"{segm_folder}aorta_lumen_descending_ts_org.nii.gz"
 
     overlap_name_1 = f"{segm_folder}aorta_descending_side_regions.nii.gz"
     debug = False
@@ -2732,6 +2881,7 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
     if debug:
         img_o = sitk.GetImageFromArray(overlap_region.astype(int))
         img_o.CopyInformation(label_img)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
 
         print(f"Debug: saving {overlap_name_1}")
         sitk.WriteImage(img_o, overlap_name_1)
@@ -2780,22 +2930,32 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
         p_1_name = end_p_out_file
         p_2_name = start_p_out_file
 
-    # TODO: Check that the landmark is actually at the top of the scan and bottom of the scan
-    # compute physical coordinates of min and max z in the label image
-    slack = 10.0  # mm
+    # Make sure that the landmark is not touching the side of the scan
+    # Get min and max x and y in physical coordinates
     size = label_img.GetSize()
-    min_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
-    max_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, size[2] - 1])[2]
-
-    dist_1 = min(abs(max_z_phys - com_phys_1[2]), abs(min_z_phys - com_phys_1[2]))
-    dist_2 = min(abs(max_z_phys - com_phys_2[2]), abs(min_z_phys - com_phys_2[2]))
+    min_x_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[0]
+    max_x_phys = label_img.TransformIndexToPhysicalPoint([size[0] - 1, 0, 0])[0]
+    min_y_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[1]
+    max_y_phys = label_img.TransformIndexToPhysicalPoint([0, size[1] - 1, 0])[1]
+    slack = 10.0  # mm
+    dist_1 = min(
+        abs(max_x_phys - com_phys_1[0]),
+        abs(min_x_phys - com_phys_1[0]),
+        abs(max_y_phys - com_phys_1[1]),
+        abs(min_y_phys - com_phys_1[1]),
+    )
+    dist_2 = min(
+        abs(max_x_phys - com_phys_2[0]),
+        abs(min_x_phys - com_phys_2[0]),
+        abs(max_y_phys - com_phys_2[1]),
+        abs(min_y_phys - com_phys_2[1]),
+    )
     if verbose:
         print(
-            f"Type 5 descending aorta landmark distances to top/bottom of scan: {dist_1:.1f} mm and {dist_2:.1f} mm"
+            f"Type 5 descending aorta landmark distances to side of scan: {dist_1:.1f} mm and {dist_2:.1f} mm"
         )
-
-    if dist_1 > slack or dist_2 > slack:
-        msg = f"A landmark is not at the top or bottom of the scan - and it should for type 5. Distances to borders: {dist_1:.1f} mm and {dist_2:.1f} mm. For {aorta_name}"
+    if dist_1 < slack or dist_2 < slack:
+        msg = f"A landmark is too close to the side of the scan - and it should not for type 5. Distances to borders: {dist_1:.1f} mm and {dist_2:.1f} mm. For {aorta_name}"
         if not quiet:
             print(msg)
         if write_log_file:
@@ -2803,6 +2963,30 @@ def compute_centerline_landmarks_for_aorta_type_5_descending(
                 base_dir=output_folder, message=msg, level="error"
             )
         return False
+    #
+    # # TODO: Check that the landmark is actually at the top of the scan and bottom of the scan
+    # # compute physical coordinates of min and max z in the label image
+    # slack = 10.0  # mm
+    # size = label_img.GetSize()
+    # min_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, 0])[2]
+    # max_z_phys = label_img.TransformIndexToPhysicalPoint([0, 0, size[2] - 1])[2]
+    #
+    # dist_1 = min(abs(max_z_phys - com_phys_1[2]), abs(min_z_phys - com_phys_1[2]))
+    # dist_2 = min(abs(max_z_phys - com_phys_2[2]), abs(min_z_phys - com_phys_2[2]))
+    # if verbose:
+    #     print(
+    #         f"Type 5 descending aorta landmark distances to top/bottom of scan: {dist_1:.1f} mm and {dist_2:.1f} mm"
+    #     )
+    #
+    # if dist_1 > slack or dist_2 > slack:
+    #     msg = f"A landmark is not at the top or bottom of the scan - and it should for type 5. Distances to borders: {dist_1:.1f} mm and {dist_2:.1f} mm. For {aorta_name}"
+    #     if not quiet:
+    #         print(msg)
+    #     if write_log_file:
+    #         write_message_to_log_file(
+    #             base_dir=output_folder, message=msg, level="error"
+    #         )
+    #     return False
 
     f_p_out = open(p_1_name, "w")
     f_p_out.write(f"{com_phys_1[0]} {com_phys_1[1]} {com_phys_1[2]}")
@@ -2914,22 +3098,20 @@ def extract_surfaces_for_centerlines(
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(
-                base_dir=output_folder, message=msg, level="error"
-            )
+            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
     scan_type = scan_type_stats["scan_type"]
 
     if scan_type in ["1", "1b", "1c", "1d", "2"]:
-        aorta_segm_in = f"{segm_folder}aorta_lumen.nii.gz"
+        # aorta_segm_in = f"{segm_folder}aorta_lumen.nii.gz"
+        # if use_ts_org_segmentations:
+        #     aorta_segm_in = f"{segm_folder}aorta_lumen_hires_ts_org.nii.gz"
+        #
+        # if scan_type in ["1", "1b", "1c", "1d"]:
+        aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
         if use_ts_org_segmentations:
-            aorta_segm_in = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-
-        if scan_type in ["1", "1b", "1c", "1d"]:
-            aorta_segm_in = f"{segm_folder}aorta_left_ventricle.nii.gz"
-            if use_ts_org_segmentations:
-                aorta_segm_in = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+            aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
 
         aorta_surface_out = f"{surface_folder}aorta_surface_raw.vtp"
         aorta_surface_cl_out = f"{surface_folder}aorta_surface_for_centerline.vtp"
@@ -2974,97 +3156,55 @@ def extract_surfaces_for_centerlines(
         return True
 
     if scan_type == "5":
-        aorta_segm_in = f"{segm_folder}aorta_left_ventricle.nii.gz"
-        if use_ts_org_segmentations:
-            aorta_segm_in = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
+        for part in ["annulus", "descending"]:
+            aorta_segm_in = f"{segm_folder}aorta_lumen_{part}.nii.gz"
+            if use_ts_org_segmentations:
+                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_ts_org.nii.gz"
 
-        aorta_surface_out = f"{surface_folder}aorta_annulus_surface_raw.vtp"
-        aorta_surface_cl_out = (
-            f"{surface_folder}aorta_annulus_surface_for_centerline.vtp"
-        )
-        if os.path.exists(aorta_surface_cl_out):
-            if verbose:
-                print(f"{aorta_surface_cl_out} already exists - skipping")
-        else:
-            if verbose:
-                print(f"Extracting {aorta_surface_out}")
-            aorta_surface = convert_label_map_to_surface(
-                aorta_segm_in, segment_id=1, only_largest_component=True
-            )
-            if aorta_surface is None:
-                msg = f"Could not compute aorta surface from {aorta_segm_in}"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(
-                        base_dir=output_folder, message=msg, level="error"
-                    )
-                return False
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(aorta_surface_out)
-            writer.SetInputData(aorta_surface)
-            writer.Write()
+            if part == "annulus":
+                aorta_segm_in = f"{segm_folder}aorta_lumen_annulus_extended.nii.gz"
+                if use_ts_org_segmentations:
+                    aorta_segm_in = f"{segm_folder}aorta_lumen_annulus_extended_ts_org.nii.gz"
 
-            surface_cl = preprocess_surface_for_centerline_extraction(aorta_surface)
-            if surface_cl is None:
-                msg = f"Could not preprocess aorta surface from {aorta_segm_in} for centerline computation"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(
-                        base_dir=output_folder, message=msg, level="error"
-                    )
-                return False
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(aorta_surface_cl_out)
-            writer.SetInputData(surface_cl)
-            writer.Write()
+            aorta_surface_out = f"{surface_folder}aorta_{part}_surface_raw.vtp"
+            aorta_surface_cl_out = f"{surface_folder}aorta_{part}_surface_for_centerline.vtp"
+            if os.path.exists(aorta_surface_cl_out):
+                if verbose:
+                    print(f"{aorta_surface_cl_out} already exists - skipping")
+            else:
+                if verbose:
+                    print(f"Extracting {aorta_surface_out}")
+                aorta_surface = convert_label_map_to_surface(
+                    aorta_segm_in, segment_id=1, only_largest_component=True
+                )
+                if aorta_surface is None:
+                    msg = f"Could not compute aorta surface from {aorta_segm_in}"
+                    if not quiet:
+                        print(msg)
+                    if write_log_file:
+                        write_message_to_log_file(
+                            base_dir=output_folder, message=msg, level="error"
+                        )
+                    return False
+                writer = vtk.vtkXMLPolyDataWriter()
+                writer.SetFileName(aorta_surface_out)
+                writer.SetInputData(aorta_surface)
+                writer.Write()
 
-        aorta_segm_in = f"{segm_folder}aorta_lumen_descending.nii.gz"
-        if use_ts_org_segmentations:
-            aorta_segm_in = f"{segm_folder}aorta_lumen_descending_raw.nii.gz"
-
-        aorta_surface_out = f"{surface_folder}aorta_descending_surface_raw.vtp"
-        aorta_surface_cl_out = (
-            f"{surface_folder}aorta_descending_surface_for_centerline.vtp"
-        )
-        if os.path.exists(aorta_surface_cl_out):
-            if verbose:
-                print(f"{aorta_surface_cl_out} already exists - skipping")
-        else:
-            if verbose:
-                print(f"Extracting {aorta_surface_out}")
-            aorta_surface = convert_label_map_to_surface(
-                aorta_segm_in, segment_id=1, only_largest_component=True
-            )
-            if aorta_surface is None:
-                msg = f"Could not compute aorta surface from {aorta_segm_in}"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(
-                        base_dir=output_folder, message=msg, level="error"
-                    )
-                return False
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(aorta_surface_out)
-            writer.SetInputData(aorta_surface)
-            writer.Write()
-
-            surface_cl = preprocess_surface_for_centerline_extraction(aorta_surface)
-            if surface_cl is None:
-                msg = f"Could not preprocess aorta surface from {aorta_segm_in} for centerline computation"
-                if not quiet:
-                    print(msg)
-                if write_log_file:
-                    write_message_to_log_file(
-                        base_dir=output_folder, message=msg, level="error"
-                    )
-                return False
-            writer = vtk.vtkXMLPolyDataWriter()
-            writer.SetFileName(aorta_surface_cl_out)
-            writer.SetInputData(surface_cl)
-            writer.Write()
+                surface_cl = preprocess_surface_for_centerline_extraction(aorta_surface)
+                if surface_cl is None:
+                    msg = f"Could not preprocess aorta surface from {aorta_segm_in} for centerline computation"
+                    if not quiet:
+                        print(msg)
+                    if write_log_file:
+                        write_message_to_log_file(
+                            base_dir=output_folder, message=msg, level="error"
+                        )
+                    return False
+                writer = vtk.vtkXMLPolyDataWriter()
+                writer.SetFileName(aorta_surface_cl_out)
+                writer.SetInputData(surface_cl)
+                writer.Write()
         return True
 
     msg = f"Can not compute extract surface for centerline for scan type {scan_type} for {segm_folder}"
@@ -3075,16 +3215,10 @@ def extract_surfaces_for_centerlines(
     return False
 
 
-def compute_center_line(
-    stats_folder,
-    lm_folder,
-    surface_folder,
-    cl_folder,
-    verbose,
-    quiet,
-    write_log_file,
-    output_folder,
-):
+
+def compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder, verbose, quiet,
+                                       write_log_file, output_folder, use_ts_org_segmentations=True):
+    debug = False
     stats_file = f"{stats_folder}aorta_scan_type.json"
 
     scan_type_stats = read_json_file(stats_file)
@@ -3093,16 +3227,19 @@ def compute_center_line(
         if not quiet:
             print(msg)
         if write_log_file:
-            write_message_to_log_file(
-                base_dir=output_folder, message=msg, level="error"
-            )
+            write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
         return False
 
     scan_type = scan_type_stats["scan_type"]
 
     if scan_type in ["1", "1b", "1c", "1d", "2"]:
-        aorta_surf_name = f"{surface_folder}aorta_surface_for_centerline.vtp"
+        aorta_segm_in = f"{segm_folder}aorta_lumen_extended.nii.gz"
+        if use_ts_org_segmentations:
+            aorta_segm_in = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
 
+        skeleton_pd_name = f"{surface_folder}aorta_skeleton.vtp"
+        pruned_skeleton_pd_name = f"{surface_folder}aorta_pruned_skeleton.vtp"
+        dijkstra_path_name = f"{surface_folder}aorta_dijkstra_path.vtp"
         cl_name = f"{cl_folder}aorta_centerline.vtp"
         cl_name_fail = f"{cl_folder}aorta_centerline_failed.txt"
         start_p_file = f"{lm_folder}aorta_start_point.txt"
@@ -3114,116 +3251,152 @@ def compute_center_line(
             return True
 
         if os.path.exists(cl_name_fail):
-            msg = f"Centerline failed before on {aorta_surf_name}"
+            msg = f"Centerline failed before on {aorta_segm_in}"
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
             return False
 
         if verbose:
-            print(f"Computing centerline from {aorta_surf_name}")
+            print(f"Computing centerline from {aorta_segm_in}")
 
-        if not clutils.compute_single_center_line(
-            aorta_surf_name, cl_name, start_p_file, end_p_file
-        ):
-            msg = f"Failed to compute centerline from {aorta_surf_name}"
+        label_map = read_nifti_with_logging_cached(aorta_segm_in, verbose, quiet, write_log_file, output_folder)
+        if label_map is None:
+            return False
+
+        start_point = clutils.read_landmarks(start_p_file)
+        end_point = clutils.read_landmarks(end_p_file)
+        if start_point is None or end_point is None:
+            print(f"Could not read landmarks {start_p_file} or {end_p_file}")
+            return False
+
+        aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point, output_folder, verbose, quiet,
+                                            write_log_file, scan_id=aorta_segm_in)
+        if not aorta_centerline.compute_centerline():
+            if debug:
+                writer = vtk.vtkXMLPolyDataWriter()
+                writer.SetFileName(skeleton_pd_name)
+                writer.SetInputData(aorta_centerline.skeleton_polydata)
+                writer.Write()
+
+                writer.SetFileName(pruned_skeleton_pd_name)
+                writer.SetInputData(aorta_centerline.pruned_skeleton)
+                writer.Write()
+
+                writer.SetFileName(dijkstra_path_name)
+                writer.SetInputData(aorta_centerline.dijkstra_path)
+                writer.Write()
+
+            msg = f"Failed to compute centerline from {aorta_segm_in}"
             if not quiet:
                 print(msg)
             if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
+                write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
             with open(cl_name_fail, "w") as f:
-                f.write(f"Failed to compute centerline from {aorta_surf_name}")
+                f.write(f"Failed to compute centerline from {aorta_segm_in}")
             return False
-        return True
 
+        writer = vtk.vtkXMLPolyDataWriter()
+        if debug:
+            writer.SetFileName(skeleton_pd_name)
+            writer.SetInputData(aorta_centerline.skeleton_polydata)
+            writer.Write()
+
+            writer.SetFileName(pruned_skeleton_pd_name)
+            writer.SetInputData(aorta_centerline.pruned_skeleton)
+            writer.Write()
+
+            writer.SetFileName(dijkstra_path_name)
+            writer.SetInputData(aorta_centerline.dijkstra_path)
+            writer.Write()
+
+        cl_out = aorta_centerline.get_centerline_as_polydata(sample_spacing=0.25)
+        writer.SetFileName(cl_name)
+        writer.SetInputData(cl_out)
+        writer.Write()
+        return True
     if scan_type == "5":
-        aorta_surf_name = f"{surface_folder}aorta_annulus_surface_for_centerline.vtp"
-        cl_name = f"{cl_folder}aorta_centerline_annulus.vtp"
-        cl_name_fail = f"{cl_folder}aorta_centerline_annulus_failed.txt"
-        start_p_file = f"{lm_folder}aorta_start_point_annulus.txt"
-        end_p_file = f"{lm_folder}aorta_end_point_annulus.txt"
+        for part in ["annulus", "descending"]:
+            if part == "annulus":
+                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_extended_inpaint.nii.gz"
+                if use_ts_org_segmentations:
+                    aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_extended_inpaint_ts_org.nii.gz"
+            else:
+                aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_inpaint.nii.gz"
+                if use_ts_org_segmentations:
+                    aorta_segm_in = f"{segm_folder}aorta_lumen_{part}_inpaint_ts_org.nii.gz"
 
-        if os.path.exists(cl_name):
+            skeleton_pd_name = f"{surface_folder}aorta_{part}_skeleton.vtp"
+            pruned_skeleton_pd_name = f"{surface_folder}aorta_{part}_pruned_skeleton.vtp"
+            dijkstra_path_name = f"{surface_folder}aorta_{part}_dijkstra_path.vtp"
+            cl_name = f"{cl_folder}aorta_centerline_{part}.vtp"
+            cl_name_fail = f"{cl_folder}aorta_centerline_{part}_failed.txt"
+            start_p_file = f"{lm_folder}aorta_start_point_{part}.txt"
+            end_p_file = f"{lm_folder}aorta_end_point_{part}.txt"
+
+            if os.path.exists(cl_name):
+                if verbose:
+                    print(f"{cl_name} already exists - skipping")
+                continue
+            if os.path.exists(cl_name_fail):
+                msg = f"Centerline failed before on {aorta_segm_in}"
+                if not quiet:
+                    print(msg)
+                if write_log_file:
+                    write_message_to_log_file(
+                        base_dir=output_folder, message=msg, level="error"
+                    )
+                return False
+
             if verbose:
-                print(f"{cl_name} already exists - skipping")
-            return True
+                print(f"Computing centerline from {aorta_segm_in}")
 
-        if os.path.exists(cl_name_fail):
-            msg = f"Centerline failed before on {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            return False
+            label_map = read_nifti_with_logging_cached(
+                aorta_segm_in, verbose, quiet, write_log_file, output_folder)
+            if label_map is None:
+                return False
 
-        if verbose:
-            print(f"Computing centerline from {aorta_surf_name}")
+            start_point = clutils.read_landmarks(start_p_file)
+            end_point = clutils.read_landmarks(end_p_file)
+            if start_point is None or end_point is None:
+                print(f"Could not read landmarks {start_p_file} or {end_p_file}")
+                return False
 
-        if not clutils.compute_single_center_line(
-            aorta_surf_name, cl_name, start_p_file, end_p_file
-        ):
-            msg = f"Failed to compute centerline from {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            with open(cl_name_fail, "w") as f:
-                f.write(f"Failed to compute centerline from {aorta_surf_name}")
-            return False
+            aorta_centerline = AortaCenterliner(label_map, scan_type, start_point, end_point,
+                                                output_folder, verbose, quiet, write_log_file, scan_id=aorta_segm_in)
+            if not aorta_centerline.compute_centerline():
+                msg = f"Failed to compute centerline from {aorta_segm_in}"
+                if not quiet:
+                    print(msg)
+                if write_log_file:
+                    write_message_to_log_file(
+                        base_dir=output_folder, message=msg, level="error"
+                    )
+                with open(cl_name_fail, "w") as f:
+                    f.write(f"Failed to compute centerline from {aorta_segm_in}")
+                return False
 
-        aorta_surf_name = f"{surface_folder}aorta_descending_surface_for_centerline.vtp"
-        cl_name = f"{cl_folder}aorta_centerline_descending.vtp"
-        cl_name_fail = f"{cl_folder}aorta_centerline_descending_failed.txt"
-        start_p_file = f"{lm_folder}aorta_start_point_descending.txt"
-        end_p_file = f"{lm_folder}aorta_end_point_descending.txt"
+            writer = vtk.vtkXMLPolyDataWriter()
+            if debug:
+                writer.SetFileName(skeleton_pd_name)
+                writer.SetInputData(aorta_centerline.skeleton_polydata)
+                writer.Write()
 
-        if os.path.exists(cl_name):
-            if verbose:
-                print(f"{cl_name} already exists - skipping")
-            return True
+                writer.SetFileName(pruned_skeleton_pd_name)
+                writer.SetInputData(aorta_centerline.pruned_skeleton)
+                writer.Write()
 
-        if os.path.exists(cl_name_fail):
-            msg = f"Centerline failed before on {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            return False
+                writer.SetFileName(dijkstra_path_name)
+                writer.SetInputData(aorta_centerline.dijkstra_path)
+                writer.Write()
 
-        if verbose:
-            print(f"Computing centerline from {aorta_surf_name}")
-
-        if not clutils.compute_single_center_line(
-            aorta_surf_name, cl_name, start_p_file, end_p_file
-        ):
-            msg = f"Failed to compute centerline from {aorta_surf_name}"
-            if not quiet:
-                print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            with open(cl_name_fail, "w") as f:
-                f.write(f"Failed to compute centerline from {aorta_surf_name}")
-            return False
+            cl_out = aorta_centerline.get_centerline_as_polydata(sample_spacing=0.25)
+            writer.SetFileName(cl_name)
+            writer.SetInputData(cl_out)
+            writer.Write()
         return True
 
-    msg = f"Can not compute centerline for scan type {scan_type}"
-    if not quiet:
-        print(msg)
-    if write_log_file:
-        write_message_to_log_file(base_dir=output_folder, message=msg, level="warning")
     return False
 
 
@@ -3409,7 +3582,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(
     low_infra_p = cl.GetPoint(low_idx)
     low_infra_dist = cl.GetPointData().GetScalars().GetValue(low_idx)
 
-    low_normal = clutils.estimate_normal_from_centerline(cl, low_idx)
+    low_normal = clutils.get_tangent_from_centerline(cl, low_idx)
     if low_normal is None:
         msg = f"Could not estimate normal at renal point. Something wrong. No infrarenal points for {cl_file}"
         if verbose:
@@ -3474,7 +3647,7 @@ def compute_infrarenal_section_using_kidney_to_kidney_line(
 
     infra_p = cl.GetPoint(infra_idx)
 
-    normal = clutils.estimate_normal_from_centerline(cl, infra_idx)
+    normal = clutils.get_tangent_from_centerline(cl, infra_idx)
     if normal is None:
         msg = f"Could not estimate normal at renal point. Something wrong. No infrarenal point for {cl_file}"
         if verbose:
@@ -3621,8 +3794,8 @@ def compute_aortic_arch_landmarks_on_centerline(
     )
     min_pos = cl.GetPoint(min_idx)
     max_pos = cl.GetPoint(max_idx)
-    min_normal = clutils.estimate_normal_from_centerline(cl, min_idx)
-    max_normal = clutils.estimate_normal_from_centerline(cl, max_idx)
+    min_normal = clutils.get_tangent_from_centerline(cl, min_idx)
+    max_normal = clutils.get_tangent_from_centerline(cl, max_idx)
 
     if min_normal is None or max_normal is None:
         msg = f"Could not estimate normal at aortic arch point. Something wrong. No aortic arch point for {cl_file}"
@@ -3767,7 +3940,7 @@ def compute_diaphragm_point_on_centerline(
 
     p_cl_diaphragm = cl.GetPoint(idx_diaphragm)
 
-    diaphragm_normal = clutils.estimate_normal_from_centerline(cl, idx_diaphragm)
+    diaphragm_normal = clutils.get_tangent_from_centerline(cl, idx_diaphragm)
     if diaphragm_normal is None:
         msg = f"Could not estimate normal at diaphragm point. Something wrong. No diaphragm point for {cl_file}"
         if verbose:
@@ -3857,7 +4030,7 @@ def compute_ventricularoaortic_point_on_centerline(
     dist_ventri = cl.GetPointData().GetScalars().GetValue(idx_ventri)
     p_cl_ventri = cl.GetPoint(idx_ventri)
 
-    ventri_normal = clutils.estimate_normal_from_centerline(cl, idx_ventri)
+    ventri_normal = clutils.get_tangent_from_centerline(cl, idx_ventri)
     if ventri_normal is None:
         msg = f"Could not estimate normal at ventricularoaortic point. Something wrong. No ventricularoaortic point for {cl_file}"
         if verbose:
@@ -4105,30 +4278,27 @@ def compute_straightened_volume_using_cpr(
             )
         return False
 
-    scan_type = scan_type_stats["scan_type"]
+    # scan_type = scan_type_stats["scan_type"]
 
     ct_img = read_nifti_with_logging_cached(
         input_file, verbose, quiet, write_log_file, output_folder
     )
     if ct_img is None:
         return False
-    #
-    # try:
-    #     ct_img = sitk.ReadImage(input_file)
-    # except RuntimeError as e:
-    #     msg = f"Could not read {input_file} for straigthening: {str(e)} got an exception"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     if n_aorta_parts == 1:
         cl_file = f"{cl_folder}aorta_centerline.vtp"
         img_straight_name = f"{segm_folder}straight_aorta_img.nii.gz"
-        if os.path.exists(img_straight_name):
+        if use_raw_segmentations:
+            label_name = f"{segm_folder}aorta_lumen_extended_ts_org.nii.gz"
+            label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
+        else:
+            label_name = f"{segm_folder}aorta_lumen_extended.nii.gz"
+            label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
+
+        if os.path.exists(label_straight_name):
             if verbose:
-                print(f"{img_straight_name} already exists - skipping")
+                print(f"{label_straight_name} already exists - skipping")
             return True
 
         cl_in = vtk.vtkXMLPolyDataReader()
@@ -4136,37 +4306,11 @@ def compute_straightened_volume_using_cpr(
         cl_in.Update()
         cl = cl_in.GetOutput()
 
-        # For scan type 2, the aorta is not coupled with LV
-        if scan_type == "2":
-            if use_raw_segmentations:
-                label_name = f"{segm_folder}aorta_lumen_hires_raw.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
-            else:
-                label_name = f"{segm_folder}aorta_lumen.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
-        else:
-            if use_raw_segmentations:
-                label_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
-            else:
-                label_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_label.nii.gz"
-
         label_img = read_nifti_with_logging_cached(
             label_name, verbose, quiet, write_log_file, output_folder
         )
         if label_img is None:
             return False
-
-        # try:
-        #     label_img = sitk.ReadImage(label_name)
-        # except RuntimeError as e:
-        #     msg = f"Could not read {label_name} for straigthening: {str(e)} got an exception"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
 
         if not clutils.compute_single_straightened_volume_using_cpr(
             cl, ct_img, label_img, img_straight_name, label_straight_name, verbose
@@ -4184,9 +4328,22 @@ def compute_straightened_volume_using_cpr(
         for part in parts:
             cl_file = f"{cl_folder}aorta_centerline_{part}.vtp"
             img_straight_name = f"{segm_folder}straight_aorta_{part}_img.nii.gz"
-            if os.path.exists(img_straight_name):
+            if use_raw_segmentations:
+                label_name = f"{segm_folder}aorta_lumen_{part}_ts_org.nii.gz"
+                if part == "annulus":
+                    label_name = f"{segm_folder}aorta_lumen_{part}_extended_ts_org.nii.gz"
+                label_straight_name = (
+                    f"{segm_folder}straight_aorta_{part}_label_ts_org.nii.gz"
+                )
+            else:
+                label_name = f"{segm_folder}aorta_lumen_{part}.nii.gz"
+                if part == "annulus":
+                    label_name = f"{segm_folder}aorta_lumen_{part}_extended.nii.gz"
+                label_straight_name = f"{segm_folder}straight_aorta_{part}_label.nii.gz"
+
+            if os.path.exists(label_straight_name):
                 if verbose:
-                    print(f"{img_straight_name} already exists - skipping")
+                    print(f"{label_straight_name} already exists - skipping")
                 return True
 
             cl_in = vtk.vtkXMLPolyDataReader()
@@ -4194,34 +4351,12 @@ def compute_straightened_volume_using_cpr(
             cl_in.Update()
             cl = cl_in.GetOutput()
 
-            if use_raw_segmentations:
-                label_name = f"{segm_folder}aorta_lumen_{part}_raw.nii.gz"
-                if part == "annulus":
-                    label_name = f"{segm_folder}aorta_left_ventricle_ts_org.nii.gz"
-                label_straight_name = (
-                    f"{segm_folder}straight_aorta_{part}_label_ts_org.nii.gz"
-                )
-            else:
-                label_name = f"{segm_folder}aorta_lumen_{part}.nii.gz"
-                if part == "annulus":
-                    label_name = f"{segm_folder}aorta_left_ventricle.nii.gz"
-                label_straight_name = f"{segm_folder}straight_aorta_{part}_label.nii.gz"
-
             label_img = read_nifti_with_logging_cached(
                 label_name, verbose, quiet, write_log_file, output_folder
             )
             if label_img is None:
                 return False
-            #
-            # try:
-            #     label_img = sitk.ReadImage(label_name)
-            # except RuntimeError as e:
-            #     msg = f"Could not read {label_name} for straigthening: {str(e)} got an exception"
-            #     if not quiet:
-            #         print(msg)
-            #     if write_log_file:
-            #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-            #     return False
+
 
             if not clutils.compute_single_straightened_volume_using_cpr(
                 cl, ct_img, label_img, img_straight_name, label_straight_name, verbose
@@ -4616,7 +4751,7 @@ def identy_and_extract_samples_from_straight_volume_2_parts_aorta(
     """
     ext = ""
     if use_raw_segmentations:
-        ext = "_ts_original"
+        ext = "_ts_org"
 
     cl_sampling_in_annulus = f"{cl_folder}straight_labelmap_sampling_annulus.csv"
     cl_file_annulus = f"{cl_folder}aorta_centerline_annulus.vtp"
@@ -5113,7 +5248,7 @@ def identy_and_extract_samples_from_straight_volume(
 
     ext = ""
     if use_raw_segmentations:
-        ext = "_ts_original"
+        ext = "_ts_org"
 
     straight_vol_in = f"{segm_folder}straight_aorta_img.nii.gz"
     straight_label_in = f"{segm_folder}straight_aorta_label{ext}.nii.gz"
@@ -5165,31 +5300,11 @@ def identy_and_extract_samples_from_straight_volume(
     if label_img is None:
         return False
 
-    # try:
-    #     label_img = sitk.ReadImage(straight_label_in)
-    # except RuntimeError as e:
-    #     msg = f"Got an exception {str(e)} reading {straight_label_in}"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
-
     straight_img = read_nifti_with_logging_cached(
         straight_vol_in, verbose, quiet, write_log_file, output_folder
     )
     if straight_img is None:
         return False
-
-    # try:
-    #     straight_img = sitk.ReadImage(straight_vol_in)
-    # except RuntimeError as e:
-    #     msg = f"Got an exception {str(e)} reading {straight_vol_in}"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     straight_img_np = sitk.GetArrayFromImage(straight_img)
     straight_img_np = straight_img_np.transpose(2, 1, 0)
@@ -5199,8 +5314,6 @@ def identy_and_extract_samples_from_straight_volume(
     dims = label_img_np.shape
 
     spacing = label_img.GetSpacing()
-    # n_slices = dims[2]
-    # max_cl_dist = spacing * n_slices
 
     if not os.path.exists(cl_sampling_in):
         msg = f"Could not read {cl_sampling_in}"
@@ -5962,9 +6075,7 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(
     skimage.io.imsave(
         out_file_descending, np.flipud(single_slice_descending_1.transpose(1, 0, 2))
     )
-    skimage.io.imsave(
-        out_file_2_descending, np.flipud(single_slice_descending_2.transpose(1, 0, 2))
-    )
+    skimage.io.imsave(out_file_2_descending, np.flipud(single_slice_descending_2.transpose(1, 0, 2)))
 
     # Combine into two images
     single_slice_annulus_1 = np.flipud(single_slice_annulus_1.transpose(1, 0, 2))
@@ -5977,9 +6088,7 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(
     new_height = shp_annulus_1[0] + shp_descending_1[0] + spacing
     new_image = np.zeros([new_height, new_width, 3]).astype(np.uint8)
     new_image[0 : shp_annulus_1[0], 0 : shp_annulus_1[1]] = single_slice_annulus_1
-    new_image[shp_annulus_1[0] + spacing :, 0 : shp_descending_1[1]] = (
-        single_slice_descending_1
-    )
+    new_image[shp_annulus_1[0] + spacing :, 0 : shp_descending_1[1]] = single_slice_descending_1
 
     imageio.imwrite(out_file_combined_1, new_image)
 
@@ -6001,9 +6110,8 @@ def create_longitudinal_figure_from_straight_volume_from_2_part_aort(
     return True
 
 
-def create_longitudinal_figure_from_straight_volume(
-    cl_folder, segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder
-):
+def create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet, write_log_file,
+                                                    output_folder, compare_with_raw_ts_segmentations=False):
     """
     Based on the sampled straight volume, we here extract the samples along the long axis
     """
@@ -6036,6 +6144,7 @@ def create_longitudinal_figure_from_straight_volume(
 
     straight_vol_in = f"{segm_folder}straight_aorta_img.nii.gz"
     straight_label_in = f"{segm_folder}straight_aorta_label.nii.gz"
+    straight_label_ts_org_in = f"{segm_folder}straight_aorta_label_ts_org.nii.gz"
 
     out_file = f"{cl_folder}straight_volume_mid_cut.png"
     out_file_2 = f"{cl_folder}straight_volume_mid_cut_2.png"
@@ -6063,42 +6172,29 @@ def create_longitudinal_figure_from_straight_volume(
     )
     if label_img is None:
         return False
-    #
-    # try:
-    #     label_img = sitk.ReadImage(straight_label_in)
-    # except RuntimeError as e:
-    #     msg = f"Got an exception {str(e)} reading {straight_label_in}"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
+
+    label_img_np_ts_org = None
+    if compare_with_raw_ts_segmentations:
+        label_img_ts = read_nifti_with_logging_cached(
+            straight_label_ts_org_in, verbose, quiet, write_log_file, output_folder
+        )
+        if label_img_ts is not None:
+            label_img_np_ts_org = sitk.GetArrayFromImage(label_img_ts)
+            label_img_np_ts_org = label_img_np_ts_org.transpose(2, 1, 0)
 
     straight_img = read_nifti_with_logging_cached(
         straight_vol_in, verbose, quiet, write_log_file, output_folder
     )
     if straight_img is None:
         return False
-    #
-    # try:
-    #     straight_img = sitk.ReadImage(straight_vol_in)
-    # except RuntimeError as e:
-    #     msg = f"Got an exception {str(e)} reading {straight_vol_in}"
-    #     if not quiet:
-    #         print(msg)
-    #     if write_log_file:
-    #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-    #     return False
 
     straight_img_np = sitk.GetArrayFromImage(straight_img)
     straight_img_np = straight_img_np.transpose(2, 1, 0)
 
     label_img_np = sitk.GetArrayFromImage(label_img)
     label_img_np = label_img_np.transpose(2, 1, 0)
-    # dims = label_img_np.shape
 
     spacing = label_img.GetSpacing()
-    # n_slices = dims[2]
 
     # Defaults
     img_window = 200
@@ -6130,6 +6226,36 @@ def create_longitudinal_figure_from_straight_volume(
     boundary = find_boundaries(largest_cc, mode="thick")
     boundary_2 = find_boundaries(largest_cc_2, mode="thick")
 
+    boundary_ts_org = None
+    boundary_2_ts_org = None
+    if label_img_np_ts_org is not None:
+        dims = label_img_np_ts_org.shape
+        mid_id = dims[0] // 2
+        single_slice_np = label_img_np_ts_org[mid_id, :, :]
+
+        mid_id_2 = dims[1] // 2
+        single_slice_np_2 = label_img_np_ts_org[:, mid_id_2, :]
+
+        # Since we do this only for visualization we keep all components
+        # especially useful when raw ts segmentations include dissections etc
+        keep_largest = False
+        if keep_largest:
+            #  only keep one connected component in the slice. The one that is in the middle
+            slice_components = label(single_slice_np)
+            mid_label = slice_components[dims[1] // 2, dims[2] // 2]
+            largest_cc = slice_components == mid_label
+
+            slice_components = label(single_slice_np_2)
+            mid_label = slice_components[dims[1] // 2, dims[2] // 2]
+            largest_cc_2 = slice_components == mid_label
+        else:
+            largest_cc = single_slice_np > 0
+            largest_cc_2 = single_slice_np_2 > 0
+
+        # contour = find_contours(img_as_ubyte(largest_cc), 0.5)[0]
+        boundary_ts_org = find_boundaries(largest_cc, mode="thick")
+        boundary_2_ts_org = find_boundaries(largest_cc_2, mode="thick")
+
     # skimage.io.imsave(max_slice_boundary_out, boundary)
     single_slice_np_img = straight_img_np[mid_id, :, :]
     single_slice_np_img_2 = straight_img_np[:, mid_id_2, :]
@@ -6146,6 +6272,12 @@ def create_longitudinal_figure_from_straight_volume(
 
     scaled_2_rgb = color.gray2rgb(scaled_ubyte)
     scaled_2_rgb_2 = color.gray2rgb(scaled_ubyte_2)
+
+    if boundary_ts_org is not None:
+        rgb_boundary = [0, 255, 0]
+        scaled_2_rgb[boundary_ts_org > 0] = rgb_boundary
+        scaled_2_rgb_2[boundary_2_ts_org > 0] = rgb_boundary
+
     rgb_boundary = [255, 0, 0]
 
     # Draw boundary last for visual style
@@ -6306,6 +6438,8 @@ def gather_whole_heart_volumes(segm_folder, stats):
     if not os.path.exists(segm_name_hc):
         return False
 
+    if not os.path.exists(segm_name_hc):
+        return False
     segm_data, spacing, size = read_nifti_itk_to_numpy(segm_name_hc)
 
     if segm_data is None:
@@ -6336,7 +6470,7 @@ def compile_aorta_cut_statistics(cl_folder, compare_with_raw_segmentations=False
     cl_dir = cl_folder
     ext = ""
     if compare_with_raw_segmentations:
-        ext = "_ts_original"
+        ext = "_ts_org"
 
     # currently we do not use the colors
     cut_infos = [
@@ -6468,7 +6602,7 @@ def compute_all_aorta_statistics(
     verbose,
     quiet,
     write_log_file,
-    output_folder,
+    output_folder, compare_with_raw_segmentations=False
 ):
     """
     Compute aorta statistics from scan.
@@ -6491,15 +6625,13 @@ def compute_all_aorta_statistics(
     if verbose:
         print(f"Computing {stats_file}")
 
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(input_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
-
+    scan_id = get_pure_scan_file_name(input_file)
     stats = {"scan_name": input_file, "base_name": scan_id}
 
-    ao_version = importlib.metadata.version("AortaExplorer")
+    try:
+        ao_version = importlib.metadata.version("AortaExplorer")
+    except importlib.metadata.PackageNotFoundError:
+        ao_version = "unknown"
     stats["aorta_explorer_version"] = ao_version
 
     last_error_message = get_last_error_message()
@@ -6634,6 +6766,11 @@ def compute_all_aorta_statistics(
     if cut_stats is not None:
         stats = {**stats, **cut_stats}
 
+    if compare_with_raw_segmentations:
+        cut_stats_ts = compile_aorta_cut_statistics(cl_folder, True)
+        if cut_stats_ts is not None:
+            stats = {**stats, **cut_stats_ts}
+
     ati_stats = read_json_file(ati_stats_file)
     if ati_stats is not None:
         stats = {**stats, **ati_stats}
@@ -6678,13 +6815,7 @@ def aorta_visualization(
     if verbose:
         print(f"Creating aorta visualization {vis_file}")
 
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(input_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
-
-
+    scan_id = get_pure_scan_file_name(input_file)
     render_aorta_data = RenderAortaData(
         win_size, scan_id, save_to_file, stats_folder, segm_folder, cl_folder
     )
@@ -6717,12 +6848,7 @@ def do_aorta_analysis(
     Compute aorta data
     input_file: input CT file with path
     """
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(input_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
-
+    scan_id = get_pure_scan_file_name(input_file)
     segm_folder = f"{output_folder}{scan_id}/segmentations/"
     stats_folder = f"{output_folder}{scan_id}/statistics/"
     surface_folder = f"{output_folder}{scan_id}/surfaces/"
@@ -6737,7 +6863,7 @@ def do_aorta_analysis(
 
     # It is possible to compare with the results that the raw TotalSegmentator segmentations would give
     # This is mainly for research purposes to see how much the results differ
-    compare_with_raw_ts_segmentations = False
+    compare_with_raw_ts_segmentations = params["compare_with_totalsegmentator"]
 
     Path(stats_folder).mkdir(parents=True, exist_ok=True)
     Path(surface_folder).mkdir(parents=True, exist_ok=True)
@@ -6797,9 +6923,7 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = extract_top_of_iliac_arteries(
-            input_file, segm_folder, verbose, quiet, write_log_file, output_folder
-        )
+        success = extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
     if success:
         success = extract_aortic_calcifications(
             input_file,
@@ -6831,7 +6955,7 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = combine_aorta_and_left_ventricle(
+        success = combine_aorta_and_left_ventricle_and_iliac_arteries(
             input_file,
             segm_folder,
             lm_folder,
@@ -6843,7 +6967,7 @@ def do_aorta_analysis(
             use_ts_org_segmentations=False,
         )
     if success:
-        success = combine_aorta_and_left_ventricle(
+        success = combine_aorta_and_left_ventricle_and_iliac_arteries(
             input_file,
             segm_folder,
             lm_folder,
@@ -6874,6 +6998,9 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
+        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet,
+                                                write_log_file, output_folder, use_ts_org_segmentations=use_org_ts_segmentations)
+    if success:
         success = extract_surfaces_for_centerlines(
             segm_folder,
             stats_folder,
@@ -6896,16 +7023,9 @@ def do_aorta_analysis(
             use_ts_org_segmentations=use_org_ts_segmentations,
         )
     if success:
-        success = compute_center_line(
-            stats_folder,
-            lm_folder,
-            surface_folder,
-            cl_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
+        success = compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder,
+                                                     verbose, quiet, write_log_file, output_folder,
+                                                     use_ts_org_segmentations=use_org_ts_segmentations)
     if success:
         success = compute_infrarenal_section_using_kidney_to_kidney_line(
             segm_folder,
@@ -7000,28 +7120,19 @@ def do_aorta_analysis(
             output_folder,
         )
     if success:
-        success = identy_and_extract_samples_from_straight_volume(
-            cl_folder,
-            segm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-            use_raw_segmentations=False,
-        )
+        success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                                  write_log_file, output_folder,
+                                                                  use_raw_segmentations=False)
+    if success and compare_with_raw_ts_segmentations:
+        success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                                  write_log_file, output_folder,
+                                                                  use_raw_segmentations=True)
     if success:
         success = combine_cross_section_images_into_one(cl_folder, verbose)
     if success:
-        success = create_longitudinal_figure_from_straight_volume(
-            cl_folder,
-            segm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
+        success = create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose,
+                                                                  quiet, write_log_file, output_folder,
+                                                                  compare_with_raw_ts_segmentations)
     if success:
         success = compute_aortic_tortuosity_statistics(
             input_file,
@@ -7044,6 +7155,7 @@ def do_aorta_analysis(
         quiet,
         write_log_file,
         output_folder,
+        compare_with_raw_segmentations=compare_with_raw_ts_segmentations
     )
 
     # Also try to create visualization of the things we achieved even in erro
@@ -7076,10 +7188,17 @@ def computer_process(
         elapsed_time = time.time() - local_start_time
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
+        time_left_str = display_time(int(est_time_left))
+        time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
-            print(
-                f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s"
-            )
+            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}.\n"
+                  f"Time left {time_left_str} for {q_size} scans (if only one process)")
+        pure_id = get_pure_scan_file_name(input_file)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        time_stats_out = f"{stats_folder}aorta_proc_time.txt"
+        with open(time_stats_out, "w") as f:
+            f.write(f"{elapsed_time}\n")
+
 
 
 def aorta_analysis(
@@ -7100,6 +7219,24 @@ def aorta_analysis(
     # no need to spawn more processes than files
     num_processes = min(num_processes, len(in_files))
 
+    files_to_process = []
+    for fname in in_files:
+        pure_id = get_pure_scan_file_name(fname)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        vis_folder = f"{output_folder}{pure_id}/visualization/"
+        stats_file = f"{stats_folder}/aorta_statistics.json"
+        vis_file = f"{vis_folder}aorta_visualization.png"
+        if not os.path.exists(stats_file) or not os.path.exists(vis_file):
+            files_to_process.append(fname)
+    if verbose:
+        print(f"Found {len(files_to_process)} files to compute aorta analysis out of {len(in_files)} files")
+
+    in_files = files_to_process
+    if len(in_files) == 0:
+        if verbose:
+            print("No files to compute aorta analysis on  - all done!")
+        return
+
     # no need to do multiprocessing for one file
     if len(in_files) == 1:
         input_file = in_files[0].strip()
@@ -7110,9 +7247,14 @@ def aorta_analysis(
             verbose, quiet, write_log_file, params, output_folder, input_file
         )
         elapsed_time = time.time() - local_start_time
+        elapsed_time_str = display_time(int(elapsed_time))
         if verbose:
-            print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
-
+            print(f"Done with {input_file} - took {elapsed_time_str}")
+        pure_id = get_pure_scan_file_name(input_file)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        time_stats_out = f"{stats_folder}aorta_proc_time.txt"
+        with open(time_stats_out, "w") as f:
+            f.write(f"{elapsed_time}\n")
     else:
         process_queue = mp.Queue()
         for idx in in_files:

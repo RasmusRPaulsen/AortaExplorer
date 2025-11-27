@@ -131,6 +131,29 @@ def read_nifti_itk_to_vtk(
     return vtk_image
 
 
+def convert_sitk_image_to_surface(sitk_image):
+    vtk_img = sitk2vtk(sitk_image)
+    if vtk_img is None:
+        return None
+
+    mc = vtk.vtkMarchingCubes()
+    mc.SetInputData(vtk_img)
+    mc.SetValue(0, 0.5)
+    mc.Update()
+
+    if mc.GetOutput().GetNumberOfPoints() < 10:
+        print("No isosurface found")
+        return None
+
+    surface = mc.GetOutput()
+    cleaner = vtk.vtkCleanPolyData()
+    cleaner.SetInputData(surface)
+    cleaner.Update()
+    surface = cleaner.GetOutput()
+
+    return surface
+
+
 def convert_label_map_to_surface(
     label_name, reset_direction_matrix=False, segment_id=1, only_largest_component=False
 ):

@@ -3,7 +3,8 @@ from totalsegmentator.python_api import totalsegmentator
 from pathlib import Path
 import time
 import multiprocessing as mp
-from aortaexplorer.general_utils import write_message_to_log_file, clear_last_error_message
+from aortaexplorer.general_utils import (write_message_to_log_file, clear_last_error_message, get_pure_scan_file_name,
+                                         display_time)
 from aortaexplorer.io_utils import read_nifti_with_logging
 import SimpleITK as sitk
 import numpy as np
@@ -29,12 +30,7 @@ def do_totalsegmentator(
             )
         return False
 
-    # Get pure name of input file without path and extension
-    scan_id = os.path.basename(input_file)
-    scan_id = os.path.splitext(scan_id)[0]
-    if scan_id.endswith(".nii"):
-        scan_id = os.path.splitext(scan_id)[0]
-
+    scan_id = get_pure_scan_file_name(input_file)
     ts_output_folder = f"{output_folder}{scan_id}/segmentations/"
     total_out_name = f"{ts_output_folder}total.nii.gz"
     hc_out_name = f"{ts_output_folder}heartchambers_highres.nii.gz"
@@ -122,16 +118,6 @@ def do_totalsegmentator(
         if label_img is None:
             return False
 
-        # try:
-        #     label_img = sitk.ReadImage(total_out_name)
-        # except RuntimeError as e:
-        #     msg = f"Could not red {total_out_name} after TotalSegmentator run. Exception {str(e)}"
-        #     if not quiet:
-        #         print(msg)
-        #     if write_log_file:
-        #         write_message_to_log_file(base_dir=output_folder, message=msg, level="error")
-        #     return False
-
         spacing = label_img.GetSpacing()
         vox_size = spacing[0] * spacing[1] * spacing[2]
         label_img_np = sitk.GetArrayFromImage(label_img)
@@ -194,16 +180,22 @@ def computer_process(
                 f"Process {process_id} running TotalSegmentator on: {input_file} - {q_size} left"
             )
         local_start_time = time.time()
-        do_totalsegmentator(
-            device, verbose, quiet, write_log_file, output_folder, input_file
-        )
+        do_totalsegmentator(device, verbose, quiet, write_log_file, output_folder, input_file)
         elapsed_time = time.time() - local_start_time
+        pure_id = get_pure_scan_file_name(input_file)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        Path(stats_folder).mkdir(parents=True, exist_ok=True)
+        time_stats_out = f"{stats_folder}totalsegmentator_proc_time.txt"
+        with open(time_stats_out, "w") as f:
+            f.write(f"{elapsed_time}\n")
+
         q_size = process_queue.qsize()
         est_time_left = q_size * elapsed_time
+        time_left_str = display_time(int(est_time_left))
+        time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
-            print(
-                f"Process {process_id} done with {input_file} - took {elapsed_time:.1f} s. Time left {est_time_left:.1f} s"
-            )
+            print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}.\n"
+                  f"Time left {time_left_str} for {q_size} scans (if only one process)")
 
 
 def compute_totalsegmentator_segmentations(
@@ -224,6 +216,23 @@ def compute_totalsegmentator_segmentations(
     # no need to spawn more processes than files
     num_processes = min(num_processes, len(in_files))
 
+    files_to_process = []
+    for fname in in_files:
+        pure_id = get_pure_scan_file_name(fname)
+        ts_output_folder = f"{output_folder}{pure_id}/segmentations/"
+        total_out_name = f"{ts_output_folder}total.nii.gz"
+        if not os.path.exists(total_out_name):
+            files_to_process.append(fname)
+
+    if verbose:
+        print(f"Found {len(files_to_process)} files to process with TotalSegmentator out of {len(in_files)} files")
+
+    in_files = files_to_process
+    if len(in_files) == 0:
+        if verbose:
+            print("No files to process with TotalSegmentator - all done!")
+        return
+
     # no need to do multiprocessing for one file
     if len(in_files) == 1:
         input_file = in_files[0].strip()
@@ -234,8 +243,15 @@ def compute_totalsegmentator_segmentations(
             device, verbose, quiet, write_log_file, output_folder, input_file
         )
         elapsed_time = time.time() - local_start_time
+        elapsed_time_str = display_time(int(elapsed_time))
         if verbose:
-            print(f"Done with {input_file} - took {elapsed_time:.1f} s.")
+            print(f"Done with {input_file} - took {elapsed_time_str}")
+        pure_id = get_pure_scan_file_name(input_file)
+        stats_folder = f"{output_folder}{pure_id}/statistics/"
+        time_stats_out = f"{stats_folder}totalsegmentator_proc_time.txt"
+        Path(stats_folder).mkdir(parents=True, exist_ok=True)
+        with open(time_stats_out, "w") as f:
+            f.write(f"{elapsed_time}\n")
     else:
         process_queue = mp.Queue()
         for idx in in_files:

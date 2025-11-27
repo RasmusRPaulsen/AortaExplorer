@@ -1,4 +1,69 @@
+import numpy as np
 from aortaexplorer.python_api import aortaexplorer, get_default_parameters
+from shutil import copyfile
+import os
+import re
+
+def remove_list_of_files(file_list):
+    for file_path in file_list:
+        try:
+            os.remove(file_path)
+        except FileNotFoundError:
+            pass
+
+
+def purge(dir, pattern):
+    for f in os.listdir(dir):
+        if pattern == "" or re.search(pattern, f):
+            os.remove(os.path.join(dir, f))
+
+def test_aortaexplorer_calcium_estimator():
+    params = get_default_parameters()
+    params["num_proc_general"] = 8
+    device = "gpu"
+    verbose = True
+    quiet = False
+    input_file = "/data/Data/RAPA/AortaExplorer/calcification_test_files.txt"
+    output_folder = "/data/Data/RAPA/AortaExplorer/calcification_tests/"
+
+    input_files = np.loadtxt(input_file, dtype=str)
+    # strip path and extensions
+    base_names = [f.split("/")[-1].replace(".nii.gz", "").replace(".nii", "") for f in input_files]
+
+    std_mults = [1, 3,  5]
+    hu_mins = [200, 300, 400, 600, 800]
+    for std_mult in std_mults:
+        for hu_min in hu_mins:
+            # delete all stats files in output to force recomputation
+            for base_name in base_names:
+                scan_id = base_name
+                stats_folder = f"{output_folder}{scan_id}/statistics/"
+                segm_folder = f"{output_folder}{scan_id}/segmentations/"
+                stats_folder = f"{output_folder}{scan_id}/statistics/"
+                lm_folder = f"{output_folder}{scan_id}/landmarks/"
+                cl_folder = f"{output_folder}{scan_id}/centerlines/"
+
+                files_to_delete = []
+                files_to_delete.append(f"{stats_folder}aorta_statistics.json")
+                files_to_delete.append(f"{stats_folder}aorta_calcification_stats.json")
+                remove_list_of_files(files_to_delete)
+
+                purge(segm_folder, r"aorta_*")
+                purge(segm_folder, r"straight_aorta*")
+                # Delete all
+                purge(cl_folder, "")
+
+
+
+            params["aorta_calcification_std_multiplier"] = std_mult
+            params["aorta_calcification_min_hu_value"] = hu_min
+            params["aorta_min_max_hu_value"] = hu_min
+            output_measurements = f"{output_folder}calcification_results_std{std_mult}_min{hu_min}.csv"
+
+            success = aortaexplorer(
+                input_file, output_folder, params, device=device, verbose=verbose, quiet=quiet
+            )
+            copyfile(f"{output_folder}AortaExplorer_measurements.csv", output_measurements)
 
 
 def test_aortaexplorer():
@@ -18,7 +83,9 @@ def test_aortaexplorer():
     # params["compute_centerline_from_ts_segmentation"] = True
 
     # Type 1:
-    # input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
+    #input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
+    # params["compare_with_totalsegmentator"] = True
+
     # input_file = "C:/data/AortaExplorer/input/DTU_053.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/DTU_060.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/DTU_074i.gz"
@@ -53,7 +120,57 @@ def test_aortaexplorer():
     # params["out_of_reconstruction_value"] = -1000
 
     # Type 2: problems computing CL from TS segmentation
-    input_file = "C:/data/AortaExplorer/input/CGPS-1_4281_SERIES0012.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_4281_SERIES0012.nii.gz"
+    input_file = "C:/data/AortaExplorer/input/CGPS-1_6954_SERIES0009.nii.gz"
+    params["aorta_calcification_std_multiplier"] = 2
+    params["aorta_calcification_min_hu_value"] = 300
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_7246_SERIES0009.nii.gz"
+
+    # Type 5: with old time FOV. Here the descending aorta is cut of by the FOV inside the scan
+    # input_file = "C:/data/AortaExplorer/input/LAA-1_0008_SERIES0002.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/LAA-1_0005_SERIES0005.nii.gz"
+    # output_folder = "C:/data/AortaExplorer/testoutput/"
+
+    # ImageCAS
+    # input_file = "C:/data/AortaExplorer/input/3.img.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/4.img.nii.gz"
+
+    # Type 5: where the aorta touches the side of the scan
+    # input_file = "C:/data/AortaExplorer/input/8.img.nii.gz"
+
+    # Public dataset
+    # input_file = "C:/data/AortaExplorer/input/D1.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/D2.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/abdominal_lymph_nodes.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/pancreas.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/subject001_CTA.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/subject002_CTA.nii.gz"
+
+    # input_file = "C:/data/AortaSeg24/images/images/subject053_CTA.nii.gz"
+    # input_file = "C:/data/AortaSeg24/images/images/subject075_CTA.nii.gz"
+
+    # Very large bisection
+    # input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
+    # params["compute_centerline_from_ts_segmentation"] = False
+    # params["compare_with_totalsegmentator"] = True
+
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_10000_SERIES0017.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_10943_SERIES0017.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_11194_SERIES0015_volume_0.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_12230_SERIES0004.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_12306_SERIES0019.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_12551_SERIES0020.nii.gz"
+    # params["compare_with_totalsegmentator"] = True
+
+    # input_file = "C:/data/AVT-Aorta/Dongyang/D1/D1.nrrd"
+    # input_file = "C:/data/AVT-Aorta/KiTS/K1/K1.nrrd"
+    # input_file = "C:/data/AVT-aorta/Rider/R1 (AD)/R1.nrrd"
+    # input_file = "C:/data/AVT-aorta/Rider/R3/R3.nrrd"
+    # input_file = "C:/data/AVT-Aorta/KiTS/K10/K10.nrrd"
+    # params["hounsfield_unit_offset"] = -1000
+    # input_file = "C:/data/AVT-Aorta/Dongyang/All/"
+    # input_file = "C:/data/Abdominal/Pancreas-CT/PANCREAS_0003/11-24-2015-PANCREAS0003-Pancreas-02648/"
+    # input_file = "C:/data/Abdominal/CTLymphNodes/manifest-IVhUf5Gd7581798897432071977/CT Lymph Nodes/ABD_LYMPH_001/09-14-2014-ABDLYMPH001-abdominallymphnodes-30274/abdominallymphnodes-26828/"
 
     output_folder = "C:/data/AortaExplorer/testoutput/"
 
@@ -79,4 +196,5 @@ def test_aortaexplorer():
 
 
 if __name__ == "__main__":
-    test_aortaexplorer()
+    # test_aortaexplorer()
+    test_aortaexplorer_calcium_estimator()

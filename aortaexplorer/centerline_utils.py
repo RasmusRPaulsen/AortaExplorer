@@ -15,13 +15,6 @@ from skimage.util import img_as_ubyte
 from skimage.exposure import rescale_intensity
 from skimage.draw import line
 
-# VMTK only works with a very specific environment
-try:
-    from vmtk import vmtkscripts
-except ImportError as e:
-    print(f"Failed to import vmtk name {e.name} and path {e.path}")
-    pass
-
 
 def read_landmarks(filename):
     if not os.path.exists(filename):
@@ -36,308 +29,23 @@ def read_landmarks(filename):
     return x, y, z
 
 
-def add_distances_from_landmark_to_centerline(in_center, lm_in):
+def get_tangent_from_centerline(cl, idx):
     """
-    Add scalar values to a center line where each value is the accumulated distance to the start point
-    :param in_center: vtk center line
-    :param lm_in: start landmark
-    :return: centerline with scalar values
-    """
-    n_points = in_center.GetNumberOfPoints()
-    # print(f"Number of points in centerline: {n_points}")
-
-    cen_p_start = in_center.GetPoint(0)
-    cen_p_end = in_center.GetPoint(n_points - 1)
-    dist_start = np.linalg.norm(np.subtract(lm_in, cen_p_start))
-    dist_end = np.linalg.norm(np.subtract(lm_in, cen_p_end))
-    # print(f"Dist start: {dist_start} end: {dist_end}")
-
-    start_idx = 0
-    inc = 1
-    # Go reverse
-    if dist_start > dist_end:
-        start_idx = n_points - 1
-        inc = -1
-
-    points = vtk.vtkPoints()
-    lines = vtk.vtkCellArray()
-    scalars = vtk.vtkDoubleArray()
-    scalars.SetNumberOfComponents(1)
-
-    idx = start_idx
-    p_1 = in_center.GetPoint(idx)
-    accumulated_dist = 0
-    pid = points.InsertNextPoint(p_1)
-    scalars.InsertNextValue(accumulated_dist)
-
-    while 0 < idx <= n_points:
-        idx += inc
-        p_2 = in_center.GetPoint(idx)
-        dist = np.linalg.norm(np.subtract(p_1, p_2))
-        # pid = points.InsertNextPoint(p_1)
-        # scalars.InsertNextValue(accumulated_dist)
-        accumulated_dist += dist
-        pid_2 = points.InsertNextPoint(p_2)
-        scalars.InsertNextValue(accumulated_dist)
-        lines.InsertNextCell(2)
-        lines.InsertCellPoint(pid)
-        lines.InsertCellPoint(pid_2)
-        p_1 = p_2
-        pid = pid_2
-
-    pd = vtk.vtkPolyData()
-    pd.SetPoints(points)
-    del points
-    pd.SetLines(lines)
-    del lines
-    pd.GetPointData().SetScalars(scalars)
-    del scalars
-
-    # print(f"Number of points in refined centerline: {pd.GetNumberOfPoints()}")
-    return pd
-
-
-def add_start_and_end_point_to_centerline(in_center, start_point, end_point):
-    """
-    Add start and end point centerline
-    """
-    n_points = in_center.GetNumberOfPoints()
-    # print(f"Number of points in centerline: {n_points}")
-
-    points = vtk.vtkPoints()
-    lines = vtk.vtkCellArray()
-
-    pid = points.InsertNextPoint(start_point)
-
-    for idx in range(n_points):
-        p_2 = in_center.GetPoint(idx)
-        pid_2 = points.InsertNextPoint(p_2)
-        lines.InsertNextCell(2)
-        lines.InsertCellPoint(pid)
-        lines.InsertCellPoint(pid_2)
-        pid = pid_2
-
-    pid_2 = points.InsertNextPoint(end_point)
-    lines.InsertNextCell(2)
-    lines.InsertCellPoint(pid)
-    lines.InsertCellPoint(pid_2)
-
-    pd = vtk.vtkPolyData()
-    pd.SetPoints(points)
-    del points
-    pd.SetLines(lines)
-    del lines
-
-    # print(f"Number of points in refined centerline: {pd.GetNumberOfPoints()}")
-    return pd
-
-
-def compute_spline_from_path(
-    cl_in, cl_out_file, spline_smoothing_factor=20, sample_spacing=0.25
-):
-    sum_dist = 0
-    n_points = cl_in.GetNumberOfPoints()
-
-    x = []
-    y_1 = []
-    y_2 = []
-    y_3 = []
-    p = cl_in.GetPoint(n_points - 1)
-    p_old = p
-    # Compute the three individual components of the path
-    # it is parameterised using the length along the path
-
-    for idx in range(n_points):
-        # We go backwards to fix a reverse distance problem
-        p = cl_in.GetPoint(n_points - idx - 1)
-        d = np.linalg.norm(np.array(p) - np.array(p_old))
-        sum_dist += d
-        p_old = p
-        x.append(sum_dist)
-        y_1.append(p[0])
-        y_2.append(p[1])
-        y_3.append(p[2])
-
-    min_x = 0
-    max_x = sum_dist
-
-    spl_1 = UnivariateSpline(x, y_1)
-    spl_2 = UnivariateSpline(x, y_2)
-    spl_3 = UnivariateSpline(x, y_3)
-    spl_1.set_smoothing_factor(spline_smoothing_factor)
-    spl_2.set_smoothing_factor(spline_smoothing_factor)
-    spl_3.set_smoothing_factor(spline_smoothing_factor)
-
-    # self.spline_parameters = {
-    #     "min_x": self.min_x,
-    #     "max_x": self.max_x,
-    #     "spl_1": self.spl_1,
-    #     "spl_2": self.spl_2,
-    #     "spl_3": self.spl_3
-    # }
-
-    # def compute_sampled_spline_curve(self):
-    samp_space = sample_spacing
-    spline_n_points = int(max_x / samp_space)
-    # print(f"Computing sampled spline path with length {max_x:.1f} and sample spacing {samp_space} "
-    #      f"resulting in {spline_n_points} samples for smoothing")
-
-    # Compute a polydata object with the spline points
-    xs = np.linspace(min_x, max_x, spline_n_points)
-
-    points = vtk.vtkPoints()
-    lines = vtk.vtkCellArray()
-    scalars = vtk.vtkDoubleArray()
-    scalars.SetNumberOfComponents(1)
-
-    current_idx = 0
-    sum_dist = 0
-    sp = [spl_1(xs[current_idx]), spl_2(xs[current_idx]), spl_3(xs[current_idx])]
-    pid = points.InsertNextPoint(sp)
-    scalars.InsertNextValue(sum_dist)
-    current_idx += 1
-
-    while current_idx < spline_n_points:
-        p_1 = [spl_1(xs[current_idx]), spl_2(xs[current_idx]), spl_3(xs[current_idx])]
-        sum_dist += np.linalg.norm(np.array(p_1) - np.array(sp))
-        lines.InsertNextCell(2)
-        pid_2 = points.InsertNextPoint(p_1)
-        scalars.InsertNextValue(sum_dist)
-        lines.InsertCellPoint(pid)
-        lines.InsertCellPoint(pid_2)
-        pid = pid_2
-        sp = p_1
-        current_idx += 1
-
-    vtk_spline = vtk.vtkPolyData()
-    vtk_spline.SetPoints(points)
-    del points
-    vtk_spline.SetLines(lines)
-    del lines
-    vtk_spline.GetPointData().SetScalars(scalars)
-    del scalars
-
-    writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetInputData(vtk_spline)
-    writer.SetFileName(cl_out_file)
-    writer.Write()
-
-
-def compute_single_center_line(surface_name, cl_name, start_p_name, end_p_name):
-    debug = False
-
-    cl_org_name = os.path.splitext(cl_name)[0] + "_original.vtp"
-    cl_spline_name = cl_name
-
-    # cl_spline_name = os.path.splitext(cl_name)[0] + "_spline.vtk"
-    # cl_surface_name = os.path.splitext(cl_name)[0] + "_surface_in.vtp"
-    voronoi_name = os.path.splitext(cl_name)[0] + "_voronoi.vtp"
-
-    if not os.path.exists(surface_name):
-        print(f"Could not read {surface_name}")
-        return False
-    # print(f"Computing centerline from {surface_name}")
-    reader = vtk.vtkXMLPolyDataReader()
-    reader.SetFileName(surface_name)
-    reader.Update()
-    surface = reader.GetOutput()
-
-    start_point = read_landmarks(start_p_name)
-    end_point = read_landmarks(end_p_name)
-    if start_point is None or end_point is None:
-        print(f"Could not read landmarks {start_p_name} or {end_p_name}")
-        return False
-
-    # computes the centerlines using vmtk
-    centerlinePolyData = vmtkscripts.vmtkCenterlines()
-    centerlinePolyData.Surface = surface
-    centerlinePolyData.SeedSelectorName = "pointlist"
-    centerlinePolyData.SourcePoints = start_point
-    # endpoints needs to be: len(end_points) mod 3 = 0
-    centerlinePolyData.TargetPoints = end_point
-    # centerlinePolyData.AppendEndPoints = 1
-    try:
-        centerlinePolyData.Execute()
-    except RuntimeError as e:
-        print(f"Got an exception {str(e)}")
-        print(f"When computing cl on {surface_name}")
-        return False
-
-    if debug:
-        assignAttribute_v = vtk.vtkAssignAttribute()
-        assignAttribute_v.SetInputData(centerlinePolyData.VoronoiDiagram)
-        assignAttribute_v.Assign(
-            "MaximumInscribedSphereRadius",
-            vtk.vtkDataSetAttributes.SCALARS,
-            vtk.vtkAssignAttribute.POINT_DATA,
-        )
-        assignAttribute_v.Update()
-
-        writer = vtk.vtkPolyDataWriter()
-        writer.SetInputData(assignAttribute_v.GetOutput())
-        writer.SetFileName(voronoi_name)
-        writer.SetFileTypeToBinary()
-        writer.Write()
-
-    if centerlinePolyData.Centerlines.GetNumberOfPoints() < 10:
-        print("Something wrong with centerline")
-        return False
-
-    # Adding start and end points did not work very well. Too many errors at the ends
-    # cl_added = add_start_and_end_point_to_centerline(centerlinePolyData.Centerlines, end_point, start_point)
-    # cl_dists = add_distances_from_landmark_to_centerline(cl_added, start_point)
-    cl_dists = add_distances_from_landmark_to_centerline(
-        centerlinePolyData.Centerlines, start_point
-    )
-
-    # saves the centerlines in new vtk file
-    writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetInputData(cl_dists)
-    writer.SetFileName(cl_org_name)
-    writer.Write()
-
-    cl_added = add_start_and_end_point_to_centerline(
-        centerlinePolyData.Centerlines, end_point, start_point
-    )
-    compute_spline_from_path(cl_added, cl_spline_name)
-
-    return True
-
-
-def estimate_normal_from_centerline(cl, idx, n_samples=4):
-    """
-    Estimate centerline normal at given point idx.
-    n_samples is the number of points to use in the estimation
+    Get centerline tanget at given point idx.
+    The tangents are assumed to be precomputed and stored in the "Tangents" array.
+    Typically they are computed using a spline fit to the centerline.
     """
     if cl.GetNumberOfPoints() < 2:
-        print("Centerline has less than 2 points. Can not estimate normal.")
+        print("Centerline has less than 2 points. Can not estimate tangent.")
         return None
-        # return [1, 0, 0]
-    elif cl.GetNumberOfPoints() < n_samples:
-        print(f"Centerline has only {cl.GetNumberOfPoints()} points. Using them")
-        idx_1 = 0
-        idx_2 = cl.GetNumberOfPoints() - 1
-    elif idx == 0:
-        idx_1 = 0
-        idx_2 = n_samples
-    elif idx >= cl.GetNumberOfPoints() - 1:
-        idx_1 = cl.GetNumberOfPoints() - 1 - n_samples
-        idx_2 = cl.GetNumberOfPoints() - 1
-    else:
-        idx_1 = max(0, idx - n_samples // 2)
-        idx_2 = min(cl.GetNumberOfPoints() - 1, idx + n_samples // 2)
 
-    p_1 = cl.GetPoint(idx_1)
-    p_2 = cl.GetPoint(idx_2)
-    normal = np.subtract(p_1, p_2)
-    norm_length = np.linalg.norm(normal)
-    if norm_length < 0.001:
-        print("Normal estimation issue. Normal length too small")
+    tangents = cl.GetPointData().GetArray("Tangents")
+    if tangents is None:
+        print("Centerline has no Tangents array. Can not estimate tanget.")
         return None
-        # normal = [1, 0, 0]
-    else:
-        normal = np.divide(normal, norm_length)
-    return normal
+
+    t = tangents.GetTuple(idx)
+    return list(t)
 
 
 def find_position_on_centerline_based_on_scalar(cl, value):
@@ -348,6 +56,10 @@ def find_position_on_centerline_based_on_scalar(cl, value):
     for idx in range(0, cl.GetNumberOfPoints() - 1):
         cl_val_1 = cl.GetPointData().GetScalars().GetValue(idx)
         cl_val_2 = cl.GetPointData().GetScalars().GetValue(idx + 1)
+        if value == cl_val_1:
+            return idx, cl_val_1
+        if value == cl_val_2:
+            return idx + 1, cl_val_2
         if cl_val_1 < value <= cl_val_2:
             if abs(cl_val_1 - value) < abs(cl_val_2 - value):
                 return idx, cl_val_1
@@ -682,9 +394,9 @@ def extract_max_cut_in_defined_section(
         "lvot_segment",
         "sinus_of_valsalva_segment",
         "sinotubular_junction_segment",
-        "lvot_segment_ts_original",
-        "sinus_of_valsalva_segment_ts_original",
-        "sinotubular_junction_segment_ts_original",
+        "lvot_segment_ts_org",
+        "sinus_of_valsalva_segment_ts_org",
+        "sinotubular_junction_segment_ts_org",
     ]
 
     if segment_name not in no_check:
@@ -755,7 +467,7 @@ def extract_max_cut_in_defined_section(
 
     cl_idx, cl_val = find_position_on_centerline_based_on_scalar(cl, max_dist)
     cl_point = cl.GetPoint(cl_idx)
-    cl_normal = estimate_normal_from_centerline(cl, cl_idx)
+    cl_normal = get_tangent_from_centerline(cl, cl_idx)
     max_slice_info["origin"] = list(cl_point)
     max_slice_info["normal"] = list(cl_normal)
 
@@ -866,7 +578,7 @@ def compute_tortuosity_index_based_on_scan_type(
         if geometric_length > 0 and aortic_length > 0:
             aortic_tortuosity_index = aortic_length / geometric_length
             if verbose:
-                print(f"Computed Annulus tortuosity index: {aortic_tortuosity_index}")
+                print(f"Computed Annulus tortuosity index: {aortic_tortuosity_index:.2f}")
             ati_stats["annulus_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["annulus_aortic_length"] = aortic_length
             ati_stats["annulus_geometric_length"] = geometric_length
@@ -891,7 +603,7 @@ def compute_tortuosity_index_based_on_scan_type(
         if geometric_length > 0 and aortic_length > 0:
             aortic_tortuosity_index = aortic_length / geometric_length
             if verbose:
-                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index}")
+                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index:.2f}")
             ati_stats["ascending_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["ascending_aortic_length"] = aortic_length
             ati_stats["ascending_geometric_length"] = geometric_length
@@ -909,7 +621,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["infrarenal_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -931,7 +643,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
@@ -949,7 +661,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["descending_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -967,7 +679,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed iliac bifucation to arch tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed iliac bifucation to arch tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["ib_arch_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["ib_arch_aortic_length"] = aortic_length
@@ -1025,7 +737,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["infrarenal_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -1047,7 +759,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed abdominal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
@@ -1063,7 +775,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed abdominal tortuosity index (no diaphragm): {aortic_tortuosity_index}"
+                        f"Computed abdominal tortuosity index (no diaphragm): {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["abdominal_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["abdominal_aortic_length"] = aortic_length
@@ -1106,7 +818,7 @@ def compute_tortuosity_index_based_on_scan_type(
         if geometric_length > 0 and aortic_length > 0:
             aortic_tortuosity_index = aortic_length / geometric_length
             if verbose:
-                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index}")
+                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index:.2f}")
             ati_stats["ascending_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["ascending_aortic_length"] = aortic_length
             ati_stats["ascending_geometric_length"] = geometric_length
@@ -1156,7 +868,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["descending_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -1175,7 +887,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed descending tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["descending_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -1219,7 +931,7 @@ def compute_tortuosity_index_based_on_scan_type(
         if geometric_length > 0 and aortic_length > 0:
             aortic_tortuosity_index = aortic_length / geometric_length
             if verbose:
-                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index}")
+                print(f"Computed ascending tortuosity index: {aortic_tortuosity_index:.2f}")
             ati_stats["ascending_aortic_tortuosity_index"] = aortic_tortuosity_index
             ati_stats["ascending_aortic_length"] = aortic_length
             ati_stats["ascending_geometric_length"] = geometric_length
@@ -1277,7 +989,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed infrarenal tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["infrarenal_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index
@@ -1298,7 +1010,7 @@ def compute_tortuosity_index_based_on_scan_type(
                 aortic_tortuosity_index = aortic_length / geometric_length
                 if verbose:
                     print(
-                        f"Computed diaphragm tortuosity index: {aortic_tortuosity_index}"
+                        f"Computed diaphragm tortuosity index: {aortic_tortuosity_index:.2f}"
                     )
                 ati_stats["diaphragm_aortic_tortuosity_index"] = aortic_tortuosity_index
                 ati_stats["diaphragm_aortic_length"] = aortic_length
@@ -1332,7 +1044,7 @@ def compute_tortuosity_index_based_on_scan_type(
             if geometric_length > 0 and aortic_length > 0:
                 aortic_tortuosity_index = aortic_length / geometric_length
                 print(
-                    f"Computed descending tortuosity index: {aortic_tortuosity_index}"
+                    f"Computed descending tortuosity index: {aortic_tortuosity_index:.2f}"
                 )
                 ati_stats["descending_aortic_tortuosity_index"] = (
                     aortic_tortuosity_index

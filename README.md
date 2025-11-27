@@ -16,6 +16,7 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 - Aorta diameters have been validated against a large (10.000+) population with manual annotations.
 - Tortuosity measures on a large population (10.000+) are consistent with previously reported results.
 - Automatically determines [scan field-of-view (FOV)](SCANFOV.md)
+- Has been validated on a series of open source data sets
 - Provides an experimental and non-validated calcification visualization.
 - Generates visualizations for easy validation of outputs.
 - Designed as a research tool for population studies.
@@ -47,32 +48,35 @@ The installation requires a few steps:
 
 1. Create and activate an environment. e.g a conda environment
 ```
-conda create -n AortaExplorerEnv python=3.11
+conda create -n AortaExplorerEnv python=3.13
 conda activate AortaExplorerEnv
 ```
-Unfortunately, VMTK does not support Python >3.11 yet.
 
 2. Install [PyTorch](https://pytorch.org/get-started/locally/). Choose the cuda version that matches with what you have available for your GPU
 
-3. Install [VMTK](http://www.vmtk.org/) using conda (use the conda forge version):
-```
-conda install conda-forge::vmtk
-```
 
-4. Install AortaExplorer
+3. Install AortaExplorer
 ```
 pip install AortaExplorer
 ```
 
-Sometimes, it is needed to install PyTorch after the last step with the `-U` to force an install with GPU support.
-
-5. Install the [TotalSegmentator license](https://github.com/wasserth/TotalSegmentator/blob/master/README.md#subtasks). AortaExplorer is dependent on the `heartchambers_highres`subtask and you need to obtain the [license](https://backend.totalsegmentator.com/license-academic/) and install the license key.
+3. Install the [TotalSegmentator license](https://github.com/wasserth/TotalSegmentator/blob/master/README.md#subtasks). AortaExplorer is dependent on the `heartchambers_highres`subtask and you need to obtain the [license](https://backend.totalsegmentator.com/license-academic/) and install the license key.
 
 
 ## Usage
 
-AortaExplorer can process single NIFTI files, a folder with NIFTI files or a text file with NIFTI file names.
-
+AortaExplorer can process:
+ - single NIFTI files
+ - a folder with NIFTI files
+ - a text file with NIFTI file names.
+ - single NRRD files
+ - a folder with NRRD files
+ - a text file with NRRD file names.
+ - single DICOM folders
+ - folder with DICOM folders
+ - a text file with DICOM folder names (full path needed)
+ 
+ 
 ```bash
 AortaExplorer -i /data/aorta/aorta_scan.nii.gz -o /data/aorta/AortaExplorerOutput/
 ```
@@ -176,17 +180,14 @@ AortaExplorer includes a large range of checks for the validity and type of scan
 
 ![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortaexplorer_visualization4.png)
 
-### Test by using on public data
+### AortaExplorer on public datasets
 
-If you want to try the tool, there are some public data sets available. Here we go trough some cases.
+If you want to try the tool, there are some public data sets available, with aorta ground truth labels.
 
-The [TotalSegmentator training data](https://zenodo.org/records/10047292) is a set with a large variation of cases and pathologies. It has been used to train TotalSegmentator, so of course the baseline segmentations are based on the training data. Still some valuable lessons can be learned.
-
-**CASE s0161**: A *FOV Type 2* with low contrast in the aorta, so we set the minimum Hounsfield value to 40 instead of the default and the *minimum max value* to 300. It has also been padded with values around -1000 (if you pad CT scans, please use values less than -2000 to avoid confusion with air). To be able to detect the boundaries of the scan, the *out-of-scan-value* is set to -1000:
-
-```
-AortaExplorer -i /TotalSegmentatorData/s0161/ct.nii.gz  -o /AortaExplorerData/TotalSegmentatorData_s0161_output/ -oh -1000 -lhu 40 -mhu 300 --verbose
-```
+- [AortaSeg24](AO-AortaSeg24.MD) Contains 100 cases where many have aortic dissections
+- [The Aortic Vessel Tree (AVT) CTA Datasets](AO-AVT.MD) Contains 56 mostly healthy cases
+- [CIS-UNet](AO-CIS-UNET.MD) Contains 59 cases where many have aortic dissections
+- [TotalSegmentator](AO-TS.MD) The training data for TotalSegmentator
 
 
 ## Relevant references

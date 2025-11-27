@@ -159,7 +159,13 @@ def main():
         help="The maximum HU value for calcification segmentation",
         default=1500,
     )
-
+    parser.add_argument(
+        "-huo",
+        "--hu_offset",
+        type=float,
+        help="Offset to apply to Hounsfield units in the CT scan before processing",
+        default=0,
+    )
     # Default False means that by default we do compute centerline from TS segmentation
     parser.add_argument(
         "-nts",
@@ -169,13 +175,19 @@ def main():
         default=False,
     )
     parser.add_argument(
+        "-cts",
+        "--compare_with_ts",
+        action="store_true",
+        help="Compare aorta diameters with those from TotalSegmentator",
+        default=False,
+    )
+    parser.add_argument(
         "-ix",
         "--image-x-size",
         type=int,
         help="Visualization image x-side length",
         default=1920,
     )
-
     parser.add_argument(
         "-iy",
         "--image-y-size",
@@ -183,7 +195,6 @@ def main():
         help="Visualization image y-side length",
         default=1080,
     )
-
     parser.add_argument(
         "--version",
         action="version",
@@ -204,7 +215,9 @@ def main():
     aorta_parms["aorta_calcification_min_hu_value"] = args.calc_low_hu
     aorta_parms["aorta_calcification_max_hu_value"] = args.calc_max_hu
     aorta_parms["compute_centerline_from_ts_segmentation"] = not args.no_ts_centerline
+    aorta_parms["compare_with_totalsegmentator"] = args.compare_with_ts
     aorta_parms["rendering_window_size"] = [args.image_x_size, args.image_y_size]
+    aorta_parms["hounsfield_unit_offset"] = args.hu_offset
 
     aortaexplorer(
         str(args.input),
