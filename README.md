@@ -16,6 +16,7 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 - Aorta diameters have been validated against a large (10.000+) population with manual annotations.
 - Tortuosity measures on a large population (10.000+) are consistent with previously reported results.
 - Automatically determines [scan field-of-view (FOV)](SCANFOV.md)
+- Has been validated on a series of open source data sets
 - Provides an experimental and non-validated calcification visualization.
 - Generates visualizations for easy validation of outputs.
 - Designed as a research tool for population studies.
@@ -47,32 +48,35 @@ The installation requires a few steps:
 
 1. Create and activate an environment. e.g a conda environment
 ```
-conda create -n AortaExplorerEnv python=3.11
+conda create -n AortaExplorerEnv python=3.13
 conda activate AortaExplorerEnv
 ```
-Unfortunately, VMTK does not support Python >3.11 yet.
 
 2. Install [PyTorch](https://pytorch.org/get-started/locally/). Choose the cuda version that matches with what you have available for your GPU
 
-3. Install [VMTK](http://www.vmtk.org/) using conda (use the conda forge version):
-```
-conda install conda-forge::vmtk
-```
 
-4. Install AortaExplorer
+3. Install AortaExplorer
 ```
 pip install AortaExplorer
 ```
 
-Sometimes, it is needed to install PyTorch after the last step with the `-U` to force an install with GPU support.
-
-5. Install the [TotalSegmentator license](https://github.com/wasserth/TotalSegmentator/blob/master/README.md#subtasks). AortaExplorer is dependent on the `heartchambers_highres`subtask and you need to obtain the [license](https://backend.totalsegmentator.com/license-academic/) and install the license key.
+3. Install the [TotalSegmentator license](https://github.com/wasserth/TotalSegmentator/blob/master/README.md#subtasks). AortaExplorer is dependent on the `heartchambers_highres`subtask and you need to obtain the [license](https://backend.totalsegmentator.com/license-academic/) and install the license key.
 
 
 ## Usage
 
-AortaExplorer can process single NIFTI files, a folder with NIFTI files or a text file with NIFTI file names.
-
+AortaExplorer can process:
+ - single NIFTI files
+ - a folder with NIFTI files
+ - a text file with NIFTI file names.
+ - single NRRD files
+ - a folder with NRRD files
+ - a text file with NRRD file names.
+ - single DICOM folders
+ - folder with DICOM folders
+ - a text file with DICOM folder names (full path needed)
+ 
+ 
 ```bash
 AortaExplorer -i /data/aorta/aorta_scan.nii.gz -o /data/aorta/AortaExplorerOutput/
 ```
