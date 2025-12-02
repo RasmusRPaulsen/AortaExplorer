@@ -38,57 +38,116 @@ def add_crop_into_full_segmentation(cropped_segm, output_segm, x_min, x_max, y_m
 
 
 def get_components_over_certain_size(
-    segmentation, min_size=5000, max_number_of_components=2
+    segmentation, min_size=5000, max_number_of_components=2, fast_mode=True
 ):
-    debug = False
-    labels = label(segmentation)
-    bin_c = np.bincount(labels.flat, weights=segmentation.flat)
-    # probably extremely unefficient
-    comp_ids = []
-    for c in range(max_number_of_components):
-        idx = np.argmax(bin_c)
-        if bin_c[idx] > min_size:
-            comp_ids.append(idx)
-            bin_c[idx] = 0
+    if fast_mode:
+        crop_border_mm = 2
+        segm_crop, x_min, x_max, y_min, y_max, z_min, z_max = extract_crop_around_segmentation(
+            segmentation, crop_border_mm, [1, 1, 1])
+        labels = label(segm_crop)
+        bin_c = np.bincount(labels.flat, weights=segm_crop.flat)
+        debug = False
+        # probably extremely unefficient
+        comp_ids = []
+        for c in range(max_number_of_components):
+            idx = np.argmax(bin_c)
+            if bin_c[idx] > min_size:
+                comp_ids.append(idx)
+                bin_c[idx] = 0
 
-    if len(comp_ids) < 1:
-        if debug:
-            print(f"No connected components with size above {min_size} found")
-        return None, None
-    largest_cc = labels == comp_ids[0]
-    for idx in range(1, len(comp_ids)):
-        largest_cc = np.bitwise_or(largest_cc, labels == comp_ids[idx])
+        if len(comp_ids) < 1:
+            if debug:
+                print(f"No connected components with size above {min_size} found")
+            return None, None
+        largest_cc_crop = labels == comp_ids[0]
+        for idx in range(1, len(comp_ids)):
+            largest_cc_crop = np.bitwise_or(largest_cc_crop, labels == comp_ids[idx])
 
-    return largest_cc, len(comp_ids)
+        largest_cc = add_crop_into_full_segmentation(largest_cc_crop, segmentation,
+                                          x_min, x_max, y_min, y_max, z_min, z_max)
+
+        return largest_cc, len(comp_ids)
+    else:
+        debug = False
+        labels = label(segmentation)
+        bin_c = np.bincount(labels.flat, weights=segmentation.flat)
+        # probably extremely unefficient
+        comp_ids = []
+        for c in range(max_number_of_components):
+            idx = np.argmax(bin_c)
+            if bin_c[idx] > min_size:
+                comp_ids.append(idx)
+                bin_c[idx] = 0
+
+        if len(comp_ids) < 1:
+            if debug:
+                print(f"No connected components with size above {min_size} found")
+            return None, None
+        largest_cc = labels == comp_ids[0]
+        for idx in range(1, len(comp_ids)):
+            largest_cc = np.bitwise_or(largest_cc, labels == comp_ids[idx])
+
+        return largest_cc, len(comp_ids)
 
 
 def get_components_over_certain_size_as_individual_volumes(
-    segmentation, min_size=5000, max_number_of_components=2
+    segmentation, min_size=5000, max_number_of_components=2, fast_mode=True
 ):
-    labels = label(segmentation)
-    bin_c = np.bincount(labels.flat, weights=segmentation.flat)
-    debug = False
-    # probably extremely unefficient
-    comp_ids = []
-    for c in range(max_number_of_components):
-        idx = np.argmax(bin_c)
-        if debug:
-            print(f"{bin_c[idx]}")
-        if bin_c[idx] > min_size:
-            comp_ids.append(idx)
-            bin_c[idx] = 0
+    if fast_mode:
+        crop_border_mm = 2
+        segm_crop, x_min, x_max, y_min, y_max, z_min, z_max = extract_crop_around_segmentation(
+            segmentation, crop_border_mm, [1, 1, 1])
+        labels = label(segm_crop)
+        bin_c = np.bincount(labels.flat, weights=segm_crop.flat)
+        debug = False
+        # probably extremely unefficient
+        comp_ids = []
+        for c in range(max_number_of_components):
+            idx = np.argmax(bin_c)
+            if debug:
+                print(f"{bin_c[idx]}")
+            if bin_c[idx] > min_size:
+                comp_ids.append(idx)
+                bin_c[idx] = 0
 
-    if len(comp_ids) < 1:
-        if debug:
-            print(f"No connected components with size above {min_size} found")
-        return None
+        if len(comp_ids) < 1:
+            if debug:
+                print(f"No connected components with size above {min_size} found")
+            return None
 
-    components = []
-    for idx in range(0, len(comp_ids)):
-        largest_cc = labels == comp_ids[idx]
-        components.append(largest_cc)
+        components = []
+        for idx in range(0, len(comp_ids)):
+            largest_cc_crop = labels == comp_ids[idx]
+            largest_cc = add_crop_into_full_segmentation(largest_cc_crop, segmentation,
+                                              x_min, x_max, y_min, y_max, z_min, z_max)
+            components.append(largest_cc)
 
-    return components
+        return components
+    else:
+        labels = label(segmentation)
+        bin_c = np.bincount(labels.flat, weights=segmentation.flat)
+        debug = False
+        # probably extremely unefficient
+        comp_ids = []
+        for c in range(max_number_of_components):
+            idx = np.argmax(bin_c)
+            if debug:
+                print(f"{bin_c[idx]}")
+            if bin_c[idx] > min_size:
+                comp_ids.append(idx)
+                bin_c[idx] = 0
+
+        if len(comp_ids) < 1:
+            if debug:
+                print(f"No connected components with size above {min_size} found")
+            return None
+
+        components = []
+        for idx in range(0, len(comp_ids)):
+            largest_cc = labels == comp_ids[idx]
+            components.append(largest_cc)
+
+        return components
 
 
 def close_cavities_in_segmentations(segmentation, fast_mode=True):
@@ -170,20 +229,40 @@ def edt_based_closing(segmentation, spacing, radius, fast_mode=True):
         return closed_mask
 
 
-def edt_based_dilation(segmentation, spacing, radius):
-    sdf_mask = -edt.sdf(
-        segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
-    )
-    dilated_mask = sdf_mask <= radius
-    return dilated_mask
+def edt_based_dilation(segmentation, spacing, radius, fast_mode=True):
+    if fast_mode:
+        crop_border_mm = radius * 2
+        segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
+            = extract_crop_around_segmentation(segmentation, crop_border_mm, [spacing[2], spacing[1], spacing[0]])
+        sdf_mask = -edt.sdf(segm_crop, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+        dilated_mask_crop = sdf_mask <= radius
+        dilated_mask = add_crop_into_full_segmentation(dilated_mask_crop, segmentation,
+                                                      x_min, x_max, y_min, y_max, z_min, z_max)
+        return dilated_mask
+    else:
+        sdf_mask = -edt.sdf(
+            segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+        )
+        dilated_mask = sdf_mask <= radius
+        return dilated_mask
 
 
-def edt_based_erosion(segmentation, spacing, radius):
-    sdf_mask = -edt.sdf(
-        segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
-    )
-    eroded_mask = sdf_mask < -radius
-    return eroded_mask
+def edt_based_erosion(segmentation, spacing, radius, fast_mode=True):
+    if fast_mode:
+        crop_border_mm = radius * 2
+        segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
+            = extract_crop_around_segmentation(segmentation, crop_border_mm, [spacing[2], spacing[1], spacing[0]])
+        sdf_mask = -edt.sdf(segm_crop, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+        eroded_mask_crop = sdf_mask < -radius
+        eroded_mask = add_crop_into_full_segmentation(eroded_mask_crop, segmentation,
+                                                      x_min, x_max, y_min, y_max, z_min, z_max)
+        return eroded_mask
+    else:
+        sdf_mask = -edt.sdf(
+            segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+        )
+        eroded_mask = sdf_mask < -radius
+        return eroded_mask
 
 
 def edt_based_overlap(segmentation_1, segmentation_2, spacing, radius):
