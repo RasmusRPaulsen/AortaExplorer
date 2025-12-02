@@ -34,6 +34,8 @@ from aortaexplorer.segmentation_utils import (
     edt_based_compute_landmark_from_segmentation_overlap,
     read_nifti_itk_to_numpy,
     check_if_segmentation_hit_sides_of_scan,
+    extract_crop_around_segmentation,
+    add_crop_into_full_segmentation
 )
 from aortaexplorer.aorta_centerline_utils import AortaCenterliner
 import aortaexplorer.centerline_utils as clutils
@@ -234,9 +236,11 @@ def refine_single_aorta_part(
     forced_min_hu_value = params.get("forced_aorta_min_hu_value", None)
     forced_max_hu_value = params.get("forced_aorta_max_hu_value", None)
     hu_stats_file = f"{stats_folder}/aorta_skeleton{part}_hu_stats.json"
+    timing_out = f"{stats_folder}/aorta_refinement{part}_timing.txt"
     calc_std_mult = params["aorta_calcification_std_multiplier"]
 
     debug = False
+    time_start = time.time()
 
     if os.path.exists(segm_out_name):
         if verbose:
@@ -546,8 +550,376 @@ def refine_single_aorta_part(
         print(f"Debug: saving {segm_out_name}")
     sitk.WriteImage(img_o, segm_out_name)
 
+    time_end = time.time()
+    total_time = time_end - time_start
+    with open(timing_out, "w") as timing_handle:
+        timing_handle.write(f"{total_time}\n")
+    print(f"Refinement of {part} took {display_time(total_time)}")
     return True
 
+
+def refine_single_aorta_part_fast(
+    input_file,
+    params,
+    segm_folder,
+    stats_folder,
+    verbose,
+    quiet,
+    write_log_file,
+    output_folder,
+    ct_np,
+    part="_annulus",
+):
+    """
+    This is one of the core functions of AortaExplorer - it takes the
+    aorta segmentation from TotalSegmentator and refines it to only contain
+    the lumen. It does this by computing HU statistics from a skeleton
+    of the aorta and then thresholds the aorta based on these statistics.
+    """
+    segm_in_name = f"{segm_folder}aorta_lumen{part}_ts_org.nii.gz"
+    segm_out_name = f"{segm_folder}aorta_lumen{part}.nii.gz"
+    segm_skeleton_out_name = f"{segm_folder}aorta_lumen{part}_skeleton.nii.gz"
+    segm_out_thres_name = f"{segm_folder}aorta_lumen{part}_thresholded.nii.gz"
+    segm_open_out_name = f"{segm_folder}aorta_lumen{part}_open.nii.gz"
+    segm_closed_out_name = f"{segm_folder}aorta_lumen{part}_closed.nii.gz"
+    segm_no_holes_name = f"{segm_folder}aorta_lumen{part}_no_holes.nii.gz"
+    forced_min_hu_value = params.get("forced_aorta_min_hu_value", None)
+    forced_max_hu_value = params.get("forced_aorta_max_hu_value", None)
+    hu_stats_file = f"{stats_folder}/aorta_skeleton{part}_hu_stats.json"
+    timing_out = f"{stats_folder}/aorta_refinement{part}_timing_fast.txt"
+    calc_std_mult = params["aorta_calcification_std_multiplier"]
+
+    debug = False
+    time_start = time.time()
+
+    if os.path.exists(segm_out_name):
+        if verbose:
+            print(f"{segm_out_name} already exists - skipping")
+        return True
+
+    if verbose:
+        print(f"Computing pure aorta lumen segmentation to {segm_out_name}")
+
+    if not os.path.exists(segm_in_name):
+        msg = f"Could not find {segm_in_name} can not compute {part} aorta lumen"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    label_img_aorta = read_nifti_with_logging_cached(
+        segm_in_name, verbose, quiet, write_log_file, output_folder
+    )
+    if label_img_aorta is None:
+        return False
+
+    spacing = label_img_aorta.GetSpacing()
+    label_img_aorta_np = sitk.GetArrayFromImage(label_img_aorta)
+    mask_np_aorta_org = label_img_aorta_np == 1
+
+    # Make the spacing fit the numpy array
+    # spc = [spacing[2], spacing[1], spacing[0]]
+    crop_border_mm = 10
+    mask_np_aorta, x_min, x_max, y_min, y_max, z_min, z_max \
+        = extract_crop_around_segmentation(mask_np_aorta_org, crop_border_mm, spacing)
+
+    n_vox_org = mask_np_aorta.shape[0] * mask_np_aorta.shape[1] * mask_np_aorta.shape[2]
+    n_vox_cropped = mask_np_aorta_org.shape[0] * mask_np_aorta_org.shape[1] * mask_np_aorta_org.shape[2]
+    if verbose:
+        print(f"Cropped aorta mask from {n_vox_cropped} to {n_vox_org} voxels for faster processing\n"
+              f"Ratio is {n_vox_cropped/n_vox_org:.2f}")
+
+    if debug:
+        print("SDF for erosion")
+    sdf_mask = -edt.sdf(
+        mask_np_aorta,
+        anisotropy=[spacing[2], spacing[1], spacing[0]],
+        parallel=8,  # number of threads, <= 0 sets to num CPU
+    )
+
+    erode_size = 2
+    eroded_mask = sdf_mask < -erode_size
+
+    if verbose:
+        print(f"Skeletonizing aorta from {segm_skeleton_out_name}")
+    skeleton = skeletonize(eroded_mask)
+
+    if verbose:
+        print("SDF for dilation of skeleton")
+    sdf_mask = -edt.sdf(
+        skeleton, anisotropy=[spacing[2], spacing[1], spacing[0]], parallel=8
+    )  # number of threads, <= 0 sets to num CPU
+
+    dilate_size = 2
+    dilated_mask_temp = sdf_mask < dilate_size
+
+    dilated_mask = add_crop_into_full_segmentation(dilated_mask_temp, mask_np_aorta_org,
+                                                   x_min, x_max, y_min, y_max, z_min, z_max)
+    if debug:
+        img_o = sitk.GetImageFromArray(dilated_mask.astype(int))
+        img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
+
+        print(f"Debug: saving {segm_skeleton_out_name}")
+        sitk.WriteImage(img_o, segm_skeleton_out_name)
+
+    hu_values = ct_np[dilated_mask > 0]
+
+    # Check for out of scanfield values
+    # TODO: Update with out-of-scan values from settings
+    hu_in_mask = hu_values > -2000
+    hu_values = hu_values[hu_in_mask]
+
+    if len(hu_values) < 10:
+        msg = f"Too few voxels in {segm_skeleton_out_name} - can not compute HU statistics"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    stats = {}
+    avg_hu = np.average(hu_values)
+    q01_hu = np.percentile(hu_values, 1)
+    stats["skeleton_avg_hu"] = avg_hu
+    stats["skeleton_std_hu"] = np.std(hu_values)
+    stats["skeleton_med_hu"] = np.median(hu_values)
+    stats["skeleton_q99_hu"] = np.percentile(hu_values, 99)
+    stats["skeleton_q01_hu"] = q01_hu
+    # print(stats)
+
+    hu_stdev = stats["skeleton_std_hu"]
+    low_thresh = avg_hu - 5 * hu_stdev
+    high_thresh = avg_hu + calc_std_mult * hu_stdev
+
+    # TODO: Update this to something smarter
+    high_std = False
+    if hu_stdev > 100:
+        high_std = True
+        msg = f"High HU stdev in {input_file} avg: {avg_hu:.1f} stdev: {hu_stdev:.1f}. Could be caused by metal implants."
+        if verbose:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="warning"
+            )
+
+    low_hu_values = False
+    if q01_hu < params["aorta_min_hu_value"]:
+        low_hu_values = True
+        msg = f"Low threshold HU values in {input_file} avg: {avg_hu:.1f} q01: {q01_hu:.1f} low thresh {low_thresh:.1f}"
+        if high_std:
+            msg += f". Could be caused by the high stdev {hu_stdev}."
+        if verbose:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="warning"
+            )
+
+    low_thresh = max(low_thresh, params["aorta_min_hu_value"])
+    high_thresh = max(high_thresh, params["aorta_min_max_hu_value"])
+    if forced_min_hu_value is not None and forced_min_hu_value > 0:
+        low_thresh = forced_min_hu_value
+        stats["forced_min_hu_value"] = forced_min_hu_value
+    if forced_max_hu_value is not None and forced_max_hu_value > 0:
+        high_thresh = forced_max_hu_value
+        stats["forced_max_hu_value"] = forced_max_hu_value
+
+    stats["low_thresh"] = low_thresh
+    stats["high_thresh"] = high_thresh
+
+    json_object = json.dumps(stats, indent=4)
+    with open(hu_stats_file, "w") as outfile:
+        outfile.write(json_object)
+
+    if verbose:
+        print(
+            f"HU Average: {avg_hu:.1f} stdev {hu_stdev:.1f} low_thresh: {low_thresh:.1f} high_thresh {high_thresh:.1f}"
+        )
+
+    img_mask_1 = low_thresh < ct_np
+    img_mask_2 = ct_np < high_thresh
+    combined_mask = np.bitwise_and(img_mask_1, img_mask_2)
+    combined_mask = np.bitwise_and(combined_mask, mask_np_aorta_org)
+
+    combined_mask, _ = close_cavities_in_segmentations(combined_mask)
+
+    if debug:
+        img_o = sitk.GetImageFromArray(combined_mask.astype(int))
+        img_o.CopyInformation(label_img_aorta)
+        img_o = sitk.Cast(img_o, sitk.sitkInt16)
+
+        print(f"Debug: saving {segm_out_thres_name}")
+        sitk.WriteImage(img_o, segm_out_thres_name)
+
+    # TODO: 2 mm is guesswork
+    est_open_close_radius = 2.0
+
+    open_close_radius = est_open_close_radius
+
+    do_open_close = True
+    if do_open_close:
+        if verbose:
+            print("EDT based opening")
+        combined_mask = edt_based_opening(
+            combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius
+        )
+        if debug:
+            img_o = sitk.GetImageFromArray(combined_mask.astype(int))
+            img_o.CopyInformation(label_img_aorta)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
+
+            print(f"Debug: saving {segm_open_out_name}")
+            sitk.WriteImage(img_o, segm_open_out_name)
+
+        if verbose:
+            print("EDT based closing")
+        combined_mask = edt_based_closing(
+            combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius
+        )
+        if debug:
+            img_o = sitk.GetImageFromArray(combined_mask.astype(int))
+            img_o.CopyInformation(label_img_aorta)
+            img_o = sitk.Cast(img_o, sitk.sitkInt16)
+
+            print(f"Debug: saving {segm_closed_out_name}")
+            sitk.WriteImage(img_o, segm_closed_out_name)
+
+    if verbose:
+        print("Closing cavities")
+    combined_mask, _ = close_cavities_in_segmentations(combined_mask)
+
+    # Remove invalid out-of-scan voxels (typically values -2048)
+    # here we set it to something that should not be in an aorta
+    combined_mask = (-200 < ct_np) & combined_mask
+
+    # Do a sanity check of the estimated aorta based on the surface to volume ratio
+    aorta_volume = np.sum(combined_mask) * spacing[0] * spacing[1] * spacing[2]
+    if aorta_volume is None:
+        msg = f"Could not compute volume of aorta of {segm_in_name}. Something wrong with refinement."
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    img_o = sitk.GetImageFromArray(combined_mask.astype(int))
+    img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
+    if debug:
+        sitk.WriteImage(img_o, segm_no_holes_name)
+
+    aorta_surface = convert_sitk_image_to_surface(img_o)
+    # aorta_surface = convert_label_map_to_surface(
+    #     segm_no_holes_name, only_largest_component=False
+    # )
+    if aorta_surface is None:
+        msg = f"Could not compute surface area of {segm_in_name}. Something wrong with refinement."
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    if aorta_surface.GetNumberOfPoints() < 10:
+        msg = f"Could not compute surface area of {segm_in_name}. Something wrong with refinement."
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    mass = vtk.vtkMassProperties()
+    mass.SetInputData(aorta_surface)
+    mass.Update()
+
+    aorta_surface = mass.GetSurfaceArea()
+
+    surface_volume_ratio = aorta_surface / aorta_volume
+    if low_hu_values and surface_volume_ratio > 0.22:
+        msg = f"Surface to volume ratio {surface_volume_ratio:.3f} is higher than 0.22 and very low HU units avg: {avg_hu:.1f} - we do not dare to do more analysis {input_file}"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    # # TODO: This is completely guesswork
+    # if slice_thickness < 1:
+    #     min_comp_size = 25000
+    # elif slice_thickness < 2:
+    #     min_comp_size = 15000
+    # else:
+    #     min_comp_size = 10000
+    #
+    # vox_size = spacing[0] * spacing[1] * spacing[2]
+    # min_comp_size_mm3 = min_comp_size * vox_size
+    #
+    # if verbose:
+    #     print(f"Finding componenents with min_comp_size: {min_comp_size} voxels and {min_comp_size_mm3:.1f} mm3")
+
+    # We want at least 5 cubic centimeter
+    # Updated to 10 cubic centimeters (23/11-2025) to avoid false positives
+    min_comp_size_mm3 = 10000
+    min_comp_size_vox = int(min_comp_size_mm3 / (spacing[0] * spacing[1] * spacing[2]))
+    if verbose:
+        print(f"Finding aorta components with min_comp_size: {min_comp_size_vox} voxels = {min_comp_size_mm3:.1f} mm^3")
+
+    components = get_components_over_certain_size_as_individual_volumes(
+        combined_mask, min_comp_size_vox, 1
+    )
+    if components is None:
+        msg = (
+            f"Could not find any components of size > {min_comp_size_mm3} mm3 in {segm_in_name}"
+        )
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    n_components = len(components)
+
+    if n_components < 1:
+        msg = f"Could not find any components of size > {min_comp_size_mm3} mm3 in {segm_in_name} for {part}"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
+
+    img_o = sitk.GetImageFromArray(components[0].astype(int))
+    img_o.CopyInformation(label_img_aorta)
+    img_o = sitk.Cast(img_o, sitk.sitkInt16)
+
+    if debug:
+        print(f"Debug: saving {segm_out_name}")
+    sitk.WriteImage(img_o, segm_out_name)
+
+    time_end = time.time()
+    total_time = time_end - time_start
+    with open(timing_out, "w") as timing_handle:
+        timing_handle.write(f"{total_time}\n")
+    print(f"Refinement of {part} took {display_time(total_time)}")
+    return True
 
 def extract_pure_aorta_lumen_start_by_finding_parts(
     input_file,
@@ -790,7 +1162,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         # img_o = sitk.Cast(img_o, sitk.sitkInt16)
         # print(f"saving {segm_out_name}")
         # sitk.WriteImage(img_o, segm_out_name)
-        if not refine_single_aorta_part(
+        if not refine_single_aorta_part_fast(
             input_file,
             params,
             segm_folder,

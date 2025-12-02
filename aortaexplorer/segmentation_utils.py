@@ -6,6 +6,37 @@ import SimpleITK as sitk
 from aortaexplorer.io_utils import read_nifti_file_robustly
 
 
+def extract_crop_around_segmentation(segm, margin_mm, spacing):
+    print(f"DEBUG: spacing: {spacing} : shape: {segm.shape}")
+
+    x_min = np.min(np.where(segm)[2])
+    x_max = np.max(np.where(segm)[2])
+    y_min = np.min(np.where(segm)[1])
+    y_max = np.max(np.where(segm)[1])
+    z_min = np.min(np.where(segm)[0])
+    z_max = np.max(np.where(segm)[0])
+
+    # Expanding bounding box in each direction
+    expand_mm = margin_mm
+    expand_vox_x = int(expand_mm / spacing[0])
+    expand_vox_y = int(expand_mm / spacing[1])
+    expand_vox_z = int(expand_mm / spacing[2])
+    x_min = max(0, x_min - expand_vox_x)
+    x_max = min(segm.shape[2] - 1, x_max + expand_vox_x)
+    y_min = max(0, y_min - expand_vox_y)
+    y_max = min(segm.shape[1] - 1, y_max + expand_vox_y)
+    z_min = max(0, z_min - expand_vox_z)
+    z_max = min(segm.shape[0] - 1, z_max + expand_vox_z)
+
+    cropped_segm = segm[z_min:z_max+1, y_min:y_max+1, x_min:x_max+1]
+    return cropped_segm, x_min, x_max, y_min, y_max, z_min, z_max
+
+def add_crop_into_full_segmentation(cropped_segm, output_segm, x_min, x_max, y_min, y_max, z_min, z_max):
+    full_size_overlap_mask = np.zeros_like(output_segm, dtype=bool)
+    full_size_overlap_mask[z_min:z_max+1, y_min:y_max+1, x_min:x_max+1] |= cropped_segm
+    return full_size_overlap_mask
+
+
 def get_components_over_certain_size(
     segmentation, min_size=5000, max_number_of_components=2
 ):
@@ -76,28 +107,52 @@ def close_cavities_in_segmentations(segmentation):
     return closed_segm, n_comp
 
 
-def edt_based_opening(segmentation, spacing, radius):
-    sdf_mask = -edt.sdf(
-        segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
-    )
-    eroded_mask = sdf_mask < -radius
-    sdf_mask = -edt.sdf(
-        eroded_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
-    )
-    opened_mask = sdf_mask <= radius
-    return opened_mask
+def edt_based_opening(segmentation, spacing, radius, fast_mode=True):
+    if fast_mode:
+        crop_border_mm = radius * 2
+        segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
+            = extract_crop_around_segmentation(segmentation, crop_border_mm, [spacing[2], spacing[1], spacing[0]])
+        sdf_mask = -edt.sdf(segm_crop, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+        eroded_mask = sdf_mask < -radius
+        sdf_mask = -edt.sdf(eroded_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+        opened_mask_crop = sdf_mask <= radius
+        opened_mask = add_crop_into_full_segmentation(opened_mask_crop, segmentation,
+                                                      x_min, x_max, y_min, y_max, z_min, z_max)
+        return opened_mask
+    else:
+        sdf_mask = -edt.sdf(
+            segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+        )
+        eroded_mask = sdf_mask < -radius
+        sdf_mask = -edt.sdf(
+            eroded_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+        )
+        opened_mask = sdf_mask <= radius
+        return opened_mask
 
 
-def edt_based_closing(segmentation, spacing, radius):
-    sdf_mask = -edt.sdf(
-        segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
-    )
-    dilated_mask = sdf_mask <= radius
-    sdf_mask = -edt.sdf(
-        dilated_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
-    )
-    closed_mask = sdf_mask < -radius
-    return closed_mask
+def edt_based_closing(segmentation, spacing, radius, fast_mode=True):
+    if fast_mode:
+        crop_border_mm = radius * 2
+        segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
+            = extract_crop_around_segmentation(segmentation, crop_border_mm, [spacing[2], spacing[1], spacing[0]])
+        sdf_mask = -edt.sdf(segm_crop, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+        dilated_mask = sdf_mask <= radius
+        sdf_mask = -edt.sdf(dilated_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+        closed_mask_crop = sdf_mask < -radius
+        closed_mask = add_crop_into_full_segmentation(closed_mask_crop, segmentation,
+                                                      x_min, x_max, y_min, y_max, z_min, z_max)
+        return closed_mask
+    else:
+        sdf_mask = -edt.sdf(
+            segmentation, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+        )
+        dilated_mask = sdf_mask <= radius
+        sdf_mask = -edt.sdf(
+            dilated_mask, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+        )
+        closed_mask = sdf_mask < -radius
+        return closed_mask
 
 
 def edt_based_dilation(segmentation, spacing, radius):
