@@ -7,7 +7,10 @@ from aortaexplorer.io_utils import read_nifti_file_robustly
 
 
 def extract_crop_around_segmentation(segm, margin_mm, spacing):
-    print(f"DEBUG: spacing: {spacing} : shape: {segm.shape}")
+    print(f"DEBUG: spacing: {spacing[2]:.2f} {spacing[1]:.2f} {spacing[0]:.2f} for shape: {segm.shape}")
+    # First coord: z : shape[0] for spacing[2]
+    # Second coord: y : shape[1] for spacing[1]
+    # Third coord: x : shape[2] for spacing[0]
 
     x_min = np.min(np.where(segm)[2])
     x_max = np.max(np.where(segm)[2])
@@ -265,20 +268,53 @@ def edt_based_erosion(segmentation, spacing, radius, fast_mode=True):
         return eroded_mask
 
 
-def edt_based_overlap(segmentation_1, segmentation_2, spacing, radius):
+def edt_based_overlap(segmentation_1, segmentation_2, spacing, radius, fast_mode=True):
     """
     Compute the overlap between two segmentations using the Euclidean distance transform
     """
-    sdf_mask_1 = -edt.sdf(
-        segmentation_1, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
-    )
-    sdf_mask_2 = -edt.sdf(
-        segmentation_2, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
-    )
-    overlap_mask = (sdf_mask_1 < radius) & (sdf_mask_2 < radius)
+    if fast_mode:
+        # Find smallest segmentation to crop around
+        sum_1 = np.sum(segmentation_1)
+        sum_2 = np.sum(segmentation_2)
+        if sum_1 < sum_2:
+            crop_border_mm = radius * 2
+            segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
+                = extract_crop_around_segmentation(segmentation_1, crop_border_mm, [spacing[2], spacing[1], spacing[0]])
+            sdf_mask_1 = -edt.sdf(segm_crop, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+            sdf_mask_2_crop = -edt.sdf(
+                segmentation_2[z_min:z_max+1, y_min:y_max+1, x_min:x_max+1],
+                anisotropy=[spacing[0], spacing[1], spacing[2]],
+                parallel=8,
+            )
+            overlap_mask_crop = (sdf_mask_1 < radius) & (sdf_mask_2_crop < radius)
+            overlap_mask = add_crop_into_full_segmentation(overlap_mask_crop, segmentation_1,
+                                                          x_min, x_max, y_min, y_max, z_min, z_max)
+            return overlap_mask
+        else:
+            crop_border_mm = radius * 2
+            segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
+                = extract_crop_around_segmentation(segmentation_2, crop_border_mm, [spacing[2], spacing[1], spacing[0]])
+            sdf_mask_2 = -edt.sdf(segm_crop, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8)
+            sdf_mask_1_crop = -edt.sdf(
+                segmentation_1[z_min:z_max+1, y_min:y_max+1, x_min:x_max+1],
+                anisotropy=[spacing[0], spacing[1], spacing[2]],
+                parallel=8,
+            )
+            overlap_mask_crop = (sdf_mask_1_crop < radius) & (sdf_mask_2 < radius)
+            overlap_mask = add_crop_into_full_segmentation(overlap_mask_crop, segmentation_2,
+                                                          x_min, x_max, y_min, y_max, z_min, z_max)
+            return overlap_mask
+    else:
+        sdf_mask_1 = -edt.sdf(
+            segmentation_1, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+        )
+        sdf_mask_2 = -edt.sdf(
+            segmentation_2, anisotropy=[spacing[0], spacing[1], spacing[2]], parallel=8
+        )
+        overlap_mask = (sdf_mask_1 < radius) & (sdf_mask_2 < radius)
 
-    # overlap_mask = np.bitwise_and(sdf_mask_1 < radius, sdf_mask_2 < radius)
-    return overlap_mask
+        # overlap_mask = np.bitwise_and(sdf_mask_1 < radius, sdf_mask_2 < radius)
+        return overlap_mask
 
 
 def edt_based_compute_landmark_from_segmentation_overlap(
