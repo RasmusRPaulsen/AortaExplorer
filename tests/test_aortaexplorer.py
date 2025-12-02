@@ -83,7 +83,9 @@ def test_aortaexplorer():
     # params["compute_centerline_from_ts_segmentation"] = True
 
     # Type 1:
-    #input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
+    # output_folder = "C:/data/AortaExplorer/testoutput/"
+
     # params["compare_with_totalsegmentator"] = True
 
     # input_file = "C:/data/AortaExplorer/input/DTU_053.nii.gz"
@@ -121,9 +123,9 @@ def test_aortaexplorer():
 
     # Type 2: problems computing CL from TS segmentation
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_4281_SERIES0012.nii.gz"
-    input_file = "C:/data/AortaExplorer/input/CGPS-1_6954_SERIES0009.nii.gz"
-    params["aorta_calcification_std_multiplier"] = 2
-    params["aorta_calcification_min_hu_value"] = 300
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_6954_SERIES0009.nii.gz"
+    # params["aorta_calcification_std_multiplier"] = 2
+    # params["aorta_calcification_min_hu_value"] = 300
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_7246_SERIES0009.nii.gz"
 
     # Type 5: with old time FOV. Here the descending aorta is cut of by the FOV inside the scan
@@ -172,7 +174,12 @@ def test_aortaexplorer():
     # input_file = "C:/data/Abdominal/Pancreas-CT/PANCREAS_0003/11-24-2015-PANCREAS0003-Pancreas-02648/"
     # input_file = "C:/data/Abdominal/CTLymphNodes/manifest-IVhUf5Gd7581798897432071977/CT Lymph Nodes/ABD_LYMPH_001/09-14-2014-ABDLYMPH001-abdominallymphnodes-30274/abdominallymphnodes-26828/"
 
-    output_folder = "C:/data/AortaExplorer/testoutput/"
+    # Aorta and LV touch each other
+    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0265_SERIES0017.nii.gz"
+    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0266_SERIES0032.nii.gz"
+    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0462_SERIES0039.nii.gz"
+    input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0037_SERIES0017.nii.gz"
+    output_folder = "C:/data/AortaExplorer/CGPS-2-body-output/"
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0864_ct.nii.gz"
@@ -196,5 +203,5 @@ def test_aortaexplorer():
 
 
 if __name__ == "__main__":
-    # test_aortaexplorer()
-    test_aortaexplorer_calcium_estimator()
+    test_aortaexplorer()
+    # test_aortaexplorer_calcium_estimator()
