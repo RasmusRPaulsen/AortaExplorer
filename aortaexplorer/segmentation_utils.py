@@ -91,20 +91,35 @@ def get_components_over_certain_size_as_individual_volumes(
     return components
 
 
-def close_cavities_in_segmentations(segmentation):
+def close_cavities_in_segmentations(segmentation, fast_mode=True):
     """
     Close cavities in segmentations by finding the largest connected component of the background
     """
-    background = segmentation == 0
-    labels = label(background)
-    bin_c = np.bincount(labels.flat, weights=background.flat)
-    n_comp = np.count_nonzero(bin_c)
-    idx = np.argmax(bin_c)
+    if fast_mode:
+        crop_border_mm = 5
+        segm_crop, x_min, x_max, y_min, y_max, z_min, z_max = extract_crop_around_segmentation(
+            segmentation, crop_border_mm, [1, 1, 1])
+        background = segm_crop == 0
+        labels = label(background)
+        bin_c = np.bincount(labels.flat, weights=background.flat)
+        n_comp = np.count_nonzero(bin_c)
+        idx = np.argmax(bin_c)
+        connected_background = labels == idx
+        closed_segm_crop = np.bitwise_not(connected_background)
+        closed_segm = add_crop_into_full_segmentation(closed_segm_crop, segmentation,
+                                              x_min, x_max, y_min, y_max, z_min, z_max)
+        return closed_segm, n_comp
+    else:
+        background = segmentation == 0
+        labels = label(background)
+        bin_c = np.bincount(labels.flat, weights=background.flat)
+        n_comp = np.count_nonzero(bin_c)
+        idx = np.argmax(bin_c)
 
-    connected_background = labels == idx
-    closed_segm = np.bitwise_not(connected_background)
+        connected_background = labels == idx
+        closed_segm = np.bitwise_not(connected_background)
 
-    return closed_segm, n_comp
+        return closed_segm, n_comp
 
 
 def edt_based_opening(segmentation, spacing, radius, fast_mode=True):
