@@ -84,7 +84,7 @@ def test_aortaexplorer():
 
     # Type 1:
     # input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
-    # output_folder = "C:/data/AortaExplorer/testoutput/"
+    output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # params["compare_with_totalsegmentator"] = True
 
@@ -152,9 +152,9 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaSeg24/images/images/subject075_CTA.nii.gz"
 
     # Very large bisection
-    # input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
-    # params["compute_centerline_from_ts_segmentation"] = False
-    # params["compare_with_totalsegmentator"] = True
+    input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
+    params["compute_centerline_from_ts_segmentation"] = False
+    params["compare_with_totalsegmentator"] = True
 
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_10000_SERIES0017.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_10943_SERIES0017.nii.gz"
@@ -185,8 +185,8 @@ def test_aortaexplorer():
     # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0004_SERIES0006.nii.gz"
     # output_folder = "C:/data/AortaExplorer/CGPS-2-body-output/"
 
-    input_file = r"/storage/Data/DTU-CGPS-2/NIFTI/CGPS-2_0024_SERIES0042.nii.gz"
-    output_folder = "/data/Data/RAPA/AortaExplorer/CGPS-2-body-output/"
+    # input_file = r"/storage/Data/DTU-CGPS-2/NIFTI/CGPS-2_0024_SERIES0042.nii.gz"
+    # output_folder = "/data/Data/RAPA/AortaExplorer/CGPS-2-body-output/"
 
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
