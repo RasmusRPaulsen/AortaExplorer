@@ -166,7 +166,6 @@ def close_cavities_in_segmentations(segmentation, fast_mode=True):
     # check for empty segmentation
     if np.sum(segmentation) == 0:
         return None, None
-
     if fast_mode:
         crop_border_mm = 5
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max = extract_crop_around_segmentation(
@@ -198,7 +197,6 @@ def edt_based_opening(segmentation, spacing, radius, fast_mode=True):
     # check for empty segmentation
     if np.sum(segmentation) == 0:
         return None
-
     if fast_mode:
         crop_border_mm = radius * 2
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
@@ -223,6 +221,9 @@ def edt_based_opening(segmentation, spacing, radius, fast_mode=True):
 
 
 def edt_based_closing(segmentation, spacing, radius, fast_mode=True):
+    # check for empty segmentation
+    if np.sum(segmentation) == 0:
+        return None
     if fast_mode:
         crop_border_mm = radius * 2
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
@@ -250,7 +251,6 @@ def edt_based_dilation(segmentation, spacing, radius, fast_mode=True):
     # check for empty segmentation
     if np.sum(segmentation) == 0:
         return None
-
     if fast_mode:
         crop_border_mm = radius * 2
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
@@ -269,6 +269,9 @@ def edt_based_dilation(segmentation, spacing, radius, fast_mode=True):
 
 
 def edt_based_erosion(segmentation, spacing, radius, fast_mode=True):
+    # check for empty segmentation
+    if np.sum(segmentation) == 0:
+        return None
     if fast_mode:
         crop_border_mm = radius * 2
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \

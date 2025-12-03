@@ -402,9 +402,16 @@ def refine_single_aorta_part(
     if do_open_close:
         if verbose:
             print("EDT based opening")
-        combined_mask = edt_based_opening(
-            combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius
-        )
+        combined_mask = edt_based_opening(combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius)
+        if combined_mask is None:
+            msg = f"Could not perform opening on {segm_in_name}. Something wrong with refinement."
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
+            return False
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
@@ -415,9 +422,16 @@ def refine_single_aorta_part(
 
         if verbose:
             print("EDT based closing")
-        combined_mask = edt_based_closing(
-            combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius
-        )
+        combined_mask = edt_based_closing(combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius)
+        if combined_mask is None:
+            msg = f"Could not perform closing on {segm_in_name}. Something wrong with refinement."
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
+            return False
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
@@ -769,6 +783,16 @@ def refine_single_aorta_part_fast(
         combined_mask = edt_based_opening(
             combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius
         )
+        if combined_mask is None:
+            msg = f"Could not perform opening on {segm_in_name}. Something wrong with refinement."
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
+            return False
+
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)
@@ -782,6 +806,15 @@ def refine_single_aorta_part_fast(
         combined_mask = edt_based_closing(
             combined_mask, [spacing[2], spacing[1], spacing[0]], open_close_radius
         )
+        if combined_mask is None:
+            msg = f"Could not perform closing on {segm_in_name}. Something wrong with refinement."
+            if not quiet:
+                print(msg)
+            if write_log_file:
+                write_message_to_log_file(
+                    base_dir=output_folder, message=msg, level="error"
+                )
+            return False
         if debug:
             img_o = sitk.GetImageFromArray(combined_mask.astype(int))
             img_o.CopyInformation(label_img_aorta)

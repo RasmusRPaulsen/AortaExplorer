@@ -152,10 +152,11 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaSeg24/images/images/subject075_CTA.nii.gz"
 
     # Very large bisection
-    input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
-    params["compute_centerline_from_ts_segmentation"] = False
-    params["compare_with_totalsegmentator"] = True
+    # input_file = "C:/data/AortaSeg24/images/images/subject076_CTA.nii.gz"
+    # params["compute_centerline_from_ts_segmentation"] = False
+    # params["compare_with_totalsegmentator"] = True
 
+    input_file = "C:/data/AortaExplorer/input/CGPS-1_10004_SERIES0010.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_10000_SERIES0017.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_10943_SERIES0017.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_11194_SERIES0015_volume_0.nii.gz"
@@ -163,6 +164,8 @@ def test_aortaexplorer():
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_12306_SERIES0019.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_12551_SERIES0020.nii.gz"
     # params["compare_with_totalsegmentator"] = True
+
+    # input_file = "C:/data/AortaExplorer/input/"
 
     # input_file = "C:/data/AVT-Aorta/Dongyang/D1/D1.nrrd"
     # input_file = "C:/data/AVT-Aorta/KiTS/K1/K1.nrrd"
