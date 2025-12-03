@@ -43,6 +43,9 @@ def add_crop_into_full_segmentation(cropped_segm, output_segm, x_min, x_max, y_m
 def get_components_over_certain_size(
     segmentation, min_size=5000, max_number_of_components=2, fast_mode=True
 ):
+    # check for empty segmentation
+    if np.sum(segmentation) == 0:
+        return None, None
     if fast_mode:
         crop_border_mm = 2
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max = extract_crop_around_segmentation(
@@ -96,6 +99,9 @@ def get_components_over_certain_size(
 def get_components_over_certain_size_as_individual_volumes(
     segmentation, min_size=5000, max_number_of_components=2, fast_mode=True
 ):
+    # check for empty segmentation
+    if np.sum(segmentation) == 0:
+        return None
     if fast_mode:
         crop_border_mm = 2
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max = extract_crop_around_segmentation(
@@ -157,6 +163,10 @@ def close_cavities_in_segmentations(segmentation, fast_mode=True):
     """
     Close cavities in segmentations by finding the largest connected component of the background
     """
+    # check for empty segmentation
+    if np.sum(segmentation) == 0:
+        return None, None
+
     if fast_mode:
         crop_border_mm = 5
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max = extract_crop_around_segmentation(
@@ -185,6 +195,10 @@ def close_cavities_in_segmentations(segmentation, fast_mode=True):
 
 
 def edt_based_opening(segmentation, spacing, radius, fast_mode=True):
+    # check for empty segmentation
+    if np.sum(segmentation) == 0:
+        return None
+
     if fast_mode:
         crop_border_mm = radius * 2
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
@@ -233,6 +247,10 @@ def edt_based_closing(segmentation, spacing, radius, fast_mode=True):
 
 
 def edt_based_dilation(segmentation, spacing, radius, fast_mode=True):
+    # check for empty segmentation
+    if np.sum(segmentation) == 0:
+        return None
+
     if fast_mode:
         crop_border_mm = radius * 2
         segm_crop, x_min, x_max, y_min, y_max, z_min, z_max \
@@ -272,6 +290,9 @@ def edt_based_overlap(segmentation_1, segmentation_2, spacing, radius, fast_mode
     """
     Compute the overlap between two segmentations using the Euclidean distance transform
     """
+    # check for empty segmentation
+    if np.sum(segmentation_1) == 0 or np.sum(segmentation_2) == 0:
+        return None
     if fast_mode:
         # Find smallest segmentation to crop around
         sum_1 = np.sum(segmentation_1)
@@ -336,6 +357,10 @@ def edt_based_compute_landmark_from_segmentation_overlap(
     min_size_vox = min_size_mm3 / (spacing[0] * spacing[1] * spacing[2])
 
     overlap_mask = edt_based_overlap(segmentation_1, segmentation_2, spc_trans, radius)
+    if overlap_mask is None:
+        if debug:
+            print(f"No overlap found for {overlap_name}")
+        return False
     if only_larges_components:
         overlap_mask, n_comp = get_components_over_certain_size(overlap_mask, min_size_vox, 1)
         if overlap_mask is None or n_comp < 1:

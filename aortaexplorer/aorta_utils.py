@@ -1107,7 +1107,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
         # print(f"saving {segm_out_name}")
         # sitk.WriteImage(img_o, segm_out_name)
 
-        if not refine_single_aorta_part(
+        if not refine_single_aorta_part_fast(
             input_file,
             params,
             segm_folder,
@@ -1120,7 +1120,7 @@ def extract_pure_aorta_lumen_start_by_finding_parts(
             "_descending",
         ):
             return False
-        if not refine_single_aorta_part(
+        if not refine_single_aorta_part_fast(
             input_file,
             params,
             segm_folder,
@@ -1790,6 +1790,13 @@ def compute_ventricularoaortic_landmark(
         spacing=[spacing[2], spacing[1], spacing[0]],
         radius=footprint_radius_mm,
     )
+    if overlap_mask is None or np.sum(overlap_mask) == 0:
+        if verbose:
+            print("No overlap between aorta and LV found: No ventriculaortic point")
+        f_p_out = open(ventricularoaortic_p_none_out_file, "w")
+        f_p_out.write("no point")
+        f_p_out.close()
+        return True
 
     spacing = label_img_aorta.GetSpacing()
     min_comp_size_mm3 = 200
@@ -1802,7 +1809,7 @@ def compute_ventricularoaortic_landmark(
     large_components = get_components_over_certain_size_as_individual_volumes(
         overlap_mask, min_comp_size_vox, 2
     )
-    if overlap_mask is None:
+    if large_components is None:
         if verbose:
             print("No overlap between aorta and LV found: No ventriculaortic point")
         f_p_out = open(ventricularoaortic_p_none_out_file, "w")
@@ -1990,6 +1997,15 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
     large_components = get_components_over_certain_size_as_individual_volumes(
         closed_mask, min_comp_size_vox, 4
     )
+    if large_components is None or len(large_components) == 0:
+        msg = f"No combined aorta and left ventricle segmentation found left after connected components"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
     if len(large_components) > n_aorta_parts:
         # keep only the part that has the largest overlap with the original aorta segmentation
         if verbose:
@@ -2038,6 +2054,11 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries(
 
 def find_aorta_lv_overlap_fast(combined_mask_np, mask_np_lv, spacing, verbose, quiet, write_log_file,
                                output_folder):
+    if combined_mask_np is None or mask_np_lv is None:
+        return None
+    if np.sum(combined_mask_np) == 0 or np.sum(mask_np_lv) == 0:
+        return None
+
     time_start = time.time()
     # Find bounding box of lv in mask_np_lv using numpy
     x_min = np.min(np.where(mask_np_lv)[2])
@@ -2117,6 +2138,10 @@ def find_aorta_lv_overlap_fast(combined_mask_np, mask_np_lv, spacing, verbose, q
 
 def find_aorta_iliac_overlap_fast(combined_mask_np, mask_iliac_np, spacing, verbose, quiet, write_log_file,
                                output_folder):
+    if combined_mask_np is None or mask_iliac_np is None:
+        return None
+    if np.sum(combined_mask_np) == 0 or np.sum(mask_iliac_np) == 0:
+        return None
     time_start = time.time()
     # Find bounding box of iliac
     x_min = np.min(np.where(mask_iliac_np)[2])
@@ -2161,7 +2186,7 @@ def find_aorta_iliac_overlap_fast(combined_mask_np, mask_iliac_np, spacing, verb
     if large_components is None or len(large_components) == 0:
         if verbose:
             print("No significant overlap between aorta and iliac found in added parts.")
-        return None, None
+        return None
 
     # Compute center of mass of first component and transform to full size coordinates
     # com_np = measurements.center_of_mass(large_components[0])
@@ -2341,6 +2366,15 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries_fast(input_file, segm_fo
     large_components = get_components_over_certain_size_as_individual_volumes(
         closed_mask, min_comp_size_vox, 4
     )
+    if large_components is None or len(large_components) == 0:
+        msg = f"No combined aorta and left ventricle segmentation found left after connected components"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        return False
     if len(large_components) > n_aorta_parts:
         # keep only the part that has the largest overlap with the original aorta segmentation
         if verbose:
@@ -7923,14 +7957,15 @@ def computer_process(
         do_aorta_analysis(
             verbose, quiet, write_log_file, params, output_folder, input_file
         )
+        n_proc = params["num_proc_general"]
         elapsed_time = time.time() - local_start_time
         q_size = process_queue.qsize()
-        est_time_left = q_size * elapsed_time
+        est_time_left = q_size * elapsed_time / n_proc
         time_left_str = display_time(int(est_time_left))
         time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
             print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}.\n"
-                  f"Time left {time_left_str} for {q_size} scans (if only one process)")
+                  f"Time left {time_left_str} for {q_size} scans (if {n_proc} processes alive)")
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
         time_stats_out = f"{stats_folder}aorta_proc_time.txt"
