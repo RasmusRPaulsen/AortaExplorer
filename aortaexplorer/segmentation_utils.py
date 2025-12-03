@@ -7,7 +7,7 @@ from aortaexplorer.io_utils import read_nifti_file_robustly
 
 
 def extract_crop_around_segmentation(segm, margin_mm, spacing):
-    print(f"DEBUG: spacing: {spacing[2]:.2f} {spacing[1]:.2f} {spacing[0]:.2f} for shape: {segm.shape}")
+    # print(f"DEBUG: spacing: {spacing[2]:.2f} {spacing[1]:.2f} {spacing[0]:.2f} for shape: {segm.shape}")
     # First coord: z : shape[0] for spacing[2]
     # Second coord: y : shape[1] for spacing[1]
     # Third coord: x : shape[2] for spacing[0]

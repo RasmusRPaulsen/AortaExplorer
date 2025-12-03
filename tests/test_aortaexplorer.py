@@ -182,8 +182,12 @@ def test_aortaexplorer():
     # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0026_SERIES0017.nii.gz"
     # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0030_SERIES0017.nii.gz"
     # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0003_SERIES0013.nii.gz"
-    input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0004_SERIES0006.nii.gz"
-    output_folder = "C:/data/AortaExplorer/CGPS-2-body-output/"
+    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0004_SERIES0006.nii.gz"
+    # output_folder = "C:/data/AortaExplorer/CGPS-2-body-output/"
+
+    input_file = r"/storage/Data/DTU-CGPS-2/NIFTI/CGPS-2_0024_SERIES0042.nii.gz"
+    output_folder = "/data/Data/RAPA/AortaExplorer/CGPS-2-body-output/"
+
 
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0019_ct.nii.gz"
     # input_file = "C:/data/Abdominal/Totalsegmentator_dataset/totalsegmentator_all_ct/s0864_ct.nii.gz"

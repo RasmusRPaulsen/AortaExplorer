@@ -2103,7 +2103,7 @@ def find_aorta_lv_overlap_fast(combined_mask_np, mask_np_lv, spacing, verbose, q
     if large_components is None or len(large_components) == 0:
         if verbose:
             print("No significant overlap between aorta and LV found in added parts.")
-        return None, None
+        return None
 
     if len(large_components) == 1:
         annulus_comp = large_components[0]
@@ -2317,17 +2317,20 @@ def combine_aorta_and_left_ventricle_and_iliac_arteries_fast(input_file, segm_fo
         mask_np_lv = label_img_lv_np == left_ventricle_id
         combined_mask = np.bitwise_or(combined_mask, mask_np_lv)
         # Find overlap using fast method
-        combined_mask = find_aorta_lv_overlap_fast(combined_mask, mask_np_lv, spacing, verbose, quiet,
+        combined_mask_lv = find_aorta_lv_overlap_fast(combined_mask, mask_np_lv, spacing, verbose, quiet,
                                                   write_log_file, output_folder)
-        if combined_mask is None:
+        if combined_mask_lv is None:
             msg = f"Could not find overlap between aorta and left ventricle."
-            if not quiet:
+            if verbose:
                 print(msg)
-            if write_log_file:
-                write_message_to_log_file(
-                    base_dir=output_folder, message=msg, level="error"
-                )
-            return False
+        else:
+            combined_mask = combined_mask_lv
+
+            # if write_log_file:
+            #     write_message_to_log_file(
+            #         base_dir=output_folder, message=msg, level="error"
+            #     )
+            # return False
         # com_phys = label_img_aorta.TransformIndexToPhysicalPoint(
         #     [int(com_np[0]), int(com_np[1]), int(com_np[2])]
         # )
@@ -7660,183 +7663,163 @@ def do_aorta_analysis(
             )
         return False
 
-    success = True
-    success = compute_body_segmentation(
-        input_file, segm_folder, verbose, quiet, write_log_file, output_folder
-    )
-    if success:
-        success = compute_out_scan_field_segmentation_and_sdf(
-            input_file,
-            segm_folder,
-            params,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
+    try:
+        success = True
+        success = compute_body_segmentation(
+            input_file, segm_folder, verbose, quiet, write_log_file, output_folder
         )
-    if success:
-        success = extract_pure_aorta_lumen_start_by_finding_parts(
-            input_file,
-            params,
-            segm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
-    if success:
-        success = extract_aortic_calcifications(
-            input_file,
-            params,
-            segm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = check_for_aneurysm_sac(
-            segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder
-        )
-
-    # TODO: Issue warning if large difference between TotalSegmentator and lumen segmentations is found
-    # and the centerline computation is based on TotalSegmentator segmentations
-    # This typically happens if there are large sac-like aneurysms
-
-    if success:
-        success = compute_ventricularoaortic_landmark(
-            segm_folder,
-            lm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = combine_aorta_and_left_ventricle_and_iliac_arteries_fast(input_file, segm_folder, lm_folder,
-                                                                           stats_folder, verbose, quiet, write_log_file,
-                                                                           output_folder, use_ts_org_segmentations=False)
-    if success:
-        success = combine_aorta_and_left_ventricle_and_iliac_arteries_fast(input_file, segm_folder, lm_folder,
-                                                                           stats_folder, verbose, quiet, write_log_file,
-                                                                           output_folder, use_ts_org_segmentations=True)
-
-    # if success:
-    #     success = combine_aorta_and_left_ventricle_and_iliac_arteries(
-    #         input_file,
-    #         segm_folder,
-    #         lm_folder,
-    #         stats_folder,
-    #         verbose,
-    #         quiet,
-    #         write_log_file,
-    #         output_folder,
-    #         use_ts_org_segmentations=False,
-    #     )
-    # if success:
-    #     success = combine_aorta_and_left_ventricle_and_iliac_arteries(
-    #         input_file,
-    #         segm_folder,
-    #         lm_folder,
-    #         stats_folder,
-    #         verbose,
-    #         quiet,
-    #         write_log_file,
-    #         output_folder,
-    #         use_ts_org_segmentations=True,
-    #     )
-    if success:
-        success = compute_aortic_arch_landmarks(
-            segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder
-        )
-    if success:
-        success = compute_diaphragm_landmarks_from_surfaces(
-            segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder
-        )
-    if success:
-        success = compute_aorta_scan_type(
-            input_file,
-            segm_folder,
-            lm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet,
-                                                write_log_file, output_folder, use_ts_org_segmentations=use_org_ts_segmentations)
-    if success:
-        success = extract_surfaces_for_centerlines(
-            segm_folder,
-            stats_folder,
-            surface_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-            use_ts_org_segmentations=use_org_ts_segmentations,
-        )
-    if success:
-        success = compute_centerline_landmarks_based_on_scan_type(
-            segm_folder,
-            lm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-            use_ts_org_segmentations=use_org_ts_segmentations,
-        )
-    if success:
-        success = compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder,
-                                                     verbose, quiet, write_log_file, output_folder,
-                                                     use_ts_org_segmentations=use_org_ts_segmentations)
-    if success:
-        success = compute_infrarenal_section_using_kidney_to_kidney_line(
-            segm_folder,
-            stats_folder,
-            lm_folder,
-            cl_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = compute_aortic_arch_landmarks_on_centerline(
-            lm_folder, cl_folder, verbose, quiet, write_log_file, output_folder
-        )
-    if success:
-        success = compute_diaphragm_point_on_centerline(
-            lm_folder,
-            cl_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = compute_ventricularoaortic_point_on_centerline(
-            lm_folder,
-            cl_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = (
-            sample_aorta_center_line_hu_stats(
+        if success:
+            success = compute_out_scan_field_segmentation_and_sdf(
                 input_file,
+                segm_folder,
+                params,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = extract_pure_aorta_lumen_start_by_finding_parts(
+                input_file,
+                params,
+                segm_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = extract_top_of_iliac_arteries(input_file, segm_folder, verbose, quiet, write_log_file, output_folder)
+        if success:
+            success = extract_aortic_calcifications(
+                input_file,
+                params,
+                segm_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = check_for_aneurysm_sac(
+                segm_folder, stats_folder, verbose, quiet, write_log_file, output_folder
+            )
+
+        # TODO: Issue warning if large difference between TotalSegmentator and lumen segmentations is found
+        # and the centerline computation is based on TotalSegmentator segmentations
+        # This typically happens if there are large sac-like aneurysms
+
+        if success:
+            success = compute_ventricularoaortic_landmark(
+                segm_folder,
+                lm_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = combine_aorta_and_left_ventricle_and_iliac_arteries_fast(input_file, segm_folder, lm_folder,
+                                                                               stats_folder, verbose, quiet, write_log_file,
+                                                                               output_folder, use_ts_org_segmentations=False)
+        if success:
+            success = combine_aorta_and_left_ventricle_and_iliac_arteries_fast(input_file, segm_folder, lm_folder,
+                                                                               stats_folder, verbose, quiet, write_log_file,
+                                                                               output_folder, use_ts_org_segmentations=True)
+
+        # if success:
+        #     success = combine_aorta_and_left_ventricle_and_iliac_arteries(
+        #         input_file,
+        #         segm_folder,
+        #         lm_folder,
+        #         stats_folder,
+        #         verbose,
+        #         quiet,
+        #         write_log_file,
+        #         output_folder,
+        #         use_ts_org_segmentations=False,
+        #     )
+        # if success:
+        #     success = combine_aorta_and_left_ventricle_and_iliac_arteries(
+        #         input_file,
+        #         segm_folder,
+        #         lm_folder,
+        #         stats_folder,
+        #         verbose,
+        #         quiet,
+        #         write_log_file,
+        #         output_folder,
+        #         use_ts_org_segmentations=True,
+        #     )
+        if success:
+            success = compute_aortic_arch_landmarks(
+                segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder
+            )
+        if success:
+            success = compute_diaphragm_landmarks_from_surfaces(
+                segm_folder, lm_folder, verbose, quiet, write_log_file, output_folder
+            )
+        if success:
+            success = compute_aorta_scan_type(
+                input_file,
+                segm_folder,
+                lm_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = inpaint_missing_segmentations(input_file, params, segm_folder, stats_folder, verbose, quiet,
+                                                    write_log_file, output_folder, use_ts_org_segmentations=use_org_ts_segmentations)
+        if success:
+            success = extract_surfaces_for_centerlines(
+                segm_folder,
+                stats_folder,
+                surface_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+                use_ts_org_segmentations=use_org_ts_segmentations,
+            )
+        if success:
+            success = compute_centerline_landmarks_based_on_scan_type(
+                segm_folder,
+                lm_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+                use_ts_org_segmentations=use_org_ts_segmentations,
+            )
+        if success:
+            success = compute_center_line_using_skeleton(segm_folder, stats_folder, lm_folder, surface_folder, cl_folder,
+                                                         verbose, quiet, write_log_file, output_folder,
+                                                         use_ts_org_segmentations=use_org_ts_segmentations)
+        if success:
+            success = compute_infrarenal_section_using_kidney_to_kidney_line(
+                segm_folder,
+                stats_folder,
+                lm_folder,
+                cl_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = compute_aortic_arch_landmarks_on_centerline(
+                lm_folder, cl_folder, verbose, quiet, write_log_file, output_folder
+            )
+        if success:
+            success = compute_diaphragm_point_on_centerline(
+                lm_folder,
                 cl_folder,
                 stats_folder,
                 verbose,
@@ -7844,21 +7827,29 @@ def do_aorta_analysis(
                 write_log_file,
                 output_folder,
             )
-            is not None
-        )
-    if success:
-        success = compute_straightened_volume_using_cpr(
-            input_file,
-            segm_folder,
-            cl_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-            use_raw_segmentations=False,
-        )
-    if compare_with_raw_ts_segmentations:
+        if success:
+            success = compute_ventricularoaortic_point_on_centerline(
+                lm_folder,
+                cl_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = (
+                sample_aorta_center_line_hu_stats(
+                    input_file,
+                    cl_folder,
+                    stats_folder,
+                    verbose,
+                    quiet,
+                    write_log_file,
+                    output_folder,
+                )
+                is not None
+            )
         if success:
             success = compute_straightened_volume_using_cpr(
                 input_file,
@@ -7869,71 +7860,95 @@ def do_aorta_analysis(
                 quiet,
                 write_log_file,
                 output_folder,
-                use_raw_segmentations=True,
+                use_raw_segmentations=False,
             )
-    if success:
-        success = compute_cuts_along_straight_labelmaps(
-            segm_folder,
-            cl_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_areas(
-            cl_folder,
-            lm_folder,
-            stats_folder,
-            verbose,
-            quiet,
-            write_log_file,
-            output_folder,
-        )
-    if success:
-        success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
-                                                                  write_log_file, output_folder,
-                                                                  use_raw_segmentations=False)
-    if success and compare_with_raw_ts_segmentations:
-        success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
-                                                                  write_log_file, output_folder,
-                                                                  use_raw_segmentations=True)
-    if success:
-        success = combine_cross_section_images_into_one(cl_folder, verbose)
-    if success:
-        success = create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose,
-                                                                  quiet, write_log_file, output_folder,
-                                                                  compare_with_raw_ts_segmentations)
-    if success:
-        success = compute_aortic_tortuosity_statistics(
+        if compare_with_raw_ts_segmentations:
+            if success:
+                success = compute_straightened_volume_using_cpr(
+                    input_file,
+                    segm_folder,
+                    cl_folder,
+                    stats_folder,
+                    verbose,
+                    quiet,
+                    write_log_file,
+                    output_folder,
+                    use_raw_segmentations=True,
+                )
+        if success:
+            success = compute_cuts_along_straight_labelmaps(
+                segm_folder,
+                cl_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = compute_sinutubular_junction_and_sinus_of_valsalva_from_max_and_min_cut_areas(
+                cl_folder,
+                lm_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+        if success:
+            success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                                      write_log_file, output_folder,
+                                                                      use_raw_segmentations=False)
+        if success and compare_with_raw_ts_segmentations:
+            success = identy_and_extract_samples_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose, quiet,
+                                                                      write_log_file, output_folder,
+                                                                      use_raw_segmentations=True)
+        if success:
+            success = combine_cross_section_images_into_one(cl_folder, verbose)
+        if success:
+            success = create_longitudinal_figure_from_straight_volume(cl_folder, segm_folder, stats_folder, verbose,
+                                                                      quiet, write_log_file, output_folder,
+                                                                      compare_with_raw_ts_segmentations)
+        if success:
+            success = compute_aortic_tortuosity_statistics(
+                input_file,
+                cl_folder,
+                lm_folder,
+                stats_folder,
+                verbose,
+                quiet,
+                write_log_file,
+                output_folder,
+            )
+
+        # Not matter the success, we still gather statistics. At least we will get the last error message
+        success = compute_all_aorta_statistics(
             input_file,
             cl_folder,
-            lm_folder,
+            segm_folder,
             stats_folder,
             verbose,
             quiet,
             write_log_file,
             output_folder,
+            compare_with_raw_segmentations=compare_with_raw_ts_segmentations
         )
 
-    # Not matter the success, we still gather statistics. At least we will get the last error message
-    success = compute_all_aorta_statistics(
-        input_file,
-        cl_folder,
-        segm_folder,
-        stats_folder,
-        verbose,
-        quiet,
-        write_log_file,
-        output_folder,
-        compare_with_raw_segmentations=compare_with_raw_ts_segmentations
-    )
-
-    # Also try to create visualization of the things we achieved even in erro
-    success = aorta_visualization(
-        input_file, cl_folder, segm_folder, stats_folder, vis_folder, verbose, params
-    )
+        # Also try to create visualization of the things we achieved even in erro
+        success = aorta_visualization(
+            input_file, cl_folder, segm_folder, stats_folder, vis_folder, verbose, params
+        )
+    except Exception as e:
+        msg = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+        msg += f"Exception during aorta analysis of {scan_id}: {str(e)}\n"
+        msg += "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+        if not quiet:
+            print(msg)
+        if write_log_file:
+            write_message_to_log_file(
+                base_dir=output_folder, message=msg, level="error"
+            )
+        success = False
 
     if verbose:
         image_reader_cache_info = read_nifti_with_logging_cached.cache_info()
@@ -7964,8 +7979,10 @@ def computer_process(
         time_left_str = display_time(int(est_time_left))
         time_elapsed_str = display_time(int(elapsed_time))
         if verbose:
+            print(f"=================================================================================================")
             print(f"Process {process_id} done with {input_file} - took {time_elapsed_str}.\n"
                   f"Time left {time_left_str} for {q_size} scans (if {n_proc} processes alive)")
+            print(f"=================================================================================================")
         pure_id = get_pure_scan_file_name(input_file)
         stats_folder = f"{output_folder}{pure_id}/statistics/"
         time_stats_out = f"{stats_folder}aorta_proc_time.txt"
