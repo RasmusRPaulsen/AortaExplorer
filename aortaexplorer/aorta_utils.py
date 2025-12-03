@@ -1,7 +1,6 @@
 import os
 from shutil import copyfile
 
-from cupyx.profiler import time_range
 from scipy.ndimage import measurements
 from pathlib import Path
 import time
