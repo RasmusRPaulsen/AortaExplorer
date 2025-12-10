@@ -84,7 +84,7 @@ def test_aortaexplorer():
 
     # Type 1:
     # input_file = "C:/data/AortaExplorer/input/DTU_051.nii.gz"
-    output_folder = "C:/data/AortaExplorer/testoutput/"
+    # output_folder = "C:/data/AortaExplorer/testoutput/"
 
     # params["compare_with_totalsegmentator"] = True
 
@@ -156,7 +156,7 @@ def test_aortaexplorer():
     # params["compute_centerline_from_ts_segmentation"] = False
     # params["compare_with_totalsegmentator"] = True
 
-    input_file = "C:/data/AortaExplorer/input/CGPS-1_10004_SERIES0010.nii.gz"
+    # input_file = "C:/data/AortaExplorer/input/CGPS-1_10004_SERIES0010.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_10000_SERIES0017.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_10943_SERIES0017.nii.gz"
     # input_file = "C:/data/AortaExplorer/input/CGPS-1_11194_SERIES0015_volume_0.nii.gz"
@@ -178,14 +178,14 @@ def test_aortaexplorer():
     # input_file = "C:/data/Abdominal/CTLymphNodes/manifest-IVhUf5Gd7581798897432071977/CT Lymph Nodes/ABD_LYMPH_001/09-14-2014-ABDLYMPH001-abdominallymphnodes-30274/abdominallymphnodes-26828/"
 
     # Aorta and LV touch each other
-    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0265_SERIES0017.nii.gz"
-    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0266_SERIES0032.nii.gz"
-    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0462_SERIES0039.nii.gz"
-    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0037_SERIES0017.nii.gz"
-    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0026_SERIES0017.nii.gz"
-    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0030_SERIES0017.nii.gz"
-    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0003_SERIES0013.nii.gz"
-    # input_file = r"C:\data\AortaExplorer\CGPS-2-body-input\CGPS-2_0004_SERIES0006.nii.gz"
+    # input_file = r"C:/data/AortaExplorer/CGPS-2-body-input/CGPS-2_0265_SERIES0017.nii.gz"
+    # input_file = r"C:/data/AortaExplorer/CGPS-2-body-input/CGPS-2_0266_SERIES0032.nii.gz"
+    # input_file = r"C:/data/AortaExplorer/CGPS-2-body-input/CGPS-2_0462_SERIES0039.nii.gz"
+    # input_file = r"C:/data/AortaExplorer/CGPS-2-body-input/CGPS-2_0037_SERIES0017.nii.gz"
+    # input_file = r"C:/data/AortaExplorer/CGPS-2-body-input/CGPS-2_0026_SERIES0017.nii.gz"
+    # input_file = r"C:/data/AortaExplorer/CGPS-2-body-input/CGPS-2_0030_SERIES0017.nii.gz"
+    # input_file = r"C:/data/AortaExplorer/CGPS-2-body-input/CGPS-2_0003_SERIES0013.nii.gz"
+    # input_file = r"C:/data/AortaExplorer/CGPS-2-body-input/CGPS-2_0004_SERIES0006.nii.gz"
     # output_folder = "C:/data/AortaExplorer/CGPS-2-body-output/"
 
     # input_file = r"/storage/Data/DTU-CGPS-2/NIFTI/CGPS-2_0024_SERIES0042.nii.gz"
@@ -202,6 +202,10 @@ def test_aortaexplorer():
     # params["aorta_min_max_hu_value"] = 300
     # params["out_of_reconstruction_value"] = -1000
     # output_folder = "C:/data/AortaExplorer/testoutput/"
+
+    input_file = "C:/data/Abdominal/Pancreas-CT/"
+    output_folder = "C:/data/AortaExplorer/Pancreas-CT-output/"
+    params["recurse_subfolders"] = True
 
     device = "gpu"
     verbose = True

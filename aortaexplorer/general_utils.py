@@ -49,7 +49,7 @@ def get_pure_scan_file_name(scan_file_name: str) -> str:
     return scan_id
 
 
-def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str], str]:
+def gather_input_files_from_input(in_name: Union[str, Path], recurse_subfolders=False) -> Tuple[List[str], str]:
     """
     Gathers a list of input files from the given input, which can be a single file, a text file with entries or a directory
 
@@ -60,7 +60,30 @@ def gather_input_files_from_input(in_name: Union[str, Path]) -> Tuple[List[str],
         List[str]: A list of strings representing the gathered input files.
     """
     in_name = in_name.strip()
-    if os.path.isdir(in_name):
+    if recurse_subfolders and os.path.isdir(in_name):
+        # recursively search for nii, nii.gz, nrrd files
+        in_files = glob.glob(f"{in_name}/**/*.nrrd", recursive=True)
+        in_files += glob.glob(f"{in_name}/**/*.nii", recursive=True)
+        in_files += glob.glob(f"{in_name}/**/*.nii.gz", recursive=True)
+
+        # now recursively search for non-empty subdirectories. These can contain DICOM files
+        for root, dirs, files in os.walk(in_name):
+            for d in dirs:
+                full_d = os.path.join(root, d)
+                if os.path.isdir(full_d):
+                    # check if directory is non-empty
+                    if len(os.listdir(full_d)) > 10:
+                        # Check if the directory does not containg nii, nii.gz, nrrd files to avoid duplicates
+                        non_dicom_files = glob.glob(f"{full_d}/*.nrrd")
+                        non_dicom_files += glob.glob(f"{full_d}/*.nii")
+                        non_dicom_files += glob.glob(f"{full_d}/*.nii.gz")
+                        if len(non_dicom_files) < 1:
+                            in_files.append(full_d)
+        if len(in_files) < 1:
+            msg = f"No nii, nii.gz, nrrd files or DICOM folders found in {in_name} or its subdirectories"
+            print(msg)
+            return [], msg
+    elif os.path.isdir(in_name):
         # glob for both .nii and .nii.gz files and .nrrd files
         in_files = glob.glob(f"{in_name}/*.nrrd")
         in_files += glob.glob(f"{in_name}/*.nii")
