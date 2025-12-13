@@ -145,7 +145,8 @@ def compute_out_scan_field_segmentation_and_sdf(
         return True
 
     if verbose:
-        print(f"Computing out-of-scan-field:{segm_out_name} and {sdf_out_name}")
+        print(f"Computing out-of-scan-field:{segm_out_name} and {sdf_out_name} with HU ranges "
+              f"<= {low_thresh} or > {high_thresh}")
 
     ct_img = read_nifti_with_logging_cached(
         input_file, verbose, quiet, write_log_file, output_folder
