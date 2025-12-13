@@ -32,6 +32,8 @@ AortaExplorer can be called by (adapt input and output folder to your setup):
 AortaExplorer -i "/data/Pancreas/manifest-1599750808610/Pancreas-CT/" -r -o /data/AortaExplorer/output-PancreasCT/ -np 8 --verbose -cts
 ```
 
+where the `-r` options tells AortaExplorer to recursively find all folders contaning relevant input files. In this case, it will find all folders with DICOM files. The DICOM files will initially be converted to NIFTI using [dicom2nifti](https://github.com/icometrix/dicom2nifti).
+
 AortaExplorer generally works well on this data, as can be seen in the output of for example **Pancreas-17966**:
 
 ![Pancreas-17966](figs/Pancreas-17966_aorta_visualization.png)
@@ -48,6 +50,8 @@ AortaExplorer can be called by (adapt input and output folder to your setup):
 ```bash
 AortaExplorer -i "/data/Mediastinal-Lymph-Node/manifest-1724359862867/Mediastinal-Lymph-Node-SEG/" -r -o /data/AortaExplorer/output-Mediastinal-Lymph-Node-SEG/ -np 8 --verbose -cts
 ```
+
+where the `-r` options tells AortaExplorer to recursively find all folders contaning relevant input files. In this case, it will find all folders with DICOM files. The DICOM files will initially be converted to NIFTI using [dicom2nifti](https://github.com/icometrix/dicom2nifti).
 
 It is a very diverse dataset with many different scan field-of-views and voxel spacing. AortaExplorer generally identifies the scans that can be processed and generates meaningfull results even on scans with large voxel spacings as seen here:
 
