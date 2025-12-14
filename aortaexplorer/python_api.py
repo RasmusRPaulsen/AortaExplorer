@@ -14,6 +14,7 @@ def get_default_parameters():
     default_parms = {
         "num_proc_total_segmentator": 1,
         "num_proc_general": 8,
+        "recurse_subfolders": False,
         "out_of_reconstruction_value": -2048,
         "forced_aorta_min_hu_value": None,
         "forced_aorta_max_hu_value": None,
@@ -53,11 +54,12 @@ def aortaexplorer(
 
     ts_nr_proc = aorta_parameters.get("num_proc_total_segmentator", 1)
     tg_nr_proc = aorta_parameters.get("num_proc_general", 1)
+    recurse_subfolder = aorta_parameters.get("recurse_subfolders", False)
 
     output = str(output)
     Path(output).mkdir(parents=True, exist_ok=True)
 
-    in_files, msg = gather_input_files_from_input(in_name=in_name)
+    in_files, msg = gather_input_files_from_input(in_name=in_name, recurse_subfolders=recurse_subfolder)
     if len(in_files) < 1:
         if write_log_file:
             write_message_to_log_file(base_dir=output, message=msg, level="error")
