@@ -602,7 +602,7 @@ def refine_single_aorta_part_fast(
     timing_out = f"{stats_folder}/aorta_refinement{part}_timing_fast.txt"
     calc_std_mult = params["aorta_calcification_std_multiplier"]
 
-    debug = False
+    debug = True
     time_start = time.time()
 
     if os.path.exists(segm_out_name):

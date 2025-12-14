@@ -203,9 +203,15 @@ def test_aortaexplorer():
     # params["out_of_reconstruction_value"] = -1000
     # output_folder = "C:/data/AortaExplorer/testoutput/"
 
-    input_file = "C:/data/Abdominal/Pancreas-CT/"
-    output_folder = "C:/data/AortaExplorer/Pancreas-CT-output/"
-    params["recurse_subfolders"] = True
+    # input_file = "C:/data/Abdominal/Pancreas-CT/"
+    # output_folder = "C:/data/AortaExplorer/Pancreas-CT-output/"
+    # params["recurse_subfolders"] = True
+
+    # input_file = r"/storage/Data/DTU-CGPS-1/NIFTI/CGPS-1_0007_SERIES0006.nii.gz"
+    input_file = r"/storage/Data/DTU-CGPS-1/NIFTI/CGPS-1_12129_SERIES0013.nii.gz"
+    output_folder = "/data/Data/RAPA/AortaExplorer/CGPS-1-experimental-output/"
+    params["aorta_min_hu_value"] = -100
+    params["aorta_min_max_hu_value"] = 180
 
     device = "gpu"
     verbose = True
