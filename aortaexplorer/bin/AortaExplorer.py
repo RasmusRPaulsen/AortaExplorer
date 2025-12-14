@@ -43,7 +43,7 @@ def main():
         "-i",
         metavar="filepath",
         dest="input",
-        help="CT nifti image file name, or name of folder with nifti images, or a txt file with filenames.",
+        help="CT NIFTI, NRRD, DICOM image file name, or name of folder with NIFTI, NRRD, DICOM images, or a txt file with filenames or DICOM folders.",
         type=lambda p: Path(p).absolute(),
         required=True,
     )
@@ -83,6 +83,15 @@ def main():
         default="gpu",
         help="Device type: 'gpu', 'cpu', 'mps', or 'gpu:X' where X is an integer representing the GPU device ID.",
     )
+
+    parser.add_argument(
+        "-r",
+        "--recurse",
+        action="store_true",
+        help="Do recursive search for NIFTI, NRRD and DICOM files starting with the input folder",
+        default=False,
+    )
+
 
     parser.add_argument(
         "-q",
@@ -207,7 +216,7 @@ def main():
     aorta_parms = get_default_parameters()
     aorta_parms["num_proc_total_segmentator"] = args.nr_ts
     aorta_parms["num_proc_general"] = args.nr_proc
-    aorta_parms["out_of_scan_hu_value"] = args.out_hu
+    aorta_parms["out_of_reconstruction_value"] = args.out_hu
     aorta_parms["forced_aorta_min_hu_value"] = args.forced_min_hu
     aorta_parms["forced_aorta_max_hu_value"] = args.forced_max_hu
     aorta_parms["aorta_min_hu_value"] = args.low_hu
@@ -218,6 +227,7 @@ def main():
     aorta_parms["compare_with_totalsegmentator"] = args.compare_with_ts
     aorta_parms["rendering_window_size"] = [args.image_x_size, args.image_y_size]
     aorta_parms["hounsfield_unit_offset"] = args.hu_offset
+    aorta_parms["recurse_subfolders"] = args.recurse
 
     aortaexplorer(
         str(args.input),
