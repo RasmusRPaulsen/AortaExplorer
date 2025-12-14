@@ -209,9 +209,12 @@ def test_aortaexplorer():
 
     # input_file = r"/storage/Data/DTU-CGPS-1/NIFTI/CGPS-1_0007_SERIES0006.nii.gz"
     input_file = r"/storage/Data/DTU-CGPS-1/NIFTI/CGPS-1_12129_SERIES0013.nii.gz"
-    output_folder = "/data/Data/RAPA/AortaExplorer/CGPS-1-experimental-output/"
+    input_file = r"/storage/Data/DTU-CGPS-1-update-3/Filelists/CGPS-1-Cardiac-CaScore_full_paths.txt"
+    output_folder = "/data/Data/RAPA/AortaExplorer/CGPS-1-Cardiac-CaScore-output/"
     params["aorta_min_hu_value"] = -100
     params["aorta_min_max_hu_value"] = 180
+    params["aorta_calcification_min_hu_value"] = 180
+    params["num_proc_total_segmentator"] = 3
 
     device = "gpu"
     verbose = True
