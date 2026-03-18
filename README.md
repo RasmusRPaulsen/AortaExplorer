@@ -29,11 +29,10 @@ Please cite this paper if you use AortaExplorer (coming, in revision)
 @article{tbd25,
   author  = "Rasmus R. Paulsen and Linnea Hjordt Juul and Michael Huy Cuong Pham and J{\o}rgen Tobias K{\"u}hl and Klaus Fuglsang Kofoed and Kristine Aavild S{\o}rensen and Josefine Vilsb{\o}ll Sundgaard",
   title   = "AortaExplorer: AI-driven analysis of the aorta in CT images",
-  journal = "TBD",
-  year    = 2025,
-  volume  = "TBD",
-  number  = "TBD",
-  pages   = "1--10"
+  journal = "Medical & Biological Engineering & Computing",
+  year    = 2026,
+  doi = {10.1007/s11517-026-03535-x},
+  url = {https://doi.org/10.1007/s11517-026-03535-x}
 }
 ```
 Please also cite the [TotalSegmentator paper](https://pubs.rsna.org/doi/10.1148/ryai.230024) since AortaExplorer is heavily dependent on it.
