@@ -26,7 +26,7 @@ It is based on work done at [DTU Compute](https://www.compute.dtu.dk/) and the [
 
 Please cite this paper if you use AortaExplorer (coming, in revision)
 ```bibtex
-@article{tbd25,
+@article{PaulsenAorta2026,
   author  = "Rasmus R. Paulsen and Linnea Hjordt Juul and Michael Huy Cuong Pham and J{\o}rgen Tobias K{\"u}hl and Klaus Fuglsang Kofoed and Kristine Aavild S{\o}rensen and Josefine Vilsb{\o}ll Sundgaard",
   title   = "AortaExplorer: AI-driven analysis of the aorta in CT images",
   journal = "Medical & Biological Engineering & Computing",
