@@ -24,7 +24,7 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 
 It is based on work done at [DTU Compute](https://www.compute.dtu.dk/) and the [Cardiovascular Research Unit, Rigshospitalet, Copenhagen, Denmark](https://www.rigshospitalet.dk/english/research-and-innovation/units-and-groups/Pages/cardiovascular-ct-research-unit.aspx) 
 
-Please cite this paper if you use AortaExplorer (coming, in revision)
+Please cite this paper if you use AortaExplorer:
 ```bibtex
 @article{PaulsenAorta2026,
   author  = "Rasmus R. Paulsen and Linnea Hjordt Juul and Michael Huy Cuong Pham and J{\o}rgen Tobias K{\"u}hl and Klaus Fuglsang Kofoed and Kristine Aavild S{\o}rensen and Josefine Vilsb{\o}ll Sundgaard",
