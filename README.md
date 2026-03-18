@@ -1,6 +1,6 @@
 # AortaExplorer
 
-An open source tool for accurate segmentation of the aorta in 3D computed tomography scans. 
+An open source tool for accurate segmentation of the aorta in 3D computed tomography scans. Described in [AortaExplorer: AI-driven analysis of the aorta in CT images](https://link.springer.com/article/10.1007/s11517-026-03535-x)
 
 ![AortaExplorer](https://github.com/RasmusRPaulsen/AortaExplorer/blob/main/figs/aortaexplorer_visualization.png)
 
@@ -24,7 +24,7 @@ An open source tool for accurate segmentation of the aorta in 3D computed tomogr
 
 It is based on work done at [DTU Compute](https://www.compute.dtu.dk/) and the [Cardiovascular Research Unit, Rigshospitalet, Copenhagen, Denmark](https://www.rigshospitalet.dk/english/research-and-innovation/units-and-groups/Pages/cardiovascular-ct-research-unit.aspx) 
 
-Please cite this paper if you use AortaExplorer:
+Please cite [this paper](https://link.springer.com/article/10.1007/s11517-026-03535-x) if you use AortaExplorer:
 ```bibtex
 @article{PaulsenAorta2026,
   author  = "Rasmus R. Paulsen and Linnea Hjordt Juul and Michael Huy Cuong Pham and J{\o}rgen Tobias K{\"u}hl and Klaus Fuglsang Kofoed and Kristine Aavild S{\o}rensen and Josefine Vilsb{\o}ll Sundgaard",
