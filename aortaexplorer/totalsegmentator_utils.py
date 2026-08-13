@@ -4,7 +4,7 @@ from pathlib import Path
 import time
 import multiprocessing as mp
 from aortaexplorer.general_utils import (write_message_to_log_file, clear_last_error_message, get_pure_scan_file_name,
-                                         display_time)
+                                         display_time, safe_queue_size)
 from aortaexplorer.io_utils import read_nifti_with_logging
 import SimpleITK as sitk
 import numpy as np
@@ -173,7 +173,7 @@ def computer_process(
     device, verbose, quiet, write_log_file, output_folder, process_queue, process_id
 ):
     while not process_queue.empty():
-        q_size = process_queue.qsize()
+        q_size = safe_queue_size(process_queue)
         input_file = process_queue.get()
         if verbose:
             print(
@@ -189,7 +189,7 @@ def computer_process(
         with open(time_stats_out, "w") as f:
             f.write(f"{elapsed_time}\n")
 
-        q_size = process_queue.qsize()
+        q_size = safe_queue_size(process_queue)
         est_time_left = q_size * elapsed_time
         time_left_str = display_time(int(est_time_left))
         time_elapsed_str = display_time(int(elapsed_time))
