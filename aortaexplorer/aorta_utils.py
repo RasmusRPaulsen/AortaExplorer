@@ -11,7 +11,7 @@ from aortaexplorer.general_utils import (
     read_json_file,
     get_last_error_message,
     clear_last_error_message,
-    get_pure_scan_file_name, display_time
+    get_pure_scan_file_name, display_time, safe_queue_size
 )
 from aortaexplorer.io_utils import read_nifti_with_logging_cached
 from aortaexplorer.surface_utils import (
@@ -7996,7 +7996,7 @@ def computer_process(
     verbose, quiet, write_log_file, params, output_folder, process_queue, process_id
 ):
     while not process_queue.empty():
-        q_size = process_queue.qsize()
+        q_size = safe_queue_size(process_queue)
         input_file = process_queue.get()
         if verbose:
             print(
@@ -8008,7 +8008,7 @@ def computer_process(
         )
         n_proc = params["num_proc_general"]
         elapsed_time = time.time() - local_start_time
-        q_size = process_queue.qsize()
+        q_size = safe_queue_size(process_queue)
         est_time_left = q_size * elapsed_time / n_proc
         time_left_str = display_time(int(est_time_left))
         time_elapsed_str = display_time(int(elapsed_time))

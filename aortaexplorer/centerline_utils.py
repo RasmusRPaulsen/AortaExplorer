@@ -237,7 +237,12 @@ def compute_diameters_from_contour(contour, org, pix_spacing):
             dist_p_p_2 = np.linalg.norm(p - p_2)
             if dist_p_p_2 > dist_p_to_org:
                 # https://stackoverflow.com/questions/39840030/distance-between-point-and-a-line-from-two-points
-                dist = np.abs(np.cross(org - p, org - p_2)) / np.linalg.norm(org - p)
+                # 2D cross product computed explicitly since np.cross no
+                # longer accepts 2-dimensional vectors as of NumPy 2.0
+                v_1 = org - p
+                v_2 = org - p_2
+                cross_2d = v_1[0] * v_2[1] - v_1[1] * v_2[0]
+                dist = np.abs(cross_2d) / np.linalg.norm(v_1)
 
                 if dist < min_dist:
                     min_dist = dist

@@ -142,6 +142,15 @@ def read_json_file(json_name):
     return None
 
 
+def safe_queue_size(process_queue):
+    # multiprocessing.Queue.qsize() relies on sem_getvalue(), which is not
+    # implemented on macOS and raises NotImplementedError there
+    try:
+        return process_queue.qsize()
+    except NotImplementedError:
+        return 0
+
+
 def display_time(seconds):
     intervals = (
         ('w', 604800),  # 60 * 60 * 24 * 7
